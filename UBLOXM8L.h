@@ -95,85 +95,44 @@ private:
                 }
 
 //                 usleep(5e5);
-                tmp[transferred] = 0;
-              //  printf ( "index = %d\n", ind++ );
-                printf ( "%s\n", tmp );
-				continue;
-
+//                 tmp[transferred] = 0;
+//                 //  printf ( "index = %d\n", ind++ );
+//                 printf ( "%s\n", tmp );
+//                 continue;
+                printf ( "transferred = %d",transferred );
                 memcpy ( buffer + length, tmp, transferred );
                 length += transferred;
-// 				printf ( "length = %d\n", length );
 
-				for (int ss = 0,ee=0;;){
-					while(ss<length && (u_char)buffer[ss] != 0xB5 && (u_char)buffer[ss+1] != 0x62){
-// 						printf("%02x ",(unsigned char)buffer[ss]);
-						ss++;
-					}
-					if ( ss < length ) {
-						ss+=2;
-						if((u_char)buffer[ss++]==0x01){
-							printf("Get a UBX-NAV-%02x message.\n",(u_char)buffer[ss]);
-
-							for(int temp = ss;temp<ss+16;temp++)
-							{
-								printf("%02x ",(u_char)buffer[temp]);
-							}
-							if((u_char)buffer[ss++]==0x06){
-								printf("Get a UBX-NAV-SOL message.\n");
-
-								u_int32_t iTow;
-								memcpy(&iTow,buffer+ss,4);
-								printf("iTow = %lu\n",iTow);
-							}
-						}
-					} else {
-						//printf ( "find  no 0xB5 \n " );
-						break;
-                    }
-				}
-
-                for ( int s = 0, e = 0; ; ) {
-                    while ( s < length && buffer[s] != '$' ) {
-                        s++;
-                    }
-                    if ( s < length ) {
-                        //find \r, \n
-                        e = s;
-                        while ( e < length && buffer[e] != '\r' && buffer[e] != '\n' ) {
-                            e++;
-                        }
-                        int l = e - s;
-						printf ( " %d = %d - %d\n", l,e,s );
-
-                        if ( e < length ) {
-							printf ( "get some thing like NMEA  , s = %d\n",s );
-                            memcpy ( GPS_Buffer, buffer + s, l );
-                            GPS_Buffer[l] = 0;
-							printf(GPS_Buffer);
-                            GPSMessage message;
-                            //memset(&message, 0, sizeof(message));
-                            message.message_type = DM100_MSG_GPS;
-//                             message.timestamp = (currentUSecsSinceEpoch() - 2000) * 1000;   //2ms for transferring delay
-                            if ( parse_gps_message ( GPS_Buffer, message ) ) {
-//                                 enqueueMessage(std::make_shared<GPSMessage>(message));
-                                ///add********************************///
-                            }
-                            s += l;
-                        } else if ( l > 128 ) { //the message is too long, skip the message
-                            printf ( "the message is too long, skip the message: %d = %d - %d\n", l,e,s );
-                            s++;    //skip '$'
-                        } else {            //reach the end, the message is not complete
-							printf ( "reach the end , s = %d\n",s );
-
-                            memmove ( buffer, buffer + s, length - s );
-                            length -= s;
-                            break;
-                        }
-                    } else {
-						//printf ( "find  no $ \n " );
-						break;
-                    }
+                int ss = 0;
+                while ( ss<length && ( ( u_char ) buffer[ss] != 0xB5 || ( u_char ) buffer[ss+1] != 0x62 ) ) {
+                    //printf("%02x ",(unsigned char)buffer[ss]);
+                    //printf("noUbx ");
+                    ss++;
                 }
+                if ( ss<length ) {
+                    printf ( "\nfind UBX: (start = %d/%d)\n",ss,length );
+                }
+                while ( ss<length ) {
+                    printf ( "%02x ", ( unsigned char ) buffer[ss] );
+                    ss++;
+                }
+
+                int s = 0;
+                while ( s < length-1 && ( buffer[s] != '$' || buffer[s+1] != 'G' ) ) {
+                    //	printf("noNMEA ");
+                    s++;
+                }
+
+                if ( s<length-1 ) {
+                    printf ( "\nfind NMEA: (start = %d/%d)\n",s,length );
+                }
+
+                while ( s <length-1 ) {
+                    printf ( "%c",buffer[s++] );
+                }
+
+
+
             }
             sp.close();
         } catch ( ... ) {
@@ -207,8 +166,8 @@ private:
                     usefulBuffer[1] = subString[1];
                     usefulBuffer[2] = 0;
                     info.latitude = atof ( usefulBuffer ) + atof ( subString + 2 ) / 60.0;
-					printf("RMC latitude,longtitude = %lf, ",info.latitude);
-					printf("%lf\n ",info.longitude);
+                    printf ( "RMC latitude,longtitude = %lf, ",info.latitude );
+                    printf ( "%lf\n ",info.longitude );
 
                     break;
                 case 3:                    //N_S
@@ -219,7 +178,7 @@ private:
                     usefulBuffer[2] = subString[2];
                     usefulBuffer[3] = 0;
                     info.longitude = atof ( usefulBuffer ) + atof ( subString + 3 ) / 60.0;
-					printf("%lf\n ",info.longitude);
+                    printf ( "%lf\n ",info.longitude );
 
                     break;
                 case 5:                    //East or west
@@ -302,7 +261,7 @@ private:
                     usefulBuffer[1] = subString[1];
                     usefulBuffer[2] = 0;
                     info.latitude = atof ( usefulBuffer ) + atof ( subString + 2 ) / 60.0f;
-					printf("GGA latitude,longtitude = %lf, ",info.latitude);
+                    printf ( "GGA latitude,longtitude = %lf, ",info.latitude );
                     break;
                 case 2:        //north or south
                     break;
@@ -312,7 +271,7 @@ private:
                     usefulBuffer[2] = subString[2];
                     usefulBuffer[3] = 0;
                     info.longitude = atof ( usefulBuffer ) + atof ( subString + 3 ) / 60.0f;
-					printf("%lf\n ",info.longitude);
+                    printf ( "%lf\n ",info.longitude );
 
                     break;
                 case 4:        //east or west
