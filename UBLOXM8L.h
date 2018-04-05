@@ -95,10 +95,10 @@ private:
                 }
 
 //                 usleep(5e5);
-//                 tmp[transferred] = 0;
-               // printf ( "index = %d\n", ind++ );
-//                 printf ( "%s\n", tmp );
-// 				continue;
+                tmp[transferred] = 0;
+              //  printf ( "index = %d\n", ind++ );
+                printf ( "%s\n", tmp );
+				continue;
 
                 memcpy ( buffer + length, tmp, transferred );
                 length += transferred;
