@@ -96,7 +96,7 @@ private:
 
 //                 usleep(5e5);
 //                 tmp[transferred] = 0;
-                printf ( "index = %d\n", ind++ );
+               // printf ( "index = %d\n", ind++ );
 //                 printf ( "%s\n", tmp );
 // 				continue;
 
@@ -113,15 +113,21 @@ private:
 						ss+=2;
 						if((u_char)buffer[ss++]==0x01){
 							printf("Get a UBX-NAV-%02x message.\n",(u_char)buffer[ss]);
+
+							for(int temp = ss;temp<ss+16;temp++)
+							{
+								printf("%02x ",(u_char)buffer[temp]);
+							}
 							if((u_char)buffer[ss++]==0x06){
 								printf("Get a UBX-NAV-SOL message.\n");
+
 								u_int32_t iTow;
 								memcpy(&iTow,buffer+ss,4);
 								printf("iTow = %lu\n",iTow);
 							}
 						}
 					} else {
-						printf ( "find  no 0xB5 \n " );
+						//printf ( "find  no 0xB5 \n " );
 						break;
                     }
 				}
@@ -143,6 +149,7 @@ private:
 							printf ( "get some thing like NMEA  , s = %d\n",s );
                             memcpy ( GPS_Buffer, buffer + s, l );
                             GPS_Buffer[l] = 0;
+							printf(GPS_Buffer);
                             GPSMessage message;
                             //memset(&message, 0, sizeof(message));
                             message.message_type = DM100_MSG_GPS;
@@ -163,7 +170,7 @@ private:
                             break;
                         }
                     } else {
-						printf ( "find  no $ \n " );
+						//printf ( "find  no $ \n " );
 						break;
                     }
                 }
