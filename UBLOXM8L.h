@@ -84,10 +84,10 @@ private:
             char buffer[1024], GPS_Buffer[512];
             int length = 0;
             int ind = 0;
-			int flag = 0,flagNew = 0;//0:null,1:NMEA,2:UBX;
+            int flag = 0,flagNew = 0;//0:null,1:NMEA,2:UBX;
 
             while ( !stopMessageCapture() ) {
-                char tmp[64];
+                char tmp[128];
                 char UBX_Buffer[512], NMEA_Buffer[128];
                 auto transferred = sp.read_some ( boost::asio::buffer ( tmp ) );
                 if ( transferred <= 0 ) {
@@ -96,118 +96,75 @@ private:
                     continue;
                 }
 
-				int start = 0, end = 0;
-				if(length>950){
-					length = 0;
-					flag = 0;
-					flagNew = 0;
-				}
+                int start = 0, end = 0;
+                if ( length>950 ) {
+                    length = 0;
+                    flag = 0;
+                    flagNew = 0;
+                }
                 memcpy ( buffer + length, tmp, transferred );
                 length += transferred;
 
-				printf ( "transferred = %d,length = %d, flag = %d\n",transferred,length,flag );
+                printf ( "\ntransferred = %d,length = %d, flag = %d\n",transferred,length,flag );
 
                 //int startUBX=0,endUBX = 0,startNMEA = 0,endNMEA = 0;
-				bool moveHead = false;
-				for ( int i = length-transferred; i<length; i++ ) {
-					bool getNew = false;
+                bool moveHead = false;
+                for ( int i = length-transferred; i<length; i++ ) {
+                    bool getNew = false;
 
-//                     if ( '$'==buffer[i]&&'G'==buffer[i+1] ) {
-// 						getNew = true;
-//                         end = i-1;
-//                         if ( end>start&&flag!=0 ) {
-//                             if ( 2==flag && end-start<512) {
-//                                 memcpy ( UBX_Buffer,buffer+start,end-start );
-//                             }
-//                         }
-//
-//                         flag = 1;
-// 						start = i;
-//                     }
-//                     if ( ( u_char ) buffer[i] == 0xB5 && ( u_char ) buffer[i+1] == 0x62 ) {
-// 						getNew = true;
-//                         end = i-1;
-// 						if ( end>start&&flag!=0 ) {
-// 							if ( 2==flag && end-start<512) {
-// 								memcpy ( UBX_Buffer,buffer+start,end-start );
-// 							}
-// 						}
-//
-//                     }
+                    if ( '$'==buffer[i]&&'G'==buffer[i+1] ) {
+                        getNew = true;
+                        flagNew = 1;
+                        printf ( "\nnew flag = 1, i = %d\n",i );
+                    }
+                    if ( ( u_char ) buffer[i] == 0xB5 && ( u_char ) buffer[i+1] == 0x62 ) {
+                        getNew = true;
+                        flagNew = 2;
+                        printf ( "\nnew flag = 2, i = %d\n",i );
 
-					if ( '$'==buffer[i]&&'G'==buffer[i+1] ) {
-						getNew = true;
-						flagNew = 1;
-						printf("get flag 1, start = %d\n",i);
-					}
-					if ( ( u_char ) buffer[i] == 0xB5 && ( u_char ) buffer[i+1] == 0x62 ) {
-						getNew = true;
-						flagNew = 2;
-						printf("get flag 2, start = %d\n",i);
+                    }
+                    if ( 1==flag && ( '\n'==buffer[i]||'\r'==buffer[i] ) ) {
+                        printf ( "\nget a r/n, i = %d,start = %d, oldflag = %d\n",i,start,flag );
 
-					}
-					if(1==flag && ('\n'==buffer[i]||'\r'==buffer[i]))
-					{
-						printf("get flag 1-end, = %d,start = %d\n",i,start);
-
-						end = i;
-						if(end-start<128){
-							printf("copy NMEA :end =  %d\n",i-1);
-
-							memcpy(NMEA_Buffer,buffer+start,end-start);
-							flagNew = 0;
-						}
-					}
-					if(getNew){
-						printf("start = %d, end  = %d\n",start,i);
-						moveHead = true;
-						end = i-1;
-						if ( end>start&&flag!=0 ) {
-							if ( 2==flag && end-start<512) {
-								printf("copy ubx :end =  %d\n",i-1);
-
-								memcpy ( UBX_Buffer,buffer+start,end-start );
+                        end = i;
+						int l = end-start;
+                        if ( l<128 ) {
+                            printf ( "\ncopy NMEA : %d -- %d, l = %d \n",start,i-1,l );
+                            memcpy ( NMEA_Buffer,buffer+start,l );
+                            flagNew = 0;
+							for(int k = 0;k<l;k++){
+								printf("%c",NMEA_Buffer[k]);
 							}
-						}
-						start = i;
-						getNew = false;
-					}
-					flag = flagNew;
+                        }
+                    }
+                    if ( getNew ) {
+                        printf ( "getNew: start = %d, i  = %d, oldflag = %d\n",start,i,flag );
+                        moveHead = true;
+                        end = i-1;
+						int l = end-start;
+                        if ( end>start&&flag!=0 ) {
+                            if ( 2==flag && l<512 ) {
+								printf ( "\ncopy ubx-%02x : %d -- %d, l=%d\n",(u_char) buffer[start+2],start,i-1,l );
+                                memcpy ( UBX_Buffer,buffer+start,l );
+								for(int k = 0;k<l;k++){
+									printf("%02x ",(u_char) UBX_Buffer[k]);
+								}
+                            }
+                        }
+                        start = i;
+                        getNew = false;
+                    }
+
+                    flag = flagNew;
 
                 }
-                if(moveHead){
-					memcpy(buffer,buffer+start,1024-start);
-					length-=start;
-					start = 0;
+                if ( moveHead ) {
+					printf("\nmove: %d -> 0, rest = %d",start,length-start);
+                    memcpy ( buffer,buffer+start,1024-start );
+                    length-=start;
+                    start = 0;
                 }
-//                 int start = 0;
-//                 while ( start<length && ( ( u_char ) buffer[start] != 0xB5 || ( u_char ) buffer[start+1] != 0x62 ) ) {
-//                     //printf("%02x ",(unsigned char)buffer[ss]);
-//                     //printf("noUbx ");
-//                     start++;
-//                 }
-//                 if ( start<length ) {
-//                     printf ( "\nfind UBX: (start = %d/%d)\n",start,length );
-//                 }
-//                 while ( start<length ) {
-//                     printf ( "%02x ", ( unsigned char ) buffer[start] );
-//                     start++;
-//                 }
-//
-//                 int s = 0;
-//                 while ( s < length-1 && ( buffer[s] != '$' || buffer[s+1] != 'G' ) ) {
-//                     //	printf("noNMEA ");
-//                     s++;
-//                 }
-//
-//                 if ( s<length-1 ) {
-//                     printf ( "\nfind NMEA: (start = %d/%d)\n",s,length );
-//                 }
-//
-//                 while ( s <length-1 ) {
-//                     printf ( "%c",buffer[s++] );
-//                 }
-//
+
 
             }
             sp.close();
