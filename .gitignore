@@ -1,0 +1,11 @@
+# Editor backup files:
+*~
+.*.swp
+
+
+# build directories
+build*/
+cmake-build-debug/
+.idea/
+
+

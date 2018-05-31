@@ -2,7 +2,7 @@
 // Created by zli on 18-1-7.
 //
 
- #include <opencv2/opencv.hpp>
+// #include <opencv2/opencv.hpp>
 
 
 #ifndef DM100_DM100_H

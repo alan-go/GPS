@@ -11,11 +11,15 @@ int main()
 	if((u_char)t[0]==0xb5){
 		cout<<"((unsigned char)t[0]==0xb5)"<<endl;
 	}
-	cout<<atof("12.464,dji")<<endl;
+	cout<<atof("12.46l4,dji")<<endl;
 	cout<<"start"<<endl;
 	UBLOXM8L ublox;
 	ublox.StartGPS("/dev/ttyUSB0");
-	sleep(3000);
-	stopUblox = 1;
-	return 0;
+	if('x'==getchar()){
+	    cout<<"stop capture."<<endl;
+	    stopUblox = 1;
+	}
+    //ublox.StopGPS();
+
+    return 0;
 }

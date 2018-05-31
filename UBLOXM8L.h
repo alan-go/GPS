@@ -1,6 +1,4 @@
-//
-// Created by zli on 18-1-6.
-//
+
 
 #ifndef DM100_UBLOXM8N_H
 #define DM100_UBLOXM8N_H
