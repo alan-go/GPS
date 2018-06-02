@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <boost/asio.hpp>
 #include "dm100.h"
+#include "UbloxSolver.h"
 
 #define GPS_MESSAGE_GPGGA       1
 #define GPS_MESSAGE_GPRMC       2
@@ -46,8 +47,11 @@ public:
 
 private:
     pthread_t m_thread;
+    UbloxSolver solver;
     std::string m_serial_port;
     bool m_get_3d_position;
+    bool showData  = false;
+
 
 private:
     static void* ThreadAdapter ( void* __this ) {
@@ -79,8 +83,7 @@ private:
             sp.set_option ( boost::asio::serial_port::baud_rate ( 115200 ) );
             printf ( "successfully opened port %s\n", serialPort.c_str() );
 
-            char buffer[1024], GPS_Buffer[512];
-            int ind = 0;
+            //char buffer[1024], GPS_Buffer[512];
             int flag = 0;//0:null,1:NMEA,2:UBX;
 			char bufferUBX[2048], bufferNMEA[128];
 			int lengthUBX=0,lengthNMEA = 0;
@@ -106,7 +109,7 @@ private:
                     if ( ( u_char ) tmp[i] == 0xB5 && ( u_char ) tmp[i+1] == 0x62 ) {
                         flag = 2;
 						lengthUBX = 0;
-						*lengthUBXProtocol = 10;
+						//*lengthUBXProtocol = 10;
                         printf ( "\n\nflag -> 2, i = %d\n",i );
 
                     }
@@ -126,18 +129,20 @@ private:
                     }
                     if(('\n'==tmp[i]||'\r'==tmp[i])&&1==flag){
 						printf("get a NMEA,l = %d, i = %d\n",lengthNMEA,i);
-						for(int k = 0;k<lengthNMEA;k++){
-							printf("%c",bufferNMEA[k]);
-						}
+                        if (showData)
+						    for(int k = 0;k<lengthNMEA;k++){
+							    printf("%c",bufferNMEA[k]);
+						    }
 						flag=0;
                     }
                     //there are 8 extra bytes besides the playload;
 					if(lengthUBX==*lengthUBXProtocol+8 && 2==flag){
-						printf("get a UBX,l = %d, i = %d\n",lengthUBX, i);
-						if(lengthUBX<512)
+						printf("get a UBX %02x %02x,l = %d, i = %d\n",bufferUBX[2],bufferUBX[3], lengthUBX, i);
+						if(showData && lengthUBX<512)
 						for(int k = 0;k<lengthUBX;k++){
 							printf("%02x ",(u_char) bufferUBX[k]);
 						}
+						parse_UBX(bufferUBX);
 						flag=0;
 					}
 
@@ -148,6 +153,17 @@ private:
         } catch ( ... ) {
             printf ( "failed to open serial port\n" );
             return;
+        }
+    }
+
+    void parse_UBX(char * buffer){
+        if(0x02==(u_char)buffer[2]){
+            if(0x15==(u_char)buffer[3]){
+                solver.ParseRawData(buffer);
+            }
+            if(0x13==(u_char)buffer[3]){
+                solver.ParseBstSubFrame(buffer);
+            }
         }
     }
 

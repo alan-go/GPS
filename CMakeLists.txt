@@ -23,8 +23,12 @@ include_directories( "/usr/include/eigen3" )
 
 #set( THIRD_PARTY_LIBS ${OpenCV_LIBS} )
 ############### dependencies ######################
-set(SOURCE_FILES main.cpp GNSS.cpp)
-add_executable( GPS main.cpp )
+
+set(SOURCE_FILES main.cpp
+        UbloxSolver.cpp
+        )
+add_executable(GPS ${SOURCE_FILES} )
 #target_link_libraries( GPS ${OpenCV_LIBS} )
 target_link_libraries( GPS  ${Boost_LIBRARIES} )
+
 target_link_libraries(GPS ${CMAKE_THREAD_LIBS_INIT})
