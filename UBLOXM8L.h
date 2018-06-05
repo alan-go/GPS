@@ -51,7 +51,7 @@ private:
     std::string m_serial_port;
     bool m_get_3d_position;
     bool showData  = false;
-
+    int count = 0;
 
 private:
     static void* ThreadAdapter ( void* __this ) {
@@ -104,13 +104,12 @@ private:
                     if ( '$'==tmp[i]&&'G'==tmp[i+1] ) {
                         flag = 1;
 						lengthNMEA = 0;
-                        printf ( "\n\nflag -> 1, i = %d\n",i );
+                        //printf ( "\n\nflag -> 1, i = %d\n",i );
                     }
                     if ( ( u_char ) tmp[i] == 0xB5 && ( u_char ) tmp[i+1] == 0x62 ) {
                         flag = 2;
 						lengthUBX = 0;
-						//*lengthUBXProtocol = 10;
-                        printf ( "\n\nflag -> 2, i = %d\n",i );
+                        //printf ( "\n\nflag -> 2, i = %d\n",i );
 
                     }
                     if(1==flag){
@@ -137,7 +136,7 @@ private:
                     }
                     //there are 8 extra bytes besides the playload;
 					if(lengthUBX==*lengthUBXProtocol+8 && 2==flag){
-						printf("get a UBX %02x %02x,l = %d, i = %d\n",bufferUBX[2],bufferUBX[3], lengthUBX, i);
+						printf("get a UBX %02x %02x,l = %d, i = %d, count = %d\n",bufferUBX[2],bufferUBX[3], lengthUBX, i,count++);
 						if(showData && lengthUBX<512)
 						for(int k = 0;k<lengthUBX;k++){
 							printf("%02x ",(u_char) bufferUBX[k]);
@@ -157,6 +156,7 @@ private:
     }
 
     void parse_UBX(char * buffer){
+        solver.ParseBstSubFrame(buffer);
         if(0x02==(u_char)buffer[2]){
             if(0x15==(u_char)buffer[3]){
                 solver.ParseRawData(buffer);
