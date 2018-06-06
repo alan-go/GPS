@@ -79,32 +79,49 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
     uint32_t bit32,bit32x2[2];
     uint64_t bit64;
     //word0:
-    if(1810!=Read1Word(dwrds[0],2,11))
+    if(1810!=Read1Word(dwrds[0],11))
         return false;
-    int page = (dwrds[0]<<17)>>29;
+    int page = Read1Word(dwrds[0],3,17);
     switch (page){
         case 1:
-            //AODC
-            int AODC = (dwrds[1]<<15)>>27;
+            sv->SOW = Read1Word(dwrds[0],8,20);
+            sv->WN = Read1Word(dwrds[2],13);
 
-            //toc
-            bit32x2[0] = (dwrds[2]<<15)>>23;
-            bit32x2[1] = (dwrds[3]>>22)<<24;
-            bit64 = *(uint64_t*)bit32x2;
-            sv->toc = bit64>>24;
-            //a0
-            bit32x2[0] = (dwrds[7]<<17)>>25;
-            bit32x2[1] = (dwrds[8]>>13)<<15;
-            bit64 = *(uint64_t*)bit32x2;
-            sv->a0 = bit64>>15;
-            //a1
-            bit32x2[0] = (dwrds[8]<<19)>>27;
-            bit32x2[1] = (dwrds[9]>>13)<<15;
-            bit64 = *(uint64_t*)bit32x2;
-            sv->a1 = bit64>>15;
-            //a2
-            sv->a2 =  (dwrds[7]<<6)>>21;
+            sv->ino.a0 = ((int32_t) Read1Word(dwrds[4],8,8,true))*pow(2,-30);
+            sv->ino.a1 = ((int32_t) Read1Word(dwrds[4],8,16,true))*pow(2,-27);
+            sv->ino.a2 = ((int32_t) Read1Word(dwrds[5],8,2,true))*pow(2,-24);
+            sv->ino.a3 = ((int32_t) Read1Word(dwrds[5],8,10,true))*pow(2,-24);
+            sv->ino.b0 = ((int32_t) Read2Word(dwrds+5,6,18,2,2,true))*pow(2,11);
+            sv->ino.b1 = ((int32_t) Read1Word(dwrds[6],8,4,true))*pow(2,14);
+            sv->ino.b2 = ((int32_t) Read1Word(dwrds[6],8,12,true))*pow(2,16);
+            sv->ino.b3 = ((int32_t) Read2Word(dwrds+6,4,20,4,2,true))*pow(2,16);
 
+            sv->AODC = Read1Word(dwrds[1],5,15);
+
+            sv->toc = Read2Word(dwrds+2,9,15,8)*8;
+            sv->a0 = (int32_t)Read2Word(dwrds+7,7,17,17,2,true)*pow(2,-33);
+            sv->a1 = (int32_t)Read2Word(dwrds+8,5,19,17,2,true)*pow(2,-50);
+            sv->a2 = (int32_t)Read1Word(dwrds[7],11,6,true)*pow(2,-66);
+
+            sv->TGD1 = (int32_t)Read1Word(dwrds[3],10,10,true)*0.1;
+            sv->TGD2 = (int32_t)Read2Word(dwrds+3,4,20,6,2,true)*0.1;
+            sv->AODE = Read1Word(dwrds[9],5,19);
+        case 2:
+            sv->orbit.toeF2 = Read1Word(dwrds[9],2,22)<<15<<3;
+            sv->orbit.toe = sv->orbit.toeF2|sv->orbit.toeF3;
+            sv->orbit.sq_a = Read2Word(dwrds+8,12,12,20)*pow(2,-19);
+            sv->orbit.e = Read2Word(dwrds+4,10,14,22)*pow(2,-33);
+            sv->orbit.dtn = (int32_t)Read2Word(dwrds+1,10,14,6,2,true)*pow(2,-43);
+            sv->orbit.M0 = (int32_t)Read2Word(dwrds+3,20,4,12,2,true)*pow(2,-31);
+
+        case 3:
+            sv->orbit.toeF3 = Read2Word(dwrds+2,10,14,5)<<3;
+            sv->orbit.toe = sv->orbit.toeF2|sv->orbit.toeF3;
+            sv->orbit.omega = (int32_t)Read2Word(dwrds+8,11,13,21,2,true)*pow(2,-31);
+            sv->orbit.Omega0 = (int32_t)Read2Word(dwrds+7,21,3,11,2,true)*pow(2,-31);
+            sv->orbit.OmegaDot = (int32_t)Read2Word(dwrds+4,11,13,13,2,true)*pow(2,-43);
+            sv->orbit.i0 = (int32_t)Read2Word(dwrds+2,17,7,15,2,true)*pow(2,-31);
+            sv->orbit.IDOT = (int32_t)Read2Word(dwrds+6,13,11,1,2,true)*pow(2,-43);
 
     }
 
@@ -118,21 +135,19 @@ bool UbloxSolver::DecodeGpsBroadcast(uint32_t *dwrds, SvInfo *sv) {
     //todo:
 }
 
-uint32_t UbloxSolver::Read1Word(uint32_t word, int head, int length) {
-    uint32_t result = (word<<head)>>(32-length);
-    return result;
+uint32_t UbloxSolver::Read1Word(uint32_t word, int length, int head, bool isInt) {
+    if(isInt)
+        return uint32_t (((int32_t)word)<<head>>(32-length));
+    else
+        return word<<head>>(32-length);
 }
 
-uint64_t UbloxSolver::Read2Word(uint32_t *word, int *head, int *length) {
-    uint32_t bit32x2[2];
-    uint64_t result;
-    bit32x2[0] = (word[0]<<head[0])>>(32-length[0]);
-    bit32x2[1] = (word[1]>>(32-head[1]-length[1]))<<(32-length[1]);
-    result = *(uint64_t*)bit32x2;
-    result = result>>(32-length[1]);
-    return result;
-}
-
-uint64_t UbloxSolver::Read3Word(uint32_t *word, int *head, int *length) {
-
+uint32_t UbloxSolver::Read2Word(uint32_t *word, int length0, int head0, int length1, int head1, bool isInt) {
+    uint32_t high,low;
+    if(isInt)
+        high = uint32_t (((int32_t)word[0])<<head0>>(32-length0)<<length1);
+    else
+        high = word[0]<<head0>>(32-length0)<<length1;
+    low = word[1]<<head1>>(32-length1);
+    return  high|low;
 }
