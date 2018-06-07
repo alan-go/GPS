@@ -113,6 +113,11 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
             sv->orbit.e = Read2Word(dwrds+4,10,14,22)*pow(2,-33);
             sv->orbit.dtn = (int32_t)Read2Word(dwrds+1,10,14,6,2,true)*pow(2,-43);
             sv->orbit.M0 = (int32_t)Read2Word(dwrds+3,20,4,12,2,true)*pow(2,-31);
+            sv->orbit.Cuc = (int32_t)Read2Word(dwrds+2,16,8,2,2,true)*pow(2,-31);
+            sv->orbit.Cus = (int32_t)Read1Word(dwrds[6],18,2,true)*pow(2,-31);
+            sv->orbit.Crc = (int32_t)Read2Word(dwrds+6,4,20,14,2,true)*pow(2,-6);
+            sv->orbit.Crs = (int32_t)Read2Word(dwrds+7,8,16,10,2,true)*pow(2,-6);
+
 
         case 3:
             sv->orbit.toeF3 = Read2Word(dwrds+2,10,14,5)<<3;
@@ -122,6 +127,10 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
             sv->orbit.OmegaDot = (int32_t)Read2Word(dwrds+4,11,13,13,2,true)*pow(2,-43);
             sv->orbit.i0 = (int32_t)Read2Word(dwrds+2,17,7,15,2,true)*pow(2,-31);
             sv->orbit.IDOT = (int32_t)Read2Word(dwrds+6,13,11,1,2,true)*pow(2,-43);
+            sv->orbit.Cic = (int32_t)Read2Word(dwrds+3,7,17,11,2,true)*pow(2,-31);
+            sv->orbit.Cis = (int32_t)Read2Word(dwrds+5,9,15,9,2,true)*pow(2,-31);
+
+
 
     }
 

@@ -20,7 +20,7 @@ class SvInfo
         double IDOT;
         Orbit():toe(0),sq_a(0),e(0),i0(0),Omega0(0),w(0),M0(0),
         Cus(0),Cuc(0),Cis(0),Cic(0),Crs(0),Crc(0),dtn(0),omega(0),
-        I(0),toe(0),IDOT(0),OmegaDot(0){}
+        I(0),IDOT(0),OmegaDot(0){}
     };
     struct ionosphere{
         double a0,a1,a2,a3;
