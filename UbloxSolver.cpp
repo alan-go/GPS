@@ -75,7 +75,6 @@ bool UbloxSolver::solvePosition() {
 }
 
 bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
-    //todo:
     uint32_t bit32,bit32x2[2];
     uint64_t bit64;
     //word0:
@@ -117,8 +116,6 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
             sv->orbit.Cus = (int32_t)Read1Word(dwrds[6],18,2,true)*pow(2,-31);
             sv->orbit.Crc = (int32_t)Read2Word(dwrds+6,4,20,14,2,true)*pow(2,-6);
             sv->orbit.Crs = (int32_t)Read2Word(dwrds+7,8,16,10,2,true)*pow(2,-6);
-
-
         case 3:
             sv->orbit.toeF3 = Read2Word(dwrds+2,10,14,5)<<3;
             sv->orbit.toe = sv->orbit.toeF2|sv->orbit.toeF3;
@@ -129,9 +126,6 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
             sv->orbit.IDOT = (int32_t)Read2Word(dwrds+6,13,11,1,2,true)*pow(2,-43);
             sv->orbit.Cic = (int32_t)Read2Word(dwrds+3,7,17,11,2,true)*pow(2,-31);
             sv->orbit.Cis = (int32_t)Read2Word(dwrds+5,9,15,9,2,true)*pow(2,-31);
-
-
-
     }
 
 }
