@@ -5,13 +5,22 @@
 #include <cmath>
 #include <vector>
 #include <thread>
-#include <mutex>
+#include <Eigen/Core>
+#include <Eigen/Dense>
+
 
 using namespace std;
 
+constexpr static double sq_M_miu = sqrt(398600441800000);
+constexpr static double Omega_e = 0.000072921150;
+
 class SvInfo
 {
-    enum SvId{};
+public:
+    enum SvType{
+        GPS = 0,
+        BeiDou = 3
+    };
     struct Orbit{
         uint32_t toe,toeF2,toeF3;
         double sq_a, e,i0,Omega0,w,M0;
@@ -27,8 +36,10 @@ class SvInfo
         double b0,b1,b2,b3;
         ionosphere():a0(0),a1(0),a2(0),a3(0),b0(0),b1(0),b2(0),b3(0){}
     };
-public:
-    SvId id;
+
+    bool page1OK,page2OK,page3OK,page123OK;
+    SvType type;
+    int svId;
     uint32_t SOW,WN;
     ionosphere ino;
     uint32_t AODC;
@@ -36,11 +47,16 @@ public:
     double TGD1,TGD2;
     uint32_t AODE;
     Orbit orbit;
-    double x,y,z;
     double prMes, cpMes, doMes;
-    mutex mtx;
+    double I,T,dts;
+
+    Eigen::Vector3d position;
+    double ts,tsDelta,tsReal;
 public:
-    bool CalcuECEF();
+    SvInfo();
+    ~SvInfo();
+    bool CalcuECEF(double rcvtow);
+    bool CalcuTime(double rcvtow);
 };
 
 class UbloxSolver
@@ -48,13 +64,15 @@ class UbloxSolver
 public:
     double rcvtow;
     u_int8_t numMeas = 0;
-    double rx,ry,rz;//ECEF position of receiver
+
+    Eigen::Vector4d rxyz,rxyzOld;//ECEF position of receiver
     double longitude,latitude,height;
-    SvInfo GPSSVs[32];
-    SvInfo BeiDouSVs[37];
-    vector<int> GPSIndex,BeiDouIndex;
+    SvInfo GPSSVs[32],GPSSVsCopy[32];
+    SvInfo BeiDouSVs[37],BeiDouSVsCopy[37];
+    vector<SvInfo*> visibleSvs;
+    vector<SvInfo> SvsForCalcu;
     int numtemp = 0;
-    mutex positionMtx;
+    bool isCalculating = false;
 
 private:
     static void* LaunchPositionThread ( void* __this ) {
@@ -67,6 +85,7 @@ private:
     bool DecodeBeiDouBroadcastD1(uint32_t* dwrds,SvInfo* sv);
     bool DecodeBeiDouBroadcastD2(uint32_t* dwrds,SvInfo* sv);
     bool solvePosition();
+    bool CalcuSvTime();
     //head 指32bit中的头bit（范围：1-32）
     inline uint32_t Read1Word(uint32_t word, int length, int head = 2,bool isInt = false);
     inline uint32_t Read2Word(uint32_t* word,int length0, int head0,int length1, int head1 = 2,bool isInt = false);

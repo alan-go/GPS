@@ -50,7 +50,7 @@ private:
     UbloxSolver solver;
     std::string m_serial_port;
     bool m_get_3d_position;
-    bool showData  = false;
+    bool showData  = true;
     int count = 0;
 
 private:
@@ -141,7 +141,7 @@ private:
 						for(int k = 0;k<lengthUBX;k++){
 							printf("%02x ",(u_char) bufferUBX[k]);
 						}
-						parse_UBX(bufferUBX);
+						//parse_UBX(bufferUBX);
 						flag=0;
 					}
 
