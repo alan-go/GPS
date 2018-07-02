@@ -45,6 +45,7 @@ public:
     };
 
     bool page1OK,page2OK,page3OK,page123OK;
+    bool open = true;
     SvType type;
     int svId;
     uint32_t SOW,WN;
@@ -64,7 +65,6 @@ public:
     ~SvInfo();
     bool CalcuECEF(double rcvtow);
     bool CalcuTime(double rcvtow);
-    bool XYZ2LLA();
 };
 
 class UbloxSolver
@@ -74,13 +74,16 @@ public:
     u_int8_t numMeas = 0;
 
     Eigen::Vector4d rxyz,rxyzOld;//ECEF position of receiver
-    double longitude,latitude,height;
+//    double longitude,latitude,height;
+    Eigen::Vector3d LLA;
     SvInfo GPSSVs[32],GPSSVsCopy[32];
     SvInfo BeiDouSVs[37],BeiDouSVsCopy[37];
     vector<SvInfo*> visibleSvs;
     vector<SvInfo> SvsForCalcu;
     int numtemp = 0;
     bool isCalculating = false;
+    bool useGPS = true;
+    bool useBeiDou = true;
 
 private:
     static void* LaunchPositionThread ( void* __this ) {
@@ -105,6 +108,7 @@ public:
     ~UbloxSolver();
     bool ParseRawData(char* message);
     bool ParseBstSubFrame(char* message);
+    bool XYZ2LLA(Eigen::Vector3d XYZ,Eigen::Vector3d &LLA);
 };
 
 #endif //UBLOX_SOLVER_H

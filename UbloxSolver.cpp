@@ -19,62 +19,6 @@ bool SvInfo::CalcuTime(double rcvtow) {
     tsReal = ts - tsDelta;
     return true;
 }
-//xyz坐标系转换成纬经高坐标系  input:定位后的XYZ   output：转换后的纬经高
-bool SvInfo::XYZ2LLA() {
-    double x,y,z,r,sinA,cosA,sinB,cosB,N,h,lati;
-    int i;
-    double v_xyz[3],v_enu[3],a_xyz[3],a_enu[3];
-    double lati_f,long_f;   // N_geoi表中的经纬度，以角度记，均加到正值处以10
-    double lati_w,long_w;   //权重
-    int lati_index,long_index,long_index_n;  //用于N_geoid中的下标
-    //input
-    x = x;
-    y = y;
-    v_xyz[0] = v_xyz[0];
-    v_xyz[1] = v_xyz[1];
-    v_xyz[2] = v_xyz[2];
-    a_xyz[0] = a_xyz[0];
-    a_xyz[1] = a_xyz[1];
-    a_xyz[2] = a_xyz[2];
-    //起始迭代点
-    r = sqrt(x*x+y*y);
-    h = 0;
-    lati = 0;
-    for (i=0;i<6;i++){
-        sinA = sin(lati);
-        cosA = cos(lati);
-        N = Earth_a / sqrt(1-sinA*sinA*Earth_ee);
-        h = r/cosA - N;
-        lati = atan(z/(r*(1-Earth_ee*N/(N+h))));
-    }
-    //output Longtitude Latitude High  SS[8] 转换矩阵
-    double Longtitude = atan2(y,x);
-    double Latitude = lati;
-    double High = h;
-
-    //给转换矩阵赋值
-    sinB = y/r;
-    cosB = x/r;
-    double SS[8];
-    SS[0] = -sinB;
-    SS[1] = cosB;
-    SS[2] = 0;
-    SS[3] = -sinA*cosB;
-    SS[4] = -sinA*sinB;
-    SS[5] = cosA;
-    SS[6] = cosA*cosB;
-    SS[7] = cosA*sinB;
-    SS[8] = sinA;
-
-    //XYZ向速度，加速度ENU 之后有时间自己实现吧，下面就是一个矩阵乘法然后赋值
-    //SS*v_xyz = v_enu   SS*a_xyz = a_enu
-
-
-
-
-    return true;
-}
-
 
 
 
@@ -139,9 +83,11 @@ bool UbloxSolver::ParseRawData(char *message) {
             case 0:
                 svTemp = &(GPSSVs[svId]);
                 svTemp->type = SvInfo::GPS;
+                if(!useGPS)svTemp->open = false;
             case 3:
                 svTemp = &(BeiDouSVs[svId]);
                 svTemp->type = SvInfo::BeiDou;
+                if(!useBeiDou)svTemp->open = false;
         }
         svTemp->svId = svId;
         visibleSvs.push_back(svTemp);
@@ -156,7 +102,7 @@ bool UbloxSolver::ParseRawData(char *message) {
     for(int i=0;i<numMeas;i++)
     {
         SvInfo sv = *visibleSvs[i];
-        if(sv.page123OK)SvsForCalcu.push_back(sv);
+        if(sv.page123OK&&sv.open)SvsForCalcu.push_back(sv);
     }
     if(SvsForCalcu.size()<5)
         return false;
@@ -218,23 +164,32 @@ bool UbloxSolver::solvePosition() {
         Eigen::MatrixXd G(N,4);
         for(int i = 0;i< N;i++){
             SvInfo* sv= &SvsForCalcu[i];
-            double r = (sv->position-rxyz.head(3)).squaredNorm();
+            Eigen::Vector3d rxyz3 = rxyz.head(3);
+            double r = (sv->position-rxyz3).squaredNorm();
             //自转修正,这个我需要考虑一下是不是在这里处理
             omegat = r/Light_speed*Omega_e;
-            tempx = sv->position(0)*cos(omegat)+sv->position(1)*sin(omegat);
-            tempy = -sv->position(0)*sin(omegat)+sv->position(1)*cos(omegat);
-            tempz = sv->position(2);
+            Eigen::MatrixXd earthRotate(3,3);
+            earthRotate<<cos(omegat),sin(omegat),0,-sin(omegat),cos(omegat),0,0,0,1;
+            Eigen::Vector3d svPositionEarthRotate = earthRotate*sv->position;
+            r = (svPositionEarthRotate-rxyz3).squaredNorm();
+
+//            tempx = sv->position(0)*cos(omegat)+sv->position(1)*sin(omegat);
+//            tempy = -sv->position(0)*sin(omegat)+sv->position(1)*cos(omegat);
+//            tempz = sv->position(2);
+
             b(i) = pc(i)-r-rxyz(3);  //这里的r需要考虑一下
-            G(i,0) = ((0)-tempx)/r;  //x
-            G(i,1) = (rxyz(1)-tempy)/r;  //y
-            G(i,2) = (rxyz(2)-tempz)/r;  //z
+            G(i,0) = (rxyz(0)-svPositionEarthRotate(0))/r;  //x
+            G(i,1) = (rxyz(1)-svPositionEarthRotate(0))/r;  //y
+            G(i,2) = (rxyz(2)-svPositionEarthRotate(0))/r;  //z
             G(i,3) = 1;
         }
         Eigen::MatrixXd GT = G.transpose();
         dtxyzt = ((GT*G).inverse())*GT*b;
+        rxyz += dtxyzt;
         if(numCalcu>30)return false;
     }
 
+    XYZ2LLA(rxyz.head(3),LLA);
     return true;
 
 }
@@ -326,3 +281,61 @@ uint32_t UbloxSolver::Read2Word(uint32_t *word, int length0, int head0, int leng
     low = word[1]<<head1>>(32-length1);
     return  high|low;
 }
+
+//xyz坐标系转换成纬经高坐标系  input:定位后的XYZ   output：转换后的纬经高
+bool UbloxSolver::XYZ2LLA(Eigen::Vector3d XYZ,Eigen::Vector3d &LLA) {
+    double x,y,z,r,sinA,cosA,sinB,cosB,N,h,lati;
+    int i;
+    double v_xyz[3],v_enu[3],a_xyz[3],a_enu[3];
+    double lati_f,long_f;   // N_geoi表中的经纬度，以角度记，均加到正值处以10
+    double lati_w,long_w;   //权重
+    int lati_index,long_index,long_index_n;  //用于N_geoid中的下标
+    //input
+    x = XYZ(0);
+    y = XYZ(1);
+    z = XYZ(2);
+    v_xyz[0] = v_xyz[0];
+    v_xyz[1] = v_xyz[1];
+    v_xyz[2] = v_xyz[2];
+    a_xyz[0] = a_xyz[0];
+    a_xyz[1] = a_xyz[1];
+    a_xyz[2] = a_xyz[2];
+    //起始迭代点
+    r = sqrt(x*x+y*y);
+    h = 0;
+    lati = 0;
+    for (i=0;i<6;i++){
+        sinA = sin(lati);
+        cosA = cos(lati);
+        N = Earth_a / sqrt(1-sinA*sinA*Earth_ee);
+        h = r/cosA - N;
+        lati = atan(z/(r*(1-Earth_ee*N/(N+h))));
+    }
+    //output Longtitude Latitude High  SS[8] 转换矩阵
+    LLA(0) = atan2(y,x);
+    LLA(1) = lati;
+    LLA(2) = h;
+
+    //给转换矩阵赋值
+    sinB = y/r;
+    cosB = x/r;
+    double SS[8];
+    SS[0] = -sinB;
+    SS[1] = cosB;
+    SS[2] = 0;
+    SS[3] = -sinA*cosB;
+    SS[4] = -sinA*sinB;
+    SS[5] = cosA;
+    SS[6] = cosA*cosB;
+    SS[7] = cosA*sinB;
+    SS[8] = sinA;
+
+    //XYZ向速度，加速度ENU 之后有时间自己实现吧，下面就是一个矩阵乘法然后赋值
+    //SS*v_xyz = v_enu   SS*a_xyz = a_enu
+
+
+
+
+    return true;
+}
+
