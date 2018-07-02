@@ -11,8 +11,15 @@
 
 using namespace std;
 
-constexpr static double sq_M_miu = sqrt(398600441800000);
+constexpr static double sq_M_miu = 19964980.385665298;
 constexpr static double Omega_e = 0.000072921150;
+constexpr static double Light_speed = 299792358;
+constexpr static double Earth_a = 6378137.0;  //地球长半轴
+constexpr static double Earth_f = 3.352810664747481e-003;   //基准椭球体的极扁率  f = 1/298.257223563
+constexpr static double Earth_ee = 6.694379990141317-003;   //偏心率e   e^2 = f(2-f)
+
+
+
 
 class SvInfo
 {
@@ -48,7 +55,7 @@ public:
     uint32_t AODE;
     Orbit orbit;
     double prMes, cpMes, doMes;
-    double I,T,dts;
+    double I,T;
 
     Eigen::Vector3d position;
     double ts,tsDelta,tsReal;
@@ -57,6 +64,7 @@ public:
     ~SvInfo();
     bool CalcuECEF(double rcvtow);
     bool CalcuTime(double rcvtow);
+    bool XYZ2LLA();
 };
 
 class UbloxSolver
