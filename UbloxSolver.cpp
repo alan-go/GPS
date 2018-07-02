@@ -4,11 +4,12 @@ using namespace std;
 
 SvInfo::SvInfo(){
     page1OK = page2OK = page3OK = false;
+    I = T = 0;
 }
 SvInfo::~SvInfo(){}
 
 bool SvInfo::CalcuTime(double rcvtow) {
-    ts = rcvtow - prMes/M_PI;
+    ts = rcvtow - prMes/Light_speed;
     double t = ts-toc;
     //此时的钟差是没有考虑相对论效应和 TGD的
     for(int i = 0;i<5;i++){
@@ -16,7 +17,67 @@ bool SvInfo::CalcuTime(double rcvtow) {
         t -=tsDelta;
     }
     tsReal = ts - tsDelta;
+    return true;
 }
+//xyz坐标系转换成纬经高坐标系  input:定位后的XYZ   output：转换后的纬经高
+bool SvInfo::XYZ2LLA() {
+    double x,y,z,r,sinA,cosA,sinB,cosB,N,h,lati;
+    int i;
+    double v_xyz[3],v_enu[3],a_xyz[3],a_enu[3];
+    double lati_f,long_f;   // N_geoi表中的经纬度，以角度记，均加到正值处以10
+    double lati_w,long_w;   //权重
+    int lati_index,long_index,long_index_n;  //用于N_geoid中的下标
+    //input
+    x = x;
+    y = y;
+    v_xyz[0] = v_xyz[0];
+    v_xyz[1] = v_xyz[1];
+    v_xyz[2] = v_xyz[2];
+    a_xyz[0] = a_xyz[0];
+    a_xyz[1] = a_xyz[1];
+    a_xyz[2] = a_xyz[2];
+    //起始迭代点
+    r = sqrt(x*x+y*y);
+    h = 0;
+    lati = 0;
+    for (i=0;i<6;i++){
+        sinA = sin(lati);
+        cosA = cos(lati);
+        N = Earth_a / sqrt(1-sinA*sinA*Earth_ee);
+        h = r/cosA - N;
+        lati = atan(z/(r*(1-Earth_ee*N/(N+h))));
+    }
+    //output Longtitude Latitude High  SS[8] 转换矩阵
+    double Longtitude = atan2(y,x);
+    double Latitude = lati;
+    double High = h;
+
+    //给转换矩阵赋值
+    sinB = y/r;
+    cosB = x/r;
+    double SS[8];
+    SS[0] = -sinB;
+    SS[1] = cosB;
+    SS[2] = 0;
+    SS[3] = -sinA*cosB;
+    SS[4] = -sinA*sinB;
+    SS[5] = cosA;
+    SS[6] = cosA*cosB;
+    SS[7] = cosA*sinB;
+    SS[8] = sinA;
+
+    //XYZ向速度，加速度ENU 之后有时间自己实现吧，下面就是一个矩阵乘法然后赋值
+    //SS*v_xyz = v_enu   SS*a_xyz = a_enu
+
+
+
+
+    return true;
+}
+
+
+
+
 
  bool SvInfo::CalcuECEF(double rcvtow) {
     CalcuTime(rcvtow);
@@ -42,9 +103,14 @@ bool SvInfo::CalcuTime(double rcvtow) {
     double xk = rk * cos(uk);
     double yk = rk * sin(uk);
     double Omegak = orbit.Omega0 + (orbit.OmegaDot-Omega_e)*tk - Omega_e*orbit.toe;
+    //x,y,z
     position(0) = xk*cos(Omegak) - yk*cos(ik)*sin(Omegak);
     position(1) = xk*sin(Omegak) + yk*cos(ik)*cos(Omegak);
     position(2) = yk*sin(ik);
+    //to WGS84
+    //zizhuanxiuzheng
+
+
 }
 
 UbloxSolver::UbloxSolver(){
@@ -132,6 +198,7 @@ bool UbloxSolver::solvePosition() {
     //todo:
     //选星？
     int N = SvsForCalcu.size();
+    double omegat,tempx,tempy,tempz;
     rxyzOld = rxyz;
     Eigen::Vector4d dtxyzt = Eigen::Vector4d::Ones();
     Eigen::MatrixXd pc(N,1);
@@ -141,7 +208,7 @@ bool UbloxSolver::solvePosition() {
         SvInfo* sv= &SvsForCalcu[i];
         sv->CalcuECEF(rcvtow);
         //todo: calcu I,T,dtu
-        double pci = sv->prMes + sv->dts - sv->I - sv->T;
+        double pci = sv->prMes + sv->tsDelta - sv->I - sv->T;
         pc(i) = pci;
     }
 
@@ -152,13 +219,18 @@ bool UbloxSolver::solvePosition() {
         for(int i = 0;i< N;i++){
             SvInfo* sv= &SvsForCalcu[i];
             double r = (sv->position-rxyz.head(3)).squaredNorm();
-            b(i) = pc(i)-r-rxyz(3);
-            G(i,0) = (rxyz(0)-sv->position(0))/r;
-            G(i,1) = (rxyz(1)-sv->position(1))/r;
-            G(i,2) = (rxyz(2)-sv->position(2))/r;
+            //自转修正,这个我需要考虑一下是不是在这里处理
+            omegat = r/Light_speed*Omega_e;
+            tempx = sv->position(0)*cos(omegat)+sv->position(1)*sin(omegat);
+            tempy = -sv->position(0)*sin(omegat)+sv->position(1)*cos(omegat);
+            tempz = sv->position(2);
+            b(i) = pc(i)-r-rxyz(3);  //这里的r需要考虑一下
+            G(i,0) = ((0)-tempx)/r;  //x
+            G(i,1) = (rxyz(1)-tempy)/r;  //y
+            G(i,2) = (rxyz(2)-tempz)/r;  //z
             G(i,3) = 1;
         }
-        Eigen::Matrix GT = G.transpose();
+        Eigen::MatrixXd GT = G.transpose();
         dtxyzt = ((GT*G).inverse())*GT*b;
         if(numCalcu>30)return false;
     }
