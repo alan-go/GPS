@@ -10,13 +10,14 @@
 
 
 using namespace std;
+using namespace Eigen;
 
 constexpr static double sq_M_miu = 19964980.385665298;
 constexpr static double Omega_e = 0.000072921150;
 constexpr static double Light_speed = 299792358;
 constexpr static double Earth_a = 6378137.0;  //地球长半轴
 constexpr static double Earth_f = 3.352810664747481e-003;   //基准椭球体的极扁率  f = 1/298.257223563
-constexpr static double Earth_ee = 6.694379990141317-003;   //偏心率e   e^2 = f(2-f)
+constexpr static double Earth_ee = 6.694379990141317e-003;   //偏心率e   e^2 = f(2-f)
 
 
 
@@ -44,7 +45,8 @@ public:
         ionosphere():a0(0),a1(0),a2(0),a3(0),b0(0),b1(0),b2(0),b3(0){}
     };
 
-    bool page1OK,page2OK,page3OK,page123OK;
+    bool page1OK,page2OK,page3OK,pageOK;
+    bool isBeiDouGEO = false;
     bool open = true;
     SvType type;
     int svId;
@@ -58,7 +60,7 @@ public:
     double prMes, cpMes, doMes;
     double I,T;
 
-    Eigen::Vector3d position;
+    Vector3d position;
     double ts,tsDelta,tsReal;
 public:
     SvInfo();
@@ -73,9 +75,9 @@ public:
     double rcvtow;
     u_int8_t numMeas = 0;
 
-    Eigen::Vector4d rxyz,rxyzOld;//ECEF position of receiver
+    Vector4d rxyz,rxyzOld;//ECEF position of receiver
 //    double longitude,latitude,height;
-    Eigen::Vector3d LLA;
+    Vector3d LLA;
     SvInfo GPSSVs[32],GPSSVsCopy[32];
     SvInfo BeiDouSVs[37],BeiDouSVsCopy[37];
     vector<SvInfo*> visibleSvs;
@@ -108,7 +110,7 @@ public:
     ~UbloxSolver();
     bool ParseRawData(char* message);
     bool ParseBstSubFrame(char* message);
-    bool XYZ2LLA(Eigen::Vector3d XYZ,Eigen::Vector3d &LLA);
+    bool XYZ2LLA(Vector3d XYZ,Vector3d &LLA);
 };
 
 #endif //UBLOX_SOLVER_H

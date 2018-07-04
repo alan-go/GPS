@@ -1,16 +1,20 @@
 #include "dm100.h"
 #include "UBLOXM8L.h"
 using namespace std;
+using namespace Eigen;
 
 int main()
 {
-    Eigen::MatrixXd earthRotate(3,3);
+    double a = 34;
+    Vector2d v2d(a,54);
+    cout<<v2d<<endl;
+    MatrixXd earthRotate(3,3);
     earthRotate<<1,2,3,2,2,3,2,7,6;
-    Eigen::Vector3d xyz3;
-    Eigen::Vector4d xyz4;
+    Vector3d xyz3;
+    Vector4d xyz4;
     xyz3<<1,2,3;
     xyz4<<2,1,3,3;
-    Eigen::Vector3d xyz43 = xyz4.head(3);
+    Vector3d xyz43 = xyz4.head(3);
     double r = (xyz3 - xyz43).squaredNorm();
     cout<<xyz3<<xyz43<<r<<endl;
 

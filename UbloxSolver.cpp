@@ -28,6 +28,8 @@ bool SvInfo::CalcuTime(double rcvtow) {
     double A = orbit.sq_a*orbit.sq_a;
     double n0 = sq_M_miu/(orbit.sq_a*orbit.sq_a*orbit.sq_a);
     double tk = tsReal - orbit.toe;
+    if(tk > 302400)tk-=604800;
+    if(tk < -302400)tk+=604800;
     double n = n0 + orbit.dtn;
     double Mk = orbit.M0 + n*tk;
     double Ek = Mk,EkOld = Ek+1;
@@ -46,19 +48,26 @@ bool SvInfo::CalcuTime(double rcvtow) {
     double ik = orbit.i0 + orbit.IDOT*tk + dtik;
     double xk = rk * cos(uk);
     double yk = rk * sin(uk);
-    double Omegak = orbit.Omega0 + (orbit.OmegaDot-Omega_e)*tk - Omega_e*orbit.toe;
-    //x,y,z
-    position(0) = xk*cos(Omegak) - yk*cos(ik)*sin(Omegak);
-    position(1) = xk*sin(Omegak) + yk*cos(ik)*cos(Omegak);
-    position(2) = yk*sin(ik);
-    //to WGS84
-    //zizhuanxiuzheng
+    double Omegak = orbit.Omega0 + (orbit.OmegaDot - isBeiDouGEO?0:Omega_e) * tk - Omega_e * orbit.toe;
+    MatrixXd transfer(2,3);
+    transfer<<cos(Omegak),-cos(ik)*sin(Omegak),sin(Omegak),cos(ik)*cos(Omegak),0,sin(ik);
+    if(isBeiDouGEO){
+        Vector3d xyzGK = transfer*Vector2d(xk,yk);
+        double phyX = -5/180*M_PI;
+        double phyZ = Omega_e * tk;
+        Matrix3d Rz,Rx;
+        Rx<<1,0,0,0,cos(phyX),sin(phyX),0,-sin(phyX),cos(phyX);
+        Rz<<cos(phyZ),sin(phyZ),0,-sin(phyZ),cos(phyZ),0,0,0,1;
+        position = Rz*Rx*xyzGK;
+    } else {
+        position = transfer*Vector2d(xk,yk);
+    }
 
 
 }
 
 UbloxSolver::UbloxSolver(){
-    rxyz = Eigen::Vector4d::Zero();
+    rxyz = Vector4d::Zero();
 }
 
 UbloxSolver::~UbloxSolver(){}
@@ -102,7 +111,7 @@ bool UbloxSolver::ParseRawData(char *message) {
     for(int i=0;i<numMeas;i++)
     {
         SvInfo sv = *visibleSvs[i];
-        if(sv.page123OK&&sv.open)SvsForCalcu.push_back(sv);
+        if(sv.pageOK&&sv.open)SvsForCalcu.push_back(sv);
     }
     if(SvsForCalcu.size()<5)
         return false;
@@ -129,10 +138,13 @@ bool UbloxSolver::ParseBstSubFrame(char *message) {
             case 0:
                 DecodeGpsBroadcast(dwrds,&GPSSVs[svId]);
             case 3:
-                if(svId>5)
+                if(svId>5){
                     DecodeBeiDouBroadcastD1(dwrds,&BeiDouSVs[svId]);
-                else
+                }
+                else{
+                    BeiDouSVs[svId].isBeiDouGEO = true;
                     DecodeBeiDouBroadcastD2(dwrds,&BeiDouSVs[svId]);
+                }
         }
     }
 
@@ -146,9 +158,9 @@ bool UbloxSolver::solvePosition() {
     int N = SvsForCalcu.size();
     double omegat,tempx,tempy,tempz;
     rxyzOld = rxyz;
-    Eigen::Vector4d dtxyzt = Eigen::Vector4d::Ones();
-    Eigen::MatrixXd pc(N,1);
-    Eigen::MatrixXd b(N,1);
+    Vector4d dtxyzt = Vector4d::Ones();
+    MatrixXd pc(N,1);
+    MatrixXd b(N,1);
 
     for(int i = 0;i< N;i++){
         SvInfo* sv= &SvsForCalcu[i];
@@ -161,16 +173,16 @@ bool UbloxSolver::solvePosition() {
     int numCalcu = 0;
     while (dtxyzt.squaredNorm()>0.1){
         numCalcu++;
-        Eigen::MatrixXd G(N,4);
+        MatrixXd G(N,4);
         for(int i = 0;i< N;i++){
             SvInfo* sv= &SvsForCalcu[i];
-            Eigen::Vector3d rxyz3 = rxyz.head(3);
+            Vector3d rxyz3 = rxyz.head(3);
             double r = (sv->position-rxyz3).squaredNorm();
             //自转修正,这个我需要考虑一下是不是在这里处理
             omegat = r/Light_speed*Omega_e;
-            Eigen::MatrixXd earthRotate(3,3);
+            MatrixXd earthRotate(3,3);
             earthRotate<<cos(omegat),sin(omegat),0,-sin(omegat),cos(omegat),0,0,0,1;
-            Eigen::Vector3d svPositionEarthRotate = earthRotate*sv->position;
+            Vector3d svPositionEarthRotate = earthRotate*sv->position;
             r = (svPositionEarthRotate-rxyz3).squaredNorm();
 
 //            tempx = sv->position(0)*cos(omegat)+sv->position(1)*sin(omegat);
@@ -183,7 +195,7 @@ bool UbloxSolver::solvePosition() {
             G(i,2) = (rxyz(2)-svPositionEarthRotate(0))/r;  //z
             G(i,3) = 1;
         }
-        Eigen::MatrixXd GT = G.transpose();
+        MatrixXd GT = G.transpose();
         dtxyzt = ((GT*G).inverse())*GT*b;
         rxyz += dtxyzt;
         if(numCalcu>30)return false;
@@ -254,7 +266,7 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
             sv->orbit.Cic = (int32_t)Read2Word(dwrds+3,7,17,11,2,true)*pow(2,-31);
             sv->orbit.Cis = (int32_t)Read2Word(dwrds+5,9,15,9,2,true)*pow(2,-31);
     }
-    sv->page123OK = sv->page1OK && sv->page3OK && sv->page3OK;
+    sv->pageOK = sv->page1OK && sv->page3OK && sv->page3OK;
 }
 
 bool UbloxSolver::DecodeBeiDouBroadcastD2(uint32_t *dwrds, SvInfo *sv) {
@@ -283,7 +295,7 @@ uint32_t UbloxSolver::Read2Word(uint32_t *word, int length0, int head0, int leng
 }
 
 //xyz坐标系转换成纬经高坐标系  input:定位后的XYZ   output：转换后的纬经高
-bool UbloxSolver::XYZ2LLA(Eigen::Vector3d XYZ,Eigen::Vector3d &LLA) {
+bool UbloxSolver::XYZ2LLA(Vector3d XYZ,Vector3d &LLA) {
     double x,y,z,r,sinA,cosA,sinB,cosB,N,h,lati;
     int i;
     double v_xyz[3],v_enu[3],a_xyz[3],a_enu[3];
