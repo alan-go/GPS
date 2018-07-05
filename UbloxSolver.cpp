@@ -217,6 +217,7 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
     if(1810!=Read1Word(dwrds[0],11))
         return false;
     int page = Read1Word(dwrds[0],3,17);
+    printf(" Frame BeidouD1 page:%d",page);
     switch (page){
         case 1:
             sv->page1OK = true;
@@ -270,11 +271,14 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
 }
 
 bool UbloxSolver::DecodeBeiDouBroadcastD2(uint32_t *dwrds, SvInfo *sv) {
+    printf(" Frame BeidouD2 page:");
 
 }
 
 bool UbloxSolver::DecodeGpsBroadcast(uint32_t *dwrds, SvInfo *sv) {
     //todo:
+    printf(" Frame GPS  page:");
+
 }
 
 uint32_t UbloxSolver::Read1Word(uint32_t word, int length, int head, bool isInt) {

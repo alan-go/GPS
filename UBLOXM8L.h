@@ -4,6 +4,7 @@
 #define DM100_UBLOXM8N_H
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <thread>
 #include <mutex>
@@ -89,7 +90,7 @@ private:
 			int lengthUBX=0,lengthNMEA = 0;
 			u_int16_t* lengthUBXProtocol;
             while ( !stopMessageCapture() ) {
-                char tmp[128];
+                char tmp[20480];
                 auto transferred = sp.read_some ( boost::asio::buffer ( tmp ) );
                 if ( transferred <= 0 ) {
                     usleep ( 100 );
@@ -97,7 +98,7 @@ private:
                     continue;
                 }
 
-              //  printf ( "transferred = %d, flag = %d\n",transferred,flag );
+//                printf ( "transferred = %d , flag = %d\n",transferred, flag );
 
                 for ( int i = 0; i<transferred; i++ ) {
 
@@ -118,11 +119,11 @@ private:
                     }
                     if(2==flag){
 						bufferUBX[lengthUBX] = tmp[i];
-						if(5==lengthUBX){
+						if(6==lengthUBX){
 							//length is writen in 4,5 in protocol
 							lengthUBXProtocol = (u_int16_t*)(bufferUBX+4);
-							//printf("lengthUBXProtocol = %d\n",*lengthUBXProtocol);
-
+							printf("MM");
+//							printf("\nlengthUBXProtocol = %d\n",*lengthUBXProtocol);
 						}
 						lengthUBX++;
                     }
@@ -138,10 +139,10 @@ private:
 					if(lengthUBX==*lengthUBXProtocol+8 && 2==flag){
 						printf("get a UBX %02x %02x,l = %d, i = %d, count = %d\n",bufferUBX[2],bufferUBX[3], lengthUBX, i,count++);
 						if(showData && lengthUBX<512)
-						for(int k = 0;k<lengthUBX;k++){
-							printf("%02x ",(u_char) bufferUBX[k]);
-						}
-						//parse_UBX(bufferUBX);
+//						for(int k = 0;k<lengthUBX;k++){
+//							printf("%02x ",(u_char) bufferUBX[k]);
+//						}
+						parse_UBX(bufferUBX);
 						flag=0;
 					}
 
@@ -156,12 +157,14 @@ private:
     }
 
     void parse_UBX(char * buffer){
-        solver.ParseBstSubFrame(buffer);
         if(0x02==(u_char)buffer[2]){
             if(0x15==(u_char)buffer[3]){
-                solver.ParseRawData(buffer);
+                printf("\n---ParseRawData\n");
+
+//                solver.ParseRawData(buffer);
             }
             if(0x13==(u_char)buffer[3]){
+                printf("\n-------ParseBstSubFrame\n");
                 solver.ParseBstSubFrame(buffer);
             }
         }

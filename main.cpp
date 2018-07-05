@@ -3,6 +3,36 @@
 using namespace std;
 using namespace Eigen;
 
+string serialPort = "/dev/tty.usbserial";
+std::ofstream outF;
+bool stopLog = 0;
+
+void LogData(char *fileName){
+    outF.open(fileName,std::ofstream::binary);
+    try {
+        boost::asio::io_service ios;
+        boost::asio::serial_port sp ( ios, serialPort );
+        sp.set_option ( boost::asio::serial_port::baud_rate ( 115200 ) );
+        printf ( "successfully opened port %s\n", serialPort.c_str() );
+
+        while ( !stopLog ) {
+            char tmp[256];
+            auto transferred = sp.read_some ( boost::asio::buffer ( tmp ) );
+            if ( transferred <= 0 ) {
+                usleep ( 100 );
+                printf ( "serial port return 0\n" );
+                continue;
+            }
+            printf("write%d\n",transferred);
+            outF.write(tmp,transferred);
+        }
+        sp.close();
+        outF.close();
+    } catch ( ... ) {
+        printf ( "failed to open serial port\n" );
+    }
+}
+
 int main()
 {
     double a = 34;
@@ -32,12 +62,36 @@ int main()
     cout<<"sqa="<<sq_M_miu<<"  Omegae"<<Omega_e<<endl;
     delete(aa);
 
+
+
+
+
     UBLOXM8L ublox;
-	ublox.StartGPS("/dev/ttyUSB0");
-	if('x'==getchar()){
-	    cout<<"stop capture."<<endl;
-	    stopUblox = 1;
-	}
+    printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
+    char command = getchar();
+    if('l'==command){
+        printf("\nfile name : ");
+        char name[64];
+        scanf("%s",name);
+        printf("start write file %s",name);
+        std::thread logThread(LogData,name);
+        LogData(name);
+//        logThread.detach();
+        if('x'==getchar()){
+            cout<<"stoplog"<<endl;
+            stopLog = 1;
+        }
+
+    } else if('d'==command) {
+
+    } else if('r'==command){
+        ublox.StartGPS(serialPort);
+        if('x'==getchar()){
+            cout<<"stop capture."<<endl;
+            stopUblox = 1;
+        }
+    }
+
 
     return 0;
 }
