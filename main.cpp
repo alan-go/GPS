@@ -3,12 +3,14 @@
 using namespace std;
 using namespace Eigen;
 
-string serialPort = "/dev/tty.usbserial";
+//string serialPort = "/dev/tty.usbserial";
+string serialPort = "/dev/ttyUSB0";
 std::ofstream outF;
 bool stopLog = 0;
 
-void LogData(char *fileName){
-    outF.open(fileName,std::ofstream::binary);
+void *LogData(void *fileName){
+
+    outF.open((char*)fileName,std::ofstream::binary);
     try {
         boost::asio::io_service ios;
         boost::asio::serial_port sp ( ios, serialPort );
@@ -69,20 +71,36 @@ int main()
     UBLOXM8L ublox;
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
     char command = getchar();
+
     if('l'==command){
         printf("\nfile name : ");
         char name[64];
         scanf("%s",name);
+        getchar();
         printf("start write file %s",name);
-        std::thread logThread(LogData,name);
-        LogData(name);
-//        logThread.detach();
-        if('x'==getchar()){
-            cout<<"stoplog"<<endl;
-            stopLog = 1;
+        pthread_t logThread = 0;
+        pthread_create(&logThread, nullptr,LogData,name);
+
+        while (command=getchar()){
+            if('x'==command){
+                            stopLog = 1;
+                pthread_join(logThread, nullptr);
+                printf("stopLogging");
+                break;
+            }
         }
 
     } else if('d'==command) {
+        ifstream inF;
+        char name[128],dat[128];
+        printf("open file name:");
+        scanf("%s",name);
+        inF.open(name, std::ifstream::binary);
+        while (!inF.eof()){
+            inF.read(dat,128);
+            ublox.ScanSerialData(dat,128);
+        }
+        inF.close();
 
     } else if('r'==command){
         ublox.StartGPS(serialPort);
