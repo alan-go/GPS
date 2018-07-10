@@ -47,10 +47,6 @@ public:
     }
 
     void ScanSerialData(char *tmp,int transferred){
-        int flag = 0;//0:null,1:NMEA,2:UBX;
-        char bufferUBX[2048], bufferNMEA[128];
-        int lengthUBX=0,lengthNMEA = 0;
-        u_int16_t* lengthUBXProtocol;
 
         for ( int i = 0; i<transferred; i++ ) {
 
@@ -90,8 +86,8 @@ public:
             }
             //there are 8 extra bytes besides the playload;
             if(lengthUBX==*lengthUBXProtocol+8 && 2==flag){
-                printf("\nget a UBX %02x %02x,l = %d, i = %d, count = %d\n",bufferUBX[2],bufferUBX[3], lengthUBX, i,count++);
-                if(showData && lengthUBX<512)
+                printf("\nget a UBX %02x %02x,l = %d, i = %d, count = %d\n",bufferUBX[2],bufferUBX[3], *lengthUBXProtocol, i,count++);
+                if(showData && lengthUBX<1024)
                     for(int k = 0;k<lengthUBX;k++){
                         printf("%02x ",(u_char) bufferUBX[k]);
                     }
@@ -107,8 +103,13 @@ private:
     UbloxSolver solver;
     std::string m_serial_port;
     bool m_get_3d_position;
-    bool showData  = true;
+    bool showData  = 1;
     int count = 0;
+
+    int flag = 0;//0:null,1:NMEA,2:UBX;
+    char bufferUBX[2048], bufferNMEA[128];
+    int lengthUBX=0,lengthNMEA = 0;
+    u_int16_t* lengthUBXProtocol;
 
 private:
     static void* ThreadAdapter ( void* __this ) {
@@ -145,14 +146,16 @@ private:
 
     void parse_UBX(char * buffer){
         if(0x02==(u_char)buffer[2]){
-            if(0x15==(u_char)buffer[3]){
-                printf("\n---ParseRawData\n");
 
-//                solver.ParseRawData(buffer);
+            if(0x15==(u_char)buffer[3]){
+                printf("\n--0--ParseRawData\n");
+                solver.ParseRawData(buffer);
+                printf("\n--1--ParseRawData\n");
             }
             if(0x13==(u_char)buffer[3]){
-                printf("\n-------ParseBstSubFrame\n");
+                printf("\n----0----ParseBstSubFrame\n");
                 solver.ParseBstSubFrame(buffer);
+                printf("\n----1----ParseBstSubFrame\n");
             }
         }
     }

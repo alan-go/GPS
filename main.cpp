@@ -25,7 +25,12 @@ void *LogData(void *fileName){
                 printf ( "serial port return 0\n" );
                 continue;
             }
-            printf("write%d\n",transferred);
+
+            for(int k = 0;k<transferred;k++){
+                printf("%02x ",(u_char) tmp[k]);
+            }
+            printf("\n");
+//            printf("write%d\n",transferred);
             outF.write(tmp,transferred);
         }
         sp.close();
@@ -37,6 +42,7 @@ void *LogData(void *fileName){
 
 int main()
 {
+
     double a = 34;
     Vector2d v2d(a,54);
     cout<<v2d<<endl;
@@ -70,8 +76,8 @@ int main()
 
     UBLOXM8L ublox;
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-    char command = getchar();
-
+//    char command = getchar();
+    char command = 'd';
     if('l'==command){
         printf("\nfile name : ");
         char name[64];

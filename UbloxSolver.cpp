@@ -20,7 +20,13 @@ bool SvInfo::CalcuTime(double rcvtow) {
     return true;
 }
 
-
+void SvInfo::PrintInfo(int printType) {
+    if(1==printType){
+        cout<<"+++++++SvPosition:"<<type<<","<<svId<<endl;
+        cout<<position<<endl;
+        cout<<tsDelta<<endl;
+    }
+}
 
 
  bool SvInfo::CalcuECEF(double rcvtow) {
@@ -49,7 +55,7 @@ bool SvInfo::CalcuTime(double rcvtow) {
     double xk = rk * cos(uk);
     double yk = rk * sin(uk);
     double Omegak = orbit.Omega0 + (orbit.OmegaDot - isBeiDouGEO?0:Omega_e) * tk - Omega_e * orbit.toe;
-    MatrixXd transfer(2,3);
+    MatrixXd transfer(3,2);
     transfer<<cos(Omegak),-cos(ik)*sin(Omegak),sin(Omegak),cos(ik)*cos(Omegak),0,sin(ik);
     if(isBeiDouGEO){
         Vector3d xyzGK = transfer*Vector2d(xk,yk);
@@ -68,13 +74,21 @@ bool SvInfo::CalcuTime(double rcvtow) {
 
 UbloxSolver::UbloxSolver(){
     rxyz = Vector4d::Zero();
+    for(int i = 0;i<32;i++){
+        GPSSVs[i].svId = i+1;
+        GPSSVs[i].type = SvInfo::GPS;
+    }
+    for(int i = 0;i<37;i++){
+        BeiDouSVs[i].svId = i+1;
+        BeiDouSVs[i].type = SvInfo::BeiDou;
+    }
 }
 
 UbloxSolver::~UbloxSolver(){}
 
 
 bool UbloxSolver::ParseRawData(char *message) {
-    cout<<"start solving rawdata"<<endl;
+
     char* playload = message + 6;
 
     char* temp = playload;
@@ -90,44 +104,46 @@ bool UbloxSolver::ParseRawData(char *message) {
         uint8_t svId = *(uint8_t *)(playload+37+n32);
         switch (gnssId){
             case 0:
-                svTemp = &(GPSSVs[svId]);
-                svTemp->type = SvInfo::GPS;
+                svTemp = &(GPSSVs[svId-1]);
                 if(!useGPS)svTemp->open = false;
             case 3:
-                svTemp = &(BeiDouSVs[svId]);
-                svTemp->type = SvInfo::BeiDou;
+                svTemp = &(BeiDouSVs[svId-1]);
                 if(!useBeiDou)svTemp->open = false;
         }
-        svTemp->svId = svId;
         visibleSvs.push_back(svTemp);
         svTemp->prMes = *(double*)(playload+16+n32);
         svTemp->cpMes = *(double*)(playload+24+n32);
         svTemp->doMes = *(float *)(playload+32+n32);
 
     }
-
+    printf("start solving rawdata numMesa=%d\n",numMeas);
     //将星历拷贝一份防止计算时被改.
     vector<SvInfo>().swap(SvsForCalcu);
     for(int i=0;i<numMeas;i++)
     {
         SvInfo sv = *visibleSvs[i];
+        printf("svsfor calcu:%d-%02d:%d,%d,%d\n",sv.type,sv.svId,sv.page1OK,sv.page2OK,sv.page3OK);
         if(sv.pageOK&&sv.open)SvsForCalcu.push_back(sv);
     }
-    if(SvsForCalcu.size()<5)
+    if(SvsForCalcu.size()<5){
+        printf("calcu:Not enough Svs.\n");
         return false;
+    }
 
-    thread PositionThread(LaunchPositionThread,this);
-    PositionThread.detach();
+//    thread PositionThread(LaunchPositionThread,this);
+//    PositionThread.detach();
+    solvePosition();
     return true;
 }
 
 bool UbloxSolver::ParseBstSubFrame(char *message) {
-    cout<<"Update subframe"<<endl;
     char* playload = message + 6;
 
     uint8_t gnssId = *(uint8_t*)(playload);
     uint8_t svId = *(uint8_t*)(playload + 1);
     uint8_t numWords = *(uint8_t*)(playload+4);
+
+    printf("Update subframe;;gnssid:%d,svid:%d\n",gnssId,svId);
 
     char* tmp = playload+8;
 
@@ -136,14 +152,14 @@ bool UbloxSolver::ParseBstSubFrame(char *message) {
         for(int i=0;i<10;i++)   dwrds[i] = *(uint32_t*)(tmp+4*i);
         switch (gnssId){
             case 0:
-                DecodeGpsBroadcast(dwrds,&GPSSVs[svId]);
+                DecodeGpsBroadcast(dwrds,&GPSSVs[svId-1]);
             case 3:
                 if(svId>5){
-                    DecodeBeiDouBroadcastD1(dwrds,&BeiDouSVs[svId]);
+                    DecodeBeiDouBroadcastD1(dwrds,&BeiDouSVs[svId-1]);
                 }
                 else{
-                    BeiDouSVs[svId].isBeiDouGEO = true;
-                    DecodeBeiDouBroadcastD2(dwrds,&BeiDouSVs[svId]);
+                    BeiDouSVs[svId-1].isBeiDouGEO = true;
+                    DecodeBeiDouBroadcastD2(dwrds,&BeiDouSVs[svId-1]);
                 }
         }
     }
@@ -168,6 +184,9 @@ bool UbloxSolver::solvePosition() {
         //todo: calcu I,T,dtu
         double pci = sv->prMes + sv->tsDelta - sv->I - sv->T;
         pc(i) = pci;
+        sv->PrintInfo(1);
+        cout<<sqrt(sv->position.squaredNorm())<<endl;
+
     }
 
     int numCalcu = 0;
@@ -202,6 +221,8 @@ bool UbloxSolver::solvePosition() {
     }
 
     XYZ2LLA(rxyz.head(3),LLA);
+    cout<<"++++++++++++rxyzt"<<rxyz<<endl;
+    cout<<"++++++++++++LLA"<<LLA<<endl;
     return true;
 
 }
@@ -217,13 +238,13 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
     if(1810!=Read1Word(dwrds[0],11))
         return false;
     int page = Read1Word(dwrds[0],3,17);
-    printf(" Frame BeidouD1 page:%d",page);
+    sv->SOW = Read2Word(dwrds,8,20,12,2);
+
+    printf(" Frame BeidouD1 svid:%d,page:,%d",sv->svId,page);
     switch (page){
         case 1:
             sv->page1OK = true;
-            sv->SOW = Read1Word(dwrds[0],8,20);
             sv->WN = Read1Word(dwrds[2],13);
-
             sv->ino.a0 = ((int32_t) Read1Word(dwrds[4],8,8,true))*pow(2,-30);
             sv->ino.a1 = ((int32_t) Read1Word(dwrds[4],8,16,true))*pow(2,-27);
             sv->ino.a2 = ((int32_t) Read1Word(dwrds[5],8,2,true))*pow(2,-24);
@@ -243,6 +264,7 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
             sv->TGD1 = (int32_t)Read1Word(dwrds[3],10,10,true)*0.1;
             sv->TGD2 = (int32_t)Read2Word(dwrds+3,4,20,6,2,true)*0.1;
             sv->AODE = Read1Word(dwrds[9],5,19);
+            break;
         case 2:
             sv->page2OK = true;
             sv->orbit.toeF2 = Read1Word(dwrds[9],2,22)<<15<<3;
@@ -255,9 +277,10 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
             sv->orbit.Cus = (int32_t)Read1Word(dwrds[6],18,2,true)*pow(2,-31);
             sv->orbit.Crc = (int32_t)Read2Word(dwrds+6,4,20,14,2,true)*pow(2,-6);
             sv->orbit.Crs = (int32_t)Read2Word(dwrds+7,8,16,10,2,true)*pow(2,-6);
+            break;
         case 3:
             sv->page3OK = true;
-            sv->orbit.toeF3 = Read2Word(dwrds+2,10,14,5)<<3;
+            sv->orbit.toeF3 = Read2Word(dwrds+1,10,14,5)<<3;
             sv->orbit.toe = sv->orbit.toeF2|sv->orbit.toeF3;
             sv->orbit.omega = (int32_t)Read2Word(dwrds+8,11,13,21,2,true)*pow(2,-31);
             sv->orbit.Omega0 = (int32_t)Read2Word(dwrds+7,21,3,11,2,true)*pow(2,-31);
@@ -266,8 +289,9 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
             sv->orbit.IDOT = (int32_t)Read2Word(dwrds+6,13,11,1,2,true)*pow(2,-43);
             sv->orbit.Cic = (int32_t)Read2Word(dwrds+3,7,17,11,2,true)*pow(2,-31);
             sv->orbit.Cis = (int32_t)Read2Word(dwrds+5,9,15,9,2,true)*pow(2,-31);
+            break;
     }
-    sv->pageOK = sv->page1OK && sv->page3OK && sv->page3OK;
+    sv->pageOK = sv->page1OK && sv->page2OK && sv->page3OK;
 }
 
 bool UbloxSolver::DecodeBeiDouBroadcastD2(uint32_t *dwrds, SvInfo *sv) {
