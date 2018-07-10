@@ -24,7 +24,7 @@ void SvInfo::PrintInfo(int printType) {
     if(1==printType){
         cout<<"+++++++SvPosition:"<<type<<","<<svId<<endl;
         cout<<position<<endl;
-        cout<<tsDelta<<endl;
+        cout<<"dt"<<tsDelta<<endl;
     }
 }
 
@@ -32,17 +32,18 @@ void SvInfo::PrintInfo(int printType) {
  bool SvInfo::CalcuECEF(double rcvtow) {
     CalcuTime(rcvtow);
     double A = orbit.sq_a*orbit.sq_a;
-    double n0 = sq_M_miu/(orbit.sq_a*orbit.sq_a*orbit.sq_a);
+    double n0 = sqrt(M_miu/(A*A*A));
     double tk = tsReal - orbit.toe;
     if(tk > 302400)tk-=604800;
     if(tk < -302400)tk+=604800;
     double n = n0 + orbit.dtn;
     double Mk = orbit.M0 + n*tk;
-    double Ek = Mk,EkOld = Ek+1;
-    while(Ek-EkOld>1e-8){
+    double Ek = Mk,EkOld = Ek-1;
+    while(abs(Ek-EkOld)>1e-8){
         EkOld = Ek;
         Ek = EkOld-(EkOld-orbit.e*sin(EkOld)-Mk)/(1-orbit.e*cos(EkOld));
     }
+    cout<<"EK:"<<Ek<<endl;
     double vk = atan((sqrt(1-orbit.e*orbit.e)*sin(Ek))/(cos(Ek)-orbit.e));
     double phyk = vk + orbit.omega;
     double sin2phy = sin(2*phyk),cos2phy = cos(2*phyk);
@@ -73,7 +74,7 @@ void SvInfo::PrintInfo(int printType) {
 }
 
 UbloxSolver::UbloxSolver(){
-    rxyz = Vector4d::Zero();
+    rxyzt = Vector4d::Zero();
     for(int i = 0;i<32;i++){
         GPSSVs[i].svId = i+1;
         GPSSVs[i].type = SvInfo::GPS;
@@ -106,9 +107,11 @@ bool UbloxSolver::ParseRawData(char *message) {
             case 0:
                 svTemp = &(GPSSVs[svId-1]);
                 if(!useGPS)svTemp->open = false;
+                break;
             case 3:
                 svTemp = &(BeiDouSVs[svId-1]);
                 if(!useBeiDou)svTemp->open = false;
+                break;
         }
         visibleSvs.push_back(svTemp);
         svTemp->prMes = *(double*)(playload+16+n32);
@@ -122,8 +125,11 @@ bool UbloxSolver::ParseRawData(char *message) {
     for(int i=0;i<numMeas;i++)
     {
         SvInfo sv = *visibleSvs[i];
-        printf("svsfor calcu:%d-%02d:%d,%d,%d\n",sv.type,sv.svId,sv.page1OK,sv.page2OK,sv.page3OK);
-        if(sv.pageOK&&sv.open)SvsForCalcu.push_back(sv);
+        printf("svsfor visiable:%d-%02d:%d,%d,%d\n",sv.type,sv.svId,sv.page1OK,sv.page2OK,sv.page3OK);
+        if(sv.pageOK&&sv.open){
+            SvsForCalcu.push_back(sv);
+            printf("svsfor calcu\n");
+        }
     }
     if(SvsForCalcu.size()<5){
         printf("calcu:Not enough Svs.\n");
@@ -153,6 +159,7 @@ bool UbloxSolver::ParseBstSubFrame(char *message) {
         switch (gnssId){
             case 0:
                 DecodeGpsBroadcast(dwrds,&GPSSVs[svId-1]);
+                break;
             case 3:
                 if(svId>5){
                     DecodeBeiDouBroadcastD1(dwrds,&BeiDouSVs[svId-1]);
@@ -161,6 +168,7 @@ bool UbloxSolver::ParseBstSubFrame(char *message) {
                     BeiDouSVs[svId-1].isBeiDouGEO = true;
                     DecodeBeiDouBroadcastD2(dwrds,&BeiDouSVs[svId-1]);
                 }
+                break;
         }
     }
 
@@ -173,7 +181,7 @@ bool UbloxSolver::solvePosition() {
     //选星？
     int N = SvsForCalcu.size();
     double omegat,tempx,tempy,tempz;
-    rxyzOld = rxyz;
+    rxyzOld = rxyzt;
     Vector4d dtxyzt = Vector4d::Ones();
     MatrixXd pc(N,1);
     MatrixXd b(N,1);
@@ -182,47 +190,61 @@ bool UbloxSolver::solvePosition() {
         SvInfo* sv= &SvsForCalcu[i];
         sv->CalcuECEF(rcvtow);
         //todo: calcu I,T,dtu
-        double pci = sv->prMes + sv->tsDelta - sv->I - sv->T;
+        double pci = sv->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
         pc(i) = pci;
         sv->PrintInfo(1);
-        cout<<sqrt(sv->position.squaredNorm())<<endl;
+        cout<<sv->position.norm()<<endl;
 
     }
 
     int numCalcu = 0;
-    while (dtxyzt.squaredNorm()>0.1){
+    while (dtxyzt.norm()>0.1){
         numCalcu++;
         MatrixXd G(N,4);
         for(int i = 0;i< N;i++){
             SvInfo* sv= &SvsForCalcu[i];
-            Vector3d rxyz3 = rxyz.head(3);
-            double r = (sv->position-rxyz3).squaredNorm();
+            Vector3d rxyz = rxyzt.head(3);
+            double r = (sv->position-rxyz).norm();
             //自转修正,这个我需要考虑一下是不是在这里处理
             omegat = r/Light_speed*Omega_e;
             MatrixXd earthRotate(3,3);
             earthRotate<<cos(omegat),sin(omegat),0,-sin(omegat),cos(omegat),0,0,0,1;
             Vector3d svPositionEarthRotate = earthRotate*sv->position;
-            r = (svPositionEarthRotate-rxyz3).squaredNorm();
-
+            cout<<"positon = \n"<<sv->position<<endl;
+            cout<<"earthRotate = \n"<<earthRotate<<endl;
+            cout<<"positionRotate = \n"<<svPositionEarthRotate<<endl;
+            r = (svPositionEarthRotate-rxyz).norm();
+            cout<<"r = "<<r<<endl;
 //            tempx = sv->position(0)*cos(omegat)+sv->position(1)*sin(omegat);
 //            tempy = -sv->position(0)*sin(omegat)+sv->position(1)*cos(omegat);
 //            tempz = sv->position(2);
 
-            b(i) = pc(i)-r-rxyz(3);  //这里的r需要考虑一下
-            G(i,0) = (rxyz(0)-svPositionEarthRotate(0))/r;  //x
-            G(i,1) = (rxyz(1)-svPositionEarthRotate(0))/r;  //y
-            G(i,2) = (rxyz(2)-svPositionEarthRotate(0))/r;  //z
+            b(i) = pc(i)-r-rxyzt(3);  //这里的r需要考虑一下
+            G(i,0) = (rxyzt(0)-svPositionEarthRotate(0))/r;  //x
+            G(i,1) = (rxyzt(1)-svPositionEarthRotate(1))/r;  //y
+            G(i,2) = (rxyzt(2)-svPositionEarthRotate(2))/r;  //z
             G(i,3) = 1;
         }
         MatrixXd GT = G.transpose();
-        dtxyzt = ((GT*G).inverse())*GT*b;
-        rxyz += dtxyzt;
+//        dtxyzt = ((GT*G).inverse())*GT*b;
+        dtxyzt = GT*b;
+        dtxyzt = (GT*G).inverse()*dtxyzt;
+        cout<<"G = "<<G<<endl;
+        cout<<"GT = "<<GT<<endl;
+        cout<<"b = "<<b<<endl;
+        cout<<"dt = "<<dtxyzt<<endl;
+        rxyzt += dtxyzt;
+        cout<<"++++++++++++xyzt\n"<<rxyzt<<endl;
+        cout<<"xyzNorm\n"<<rxyzt.head(3).norm()<<endl;
+        XYZ2LLA(rxyzt.head(3),LLA);
+        cout<<"++++++++++++LLA\n"<<LLA<<endl;
         if(numCalcu>30)return false;
+
     }
 
-    XYZ2LLA(rxyz.head(3),LLA);
-    cout<<"++++++++++++rxyzt"<<rxyz<<endl;
-    cout<<"++++++++++++LLA"<<LLA<<endl;
+    XYZ2LLA(rxyzt.head(3),LLA);
+    cout<<"++++++++++++rxyzt\n"<<rxyzt<<endl;
+    cout<<"++++++++++++LLA\n"<<LLA<<endl;
     return true;
 
 }

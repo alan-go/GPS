@@ -42,7 +42,29 @@ void *LogData(void *fileName){
 
 int main()
 {
-
+    SvInfo sv;
+    sv.orbit.toe = 244800;
+    sv.orbit.sq_a = 5153.65531;
+    sv.orbit.e = 0.005912038265;
+    sv.orbit.i0 = 0.9848407943;
+    sv.orbit.Omega0 = 1.038062244;
+    sv.orbit.omega = -1.717457876;
+    sv.orbit.M0 = -1.064739758;
+    sv.orbit.dtn = 4.249105564e-9;
+    sv.orbit.IDOT = 7.422851197e-51;
+    sv.orbit.OmegaDot = -8.151768125e-9;
+    sv.orbit.Cuc = 3.054738045e-7;
+    sv.orbit.Cus = 2.237036824e-6;
+    sv.orbit.Crc = 350.53125;
+    sv.orbit.Crs = 2.53125;
+    sv.orbit.Cic = -8.381903172e-8;
+    sv.orbit.Cis = 8.940696716e-8;
+    sv.CalcuECEF(239050.7223);
+    sv.PrintInfo(1);
+    Vector3d vv(1,1,1);
+    cout<<vv<<endl;
+    cout<<vv.transpose()<<endl;
+    printf("\n%f,%f\n",vv.squaredNorm(),vv.norm());
     double a = 34;
     Vector2d v2d(a,54);
     cout<<v2d<<endl;
@@ -65,10 +87,7 @@ int main()
 
 	cout<<atof("12.46l4,dji")<<endl;
 	cout<<"start."<<endl;
-    SvInfo *aa;
-    aa = new SvInfo;
-    cout<<"sqa="<<sq_M_miu<<"  Omegae"<<Omega_e<<endl;
-    delete(aa);
+
 
 
 
@@ -100,8 +119,9 @@ int main()
         ifstream inF;
         char name[128],dat[128];
         printf("open file name:");
-        scanf("%s",name);
-        inF.open(name, std::ifstream::binary);
+        string ss = "0708-3";
+//        scanf("%s",name);
+        inF.open(ss, std::ifstream::binary);
         while (!inF.eof()){
             inF.read(dat,128);
             ublox.ScanSerialData(dat,128);

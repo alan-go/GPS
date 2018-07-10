@@ -12,8 +12,8 @@
 using namespace std;
 using namespace Eigen;
 
-constexpr static double sq_M_miu = 19964980.385665298;
-constexpr static double Omega_e = 0.000072921150;
+constexpr static double M_miu = 3.986004418e14;
+constexpr static double Omega_e = 7.2921150e-005;
 constexpr static double Light_speed = 299792358;
 constexpr static double Earth_a = 6378137.0;  //地球长半轴
 constexpr static double Earth_f = 3.352810664747481e-003;   //基准椭球体的极扁率  f = 1/298.257223563
@@ -76,7 +76,7 @@ public:
     double rcvtow;
     u_int8_t numMeas = 0;
 
-    Vector4d rxyz,rxyzOld;//ECEF position of receiver
+    Vector4d rxyzt,rxyzOld;//ECEF position of receiver
 //    double longitude,latitude,height;
     Vector3d LLA;
     SvInfo GPSSVs[32],GPSSVsCopy[32];
