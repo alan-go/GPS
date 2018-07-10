@@ -11,9 +11,10 @@
 
 using namespace std;
 using namespace Eigen;
-
+//PI ???GPs_PI
+constexpr static double GPS_PI = 3.1415926535898;
 constexpr static double M_miu = 3.986004418e14;
-constexpr static double Omega_e = 7.2921150e-005;
+constexpr static double Omega_e = 7.2921151467e-005;
 constexpr static double Light_speed = 299792358;
 constexpr static double Earth_a = 6378137.0;  //地球长半轴
 constexpr static double Earth_f = 3.352810664747481e-003;   //基准椭球体的极扁率  f = 1/298.257223563

@@ -38,13 +38,27 @@ void SvInfo::PrintInfo(int printType) {
     if(tk < -302400)tk+=604800;
     double n = n0 + orbit.dtn;
     double Mk = orbit.M0 + n*tk;
+    while (Mk<0)Mk+=2*GPS_PI;
+    while (Mk>2*GPS_PI)Mk-=2*GPS_PI;
     double Ek = Mk,EkOld = Ek-1;
     while(abs(Ek-EkOld)>1e-8){
         EkOld = Ek;
         Ek = EkOld-(EkOld-orbit.e*sin(EkOld)-Mk)/(1-orbit.e*cos(EkOld));
     }
+    //todo:
+    //Make Ek within (0-2pi)?????
     cout<<"EK:"<<Ek<<endl;
-    double vk = atan((sqrt(1-orbit.e*orbit.e)*sin(Ek))/(cos(Ek)-orbit.e));
+    double rsinvk = (sqrt(1-orbit.e*orbit.e)*sin(Ek));
+    double rcosvk = cos(Ek)-orbit.e;
+    double rvk = 1-cos(Ek)*orbit.e;
+    double sinvk = rsinvk/rvk;
+    double cosvk = rcosvk/rvk;
+    double tanvk = rsinvk/rcosvk;
+    double vk = atan(tanvk);
+    if(cosvk<0&&sinvk<0)vk-=GPS_PI;
+    if(cosvk<0&&sinvk>0)vk+=GPS_PI;
+    cout<<"vk="<<vk<<endl;
+
     double phyk = vk + orbit.omega;
     double sin2phy = sin(2*phyk),cos2phy = cos(2*phyk);
     double dtuk = orbit.Cus*sin2phy + orbit.Cuc*cos2phy;
@@ -55,7 +69,8 @@ void SvInfo::PrintInfo(int printType) {
     double ik = orbit.i0 + orbit.IDOT*tk + dtik;
     double xk = rk * cos(uk);
     double yk = rk * sin(uk);
-    double Omegak = orbit.Omega0 + (orbit.OmegaDot - isBeiDouGEO?0:Omega_e) * tk - Omega_e * orbit.toe;
+    double Omegak = orbit.Omega0 + (orbit.OmegaDot - (isBeiDouGEO?0:Omega_e)) * tk - Omega_e * orbit.toe;
+    cout<<"OmegaK="<<Omegak<<endl;
     MatrixXd transfer(3,2);
     transfer<<cos(Omegak),-cos(ik)*sin(Omegak),sin(Omegak),cos(ik)*cos(Omegak),0,sin(ik);
     if(isBeiDouGEO){
