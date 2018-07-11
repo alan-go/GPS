@@ -9,22 +9,22 @@ SvInfo::SvInfo(){
 SvInfo::~SvInfo(){}
 
 bool SvInfo::CalcuTime(double rcvtow) {
-    ts = rcvtow - prMes/Light_speed;
-    double t = ts-toc;
+    tsv = rcvtow - prMes/Light_speed;
+    tsReal = tsv;
     //此时的钟差是没有考虑相对论效应和 TGD的
     for(int i = 0;i<5;i++){
-        tsDelta = a0+a1*t+a2*t*t;
-        t -=tsDelta;
+        tsDelta = a0+a1*(tsReal-toc)+a2*(tsReal-toc)*(tsReal-toc);
+        tsReal =tsv-tsDelta;
     }
-    tsReal = ts - tsDelta;
     return true;
 }
+
 
 void SvInfo::PrintInfo(int printType) {
     if(1==printType){
         cout<<"+++++++SvPosition:"<<type<<","<<svId<<endl;
         cout<<position<<endl;
-        cout<<"dt"<<tsDelta<<endl;
+        cout<<"tsDelta"<<tsDelta<<"a0"<<a0<<endl;
     }
 }
 
@@ -58,14 +58,16 @@ void SvInfo::PrintInfo(int printType) {
     if(cosvk<0&&sinvk<0)vk-=GPS_PI;
     if(cosvk<0&&sinvk>0)vk+=GPS_PI;
     cout<<"vk="<<vk<<endl;
-
+    printf("vk = %10f\n",vk);
     double phyk = vk + orbit.omega;
     double sin2phy = sin(2*phyk),cos2phy = cos(2*phyk);
     double dtuk = orbit.Cus*sin2phy + orbit.Cuc*cos2phy;
     double dtrk = orbit.Crs*sin2phy + orbit.Crc*cos2phy;
     double dtik = orbit.Cis*sin2phy + orbit.Cic*cos2phy;
     double uk = phyk + dtuk;
+    printf("phyk=%10f,dtuk=%.10f,dtrk=%.10f,dtik=%.10f\nuk=%.10f",phyk,dtuk,dtrk,dtik,uk);
     double rk = A*(1-orbit.e*cos(Ek)) + dtrk;
+    printf("rk=%.10f\n",rk);
     double ik = orbit.i0 + orbit.IDOT*tk + dtik;
     double xk = rk * cos(uk);
     double yk = rk * sin(uk);
@@ -200,6 +202,7 @@ bool UbloxSolver::solvePosition() {
     Vector4d dtxyzt = Vector4d::Ones();
     MatrixXd pc(N,1);
     MatrixXd b(N,1);
+    cout<<"-----------------start clacu svPosition\n-------------"<<endl;
 
     for(int i = 0;i< N;i++){
         SvInfo* sv= &SvsForCalcu[i];
@@ -208,9 +211,10 @@ bool UbloxSolver::solvePosition() {
         double pci = sv->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
         pc(i) = pci;
         sv->PrintInfo(1);
-        cout<<sv->position.norm()<<endl;
+        cout<<"norm"<<sv->position.norm()<<endl;
 
     }
+    cout<<"+++++++++++++ poss\n-------------"<<endl;
 
     int numCalcu = 0;
     while (dtxyzt.norm()>0.1){
@@ -244,22 +248,21 @@ bool UbloxSolver::solvePosition() {
 //        dtxyzt = ((GT*G).inverse())*GT*b;
         dtxyzt = GT*b;
         dtxyzt = (GT*G).inverse()*dtxyzt;
-        cout<<"G = "<<G<<endl;
-        cout<<"GT = "<<GT<<endl;
+
         cout<<"b = "<<b<<endl;
         cout<<"dt = "<<dtxyzt<<endl;
         rxyzt += dtxyzt;
         cout<<"++++++++++++xyzt\n"<<rxyzt<<endl;
         cout<<"xyzNorm\n"<<rxyzt.head(3).norm()<<endl;
         XYZ2LLA(rxyzt.head(3),LLA);
-        cout<<"++++++++++++LLA\n"<<LLA<<endl;
+        cout<<"++++++++++++LLA\n"<<(180/GPS_PI)*LLA<<endl;
         if(numCalcu>30)return false;
 
     }
 
     XYZ2LLA(rxyzt.head(3),LLA);
     cout<<"++++++++++++rxyzt\n"<<rxyzt<<endl;
-    cout<<"++++++++++++LLA\n"<<LLA<<endl;
+    cout<<"++++++++++++LLA\n"<<(180/GPS_PI)*LLA<<endl;
     return true;
 
 }
@@ -303,13 +306,14 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
             sv->AODE = Read1Word(dwrds[9],5,19);
             break;
         case 2:
+            ///
             sv->page2OK = true;
             sv->orbit.toeF2 = Read1Word(dwrds[9],2,22)<<15<<3;
             sv->orbit.toe = sv->orbit.toeF2|sv->orbit.toeF3;
             sv->orbit.sq_a = Read2Word(dwrds+8,12,12,20)*pow(2,-19);
             sv->orbit.e = Read2Word(dwrds+4,10,14,22)*pow(2,-33);
-            sv->orbit.dtn = (int32_t)Read2Word(dwrds+1,10,14,6,2,true)*pow(2,-43);
-            sv->orbit.M0 = (int32_t)Read2Word(dwrds+3,20,4,12,2,true)*pow(2,-31);
+            sv->orbit.dtn = (int32_t)Read2Word(dwrds+1,10,14,6,2,true)*pow(2,-43)*GPS_PI;
+            sv->orbit.M0 = (int32_t)Read2Word(dwrds+3,20,4,12,2,true)*pow(2,-31)*GPS_PI;
             sv->orbit.Cuc = (int32_t)Read2Word(dwrds+2,16,8,2,2,true)*pow(2,-31);
             sv->orbit.Cus = (int32_t)Read1Word(dwrds[6],18,2,true)*pow(2,-31);
             sv->orbit.Crc = (int32_t)Read2Word(dwrds+6,4,20,14,2,true)*pow(2,-6);
@@ -319,11 +323,11 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
             sv->page3OK = true;
             sv->orbit.toeF3 = Read2Word(dwrds+1,10,14,5)<<3;
             sv->orbit.toe = sv->orbit.toeF2|sv->orbit.toeF3;
-            sv->orbit.omega = (int32_t)Read2Word(dwrds+8,11,13,21,2,true)*pow(2,-31);
-            sv->orbit.Omega0 = (int32_t)Read2Word(dwrds+7,21,3,11,2,true)*pow(2,-31);
-            sv->orbit.OmegaDot = (int32_t)Read2Word(dwrds+4,11,13,13,2,true)*pow(2,-43);
-            sv->orbit.i0 = (int32_t)Read2Word(dwrds+2,17,7,15,2,true)*pow(2,-31);
-            sv->orbit.IDOT = (int32_t)Read2Word(dwrds+6,13,11,1,2,true)*pow(2,-43);
+            sv->orbit.omega = (int32_t)Read2Word(dwrds+8,11,13,21,2,true)*pow(2,-31)*GPS_PI;
+            sv->orbit.Omega0 = (int32_t)Read2Word(dwrds+7,21,3,11,2,true)*pow(2,-31)*GPS_PI;
+            sv->orbit.OmegaDot = (int32_t)Read2Word(dwrds+4,11,13,13,2,true)*pow(2,-43)*GPS_PI;
+            sv->orbit.i0 = (int32_t)Read2Word(dwrds+2,17,7,15,2,true)*pow(2,-31)*GPS_PI;
+            sv->orbit.IDOT = (int32_t)Read2Word(dwrds+6,13,11,1,2,true)*pow(2,-43)*GPS_PI;
             sv->orbit.Cic = (int32_t)Read2Word(dwrds+3,7,17,11,2,true)*pow(2,-31);
             sv->orbit.Cis = (int32_t)Read2Word(dwrds+5,9,15,9,2,true)*pow(2,-31);
             break;

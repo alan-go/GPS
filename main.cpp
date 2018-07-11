@@ -61,10 +61,13 @@ int main()
     sv.orbit.Cis = 8.940696716e-8;
     sv.CalcuECEF(239050.7223);
     sv.PrintInfo(1);
-    Vector3d vv(1,1,1);
-    cout<<vv<<endl;
-    cout<<vv.transpose()<<endl;
-    printf("\n%f,%f\n",vv.squaredNorm(),vv.norm());
+    Vector3d xyz,LLA;
+    xyz<<-2267521,5008960,3221750;
+    UbloxSolver sssver;
+    sssver.XYZ2LLA(xyz,LLA);
+    cout<<"xyz"<<xyz<<endl;
+    cout<<"LLA="<<(180/GPS_PI)*LLA<<endl;
+
     double a = 34;
     Vector2d v2d(a,54);
     cout<<v2d<<endl;
