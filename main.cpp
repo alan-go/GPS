@@ -42,6 +42,7 @@ void *LogData(void *fileName){
 
 int main()
 {
+    //for testing sv position
     SvInfo sv;
     sv.orbit.toe = 244800;
     sv.orbit.sqrtA = 5153.65531;
@@ -68,6 +69,9 @@ int main()
     cout<<"xyz"<<xyz<<endl;
     cout<<"LLA="<<(180/GPS_PI)*LLA<<endl;
 
+    //test eigen
+    VectorXd vv(5);
+    cout<<"Xd:"<<vv<<endl;
     double a = 34;
     Vector2d v2d(a,54);
     cout<<v2d<<endl;

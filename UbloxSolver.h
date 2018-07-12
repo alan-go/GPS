@@ -81,6 +81,7 @@ public:
     u_int8_t numMeas = 0;
 
     Vector4d rxyzt,rxyzOld;//ECEF position of receiver
+
 //    double longitude,latitude,height;
     Vector3d LLA;
     SvInfo GPSSVs[32],GPSSVsCopy[32];
@@ -103,7 +104,7 @@ private:
     bool DecodeBeiDouBroadcastD1(uint32_t* dwrds,SvInfo* sv);
     bool DecodeBeiDouBroadcastD2(uint32_t* dwrds,SvInfo* sv);
     bool solvePosition();
-    bool CalcuSvTime();
+    bool solvePositionBeiDouGPS();
     //head 指32bit中的头bit（范围：1-32）
     inline uint32_t Read1Word(uint32_t word, int length, int head, bool isInt = false);
     inline uint32_t Read2Word(uint32_t word0,int length0, int head0, uint32_t word1, int length1, int head1, bool isInt = false);

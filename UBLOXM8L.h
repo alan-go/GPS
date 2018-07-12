@@ -145,6 +145,10 @@ private:
     }
 
     void parse_UBX(char * buffer){
+        //config:
+        solver.useBeiDou = true;
+        solver.useGPS = true;
+
         if(0x02==(u_char)buffer[2]){
 
             if(0x15==(u_char)buffer[3]){

@@ -146,7 +146,8 @@ bool UbloxSolver::ParseRawData(char *message) {
     for(int i=0;i<numMeas;i++)
     {
         SvInfo sv = *visibleSvs[i];
-        printf("svsfor visiable:%d-%02d:%d,%d,%d\n",sv.type,sv.svId,sv.page1OK,sv.page2OK,sv.page3OK);
+        printf("svsfor visiable:%d,%02d:%d,%d,%d.health:%d\n",
+               sv.type,sv.svId,sv.page1OK,sv.page2OK,sv.page3OK,sv.SatH1);
         if(sv.pageOK&&sv.open&&!(sv.SatH1)){
             SvsForCalcu.push_back(sv);
             printf("svsfor calcu\n");
@@ -237,13 +238,10 @@ bool UbloxSolver::solvePosition() {
             cout<<"earthRotate = \n"<<earthRotate<<endl;
             cout<<"positionRotate = \n"<<svPositionEarthRotate<<endl;
             r = (svPositionEarthRotate-rxyz).norm();
-            printf("r=%.10f\n",r);
-            r = (sv->position-rxyz).norm()+(sv->position(0)*rxyz(1)-sv->position(1)*rxyz(0))*Omega_e/Light_speed;
-            printf("r=%.10f\n",r);
-            printf("r=%.10f\n",(sv->position-rxyz).norm());
-        // tempx = sv->position(0)*cos(omegat)+sv->position(1)*sin(omegat);
-//            tempy = -sv->position(0)*sin(omegat)+sv->position(1)*cos(omegat);
-//            tempz = sv->position(2);
+//            printf("r=%.10f\n",r);
+//            r = (sv->position-rxyz).norm()+(sv->position(0)*rxyz(1)-sv->position(1)*rxyz(0))*Omega_e/Light_speed;
+//            printf("r=%.10f\n",r);
+//            printf("r=%.10f\n",(sv->position-rxyz).norm());
 
             b(i) = pc(i)-r-rxyzt(3);  //这里的r需要考虑一下
             G(i,0) = (rxyzt(0)-svPositionEarthRotate(0))/r;  //x
@@ -272,8 +270,77 @@ bool UbloxSolver::solvePosition() {
 
 }
 
-bool UbloxSolver::CalcuSvTime() {
+bool UbloxSolver::solvePositionBeiDouGPS(){
+    if(isCalculating)
+        return false;
+    //todo:
+    //选星？
+    int N = SvsForCalcu.size();
+    double omegat,tempx,tempy,tempz;
+    rxyzOld = rxyzt;
+    VectorXd dtxyzBG(5);
+    dtxyzBG<<1,1,1,1,1;
+    MatrixXd pc(N,1);
+    MatrixXd b(N,1);
+    cout<<"-----------------start clacu svPosition\n-------------"<<endl;
 
+    for(int i = 0;i< N;i++){
+        SvInfo* sv= &SvsForCalcu[i];
+        sv->CalcuECEF(rcvtow);
+        //todo: calcu I,T,dtu
+        double pci = sv->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
+        pc(i) = pci;
+        sv->PrintInfo(1);
+        cout<<"norm"<<sv->position.norm()<<endl;
+    }
+    cout<<"+++++++++++++ poss\n-------------"<<endl;
+
+    int numCalcu = 0;
+    while (dtxyzBG.norm()>0.1){
+        numCalcu++;
+        MatrixXd G(N,4);
+        for(int i = 0;i< N;i++){
+            SvInfo* sv= &SvsForCalcu[i];
+            Vector3d rxyz = rxyzt.head(3);
+            double r = (sv->position-rxyz).norm();
+            //自转修正,这个我需要考虑一下是不是在这里处理
+            omegat = r/Light_speed*Omega_e;
+            MatrixXd earthRotate(3,3);
+            earthRotate<<cos(omegat),sin(omegat),0,-sin(omegat),cos(omegat),0,0,0,1;
+            Vector3d svPositionEarthRotate = earthRotate*sv->position;
+            cout<<"positon = \n"<<sv->position<<endl;
+            cout<<"earthRotate = \n"<<earthRotate<<endl;
+            cout<<"positionRotate = \n"<<svPositionEarthRotate<<endl;
+            r = (svPositionEarthRotate-rxyz).norm();
+//            printf("r=%.10f\n",r);
+//            r = (sv->position-rxyz).norm()+(sv->position(0)*rxyz(1)-sv->position(1)*rxyz(0))*Omega_e/Light_speed;
+//            printf("r=%.10f\n",r);
+//            printf("r=%.10f\n",(sv->position-rxyz).norm());
+
+            b(i) = pc(i)-r-rxyzt(3);  //这里的r需要考虑一下
+            G(i,0) = (rxyzt(0)-svPositionEarthRotate(0))/r;  //x
+            G(i,1) = (rxyzt(1)-svPositionEarthRotate(1))/r;  //y
+            G(i,2) = (rxyzt(2)-svPositionEarthRotate(2))/r;  //z
+            G(i,3) = 1;
+        }
+        MatrixXd GT = G.transpose();
+        dtxyzBG = ((GT*G).inverse())*GT*b;
+
+        cout<<"b = "<<b<<endl;
+        cout<<"dt = "<<dtxyzBG<<endl;
+        rxyzt += dtxyzBG;
+        cout<<"++++++++++++xyzt\n"<<rxyzt<<endl;
+        cout<<"xyzNorm\n"<<rxyzt.head(3).norm()<<endl;
+        XYZ2LLA(rxyzt.head(3),LLA);
+        cout<<"++++++++++++LLA\n"<<LLA<<endl;
+        if(numCalcu>30)return false;
+
+    }
+
+    XYZ2LLA(rxyzt.head(3),LLA);
+    cout<<"++++++++++++rxyzt\n"<<rxyzt<<endl;
+    cout<<"++++++++++++LLA\n"<<LLA<<endl;
+    return true;
 }
 
 bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
@@ -420,7 +487,8 @@ uint32_t UbloxSolver::Read1Word(uint32_t word, int length, int head, bool isInt)
 }
 
 
-uint32_t UbloxSolver::Read2Word(uint32_t word0, int length0, int head0, uint32_t word1,int length1, int head1, bool isInt) {
+uint32_t UbloxSolver::Read2Word(uint32_t word0, int length0, int head0,
+                                uint32_t word1,int length1, int head1, bool isInt) {
     uint32_t high,low;
     if(isInt)
         high = uint32_t (((int32_t)word0)<<head0>>(32-length0)<<length1);
