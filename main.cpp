@@ -44,7 +44,7 @@ int main()
 {
     SvInfo sv;
     sv.orbit.toe = 244800;
-    sv.orbit.sq_a = 5153.65531;
+    sv.orbit.sqrtA = 5153.65531;
     sv.orbit.e = 0.005912038265;
     sv.orbit.i0 = 0.9848407943;
     sv.orbit.Omega0 = 1.038062244;

@@ -31,12 +31,14 @@ public:
         BeiDou = 3
     };
     struct Orbit{
+        uint32_t AODE;//BeiDou
+        uint32_t IODE;//GPS
         uint32_t toe,toeF2,toeF3;
-        double sq_a, e,i0,Omega0,M0;
+        double sqrtA, e,i0,Omega0,M0;
         double Cus,Cuc,Cis,Cic,Crs,Crc,dtn,omega;
         double OmegaDot;
         double IDOT;
-        Orbit():toe(0),sq_a(0),e(0),i0(0),Omega0(0),M0(0),
+        Orbit():toe(0),sqrtA(0),e(0),i0(0),Omega0(0),M0(0),
         Cus(0),Cuc(0),Cis(0),Cic(0),Crs(0),Crc(0),dtn(0),omega(0),
                 IDOT(0),OmegaDot(0){}
     };
@@ -51,12 +53,13 @@ public:
     bool open = true;
     SvType type;
     int svId;
+    uint32_t SatH1,URAI;
     uint32_t SOW,WN;
     ionosphere ino;
-    uint32_t AODC;
+    uint32_t AODC;//BeiDou
+    uint32_t IODC;//GPS
     double toc,a0,a1,a2,a3;
-    double TGD1,TGD2;
-    uint32_t AODE;
+    double TGD,TGD1,TGD2;
     Orbit orbit;
     double prMes, cpMes, doMes;
     double I,T;
@@ -102,8 +105,8 @@ private:
     bool solvePosition();
     bool CalcuSvTime();
     //head 指32bit中的头bit（范围：1-32）
-    inline uint32_t Read1Word(uint32_t word, int length, int head = 2,bool isInt = false);
-    inline uint32_t Read2Word(uint32_t* word,int length0, int head0,int length1, int head1 = 2,bool isInt = false);
+    inline uint32_t Read1Word(uint32_t word, int length, int head, bool isInt = false);
+    inline uint32_t Read2Word(uint32_t word0,int length0, int head0, uint32_t word1, int length1, int head1, bool isInt = false);
     inline uint32_t Read3Word(uint32_t* word, int length0, int head0,int length1,int head1, int length2, int head2, bool isInt = false);
 
 

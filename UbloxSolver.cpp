@@ -24,6 +24,7 @@ void SvInfo::PrintInfo(int printType) {
     if(1==printType){
         cout<<"+++++++SvPosition:"<<type<<","<<svId<<endl;
         cout<<position<<endl;
+        cout<<"norm="<<position.norm()<<endl;
         cout<<"tsDelta"<<tsDelta<<"a0"<<a0<<endl;
     }
 }
@@ -31,7 +32,7 @@ void SvInfo::PrintInfo(int printType) {
 
  bool SvInfo::CalcuECEF(double rcvtow) {
     CalcuTime(rcvtow);
-    double A = orbit.sq_a*orbit.sq_a;
+    double A = orbit.sqrtA*orbit.sqrtA;
     double n0 = sqrt(M_miu/(A*A*A));
     double tk = tsReal - orbit.toe;
     if(tk > 302400)tk-=604800;
@@ -86,7 +87,10 @@ void SvInfo::PrintInfo(int printType) {
     } else {
         position = transfer*Vector2d(xk,yk);
     }
-
+//NO TGD here.
+    double dtRelativity = -2*sqrt(M_miu)/(Light_speed*Light_speed)*orbit.sqrtA*sin(Ek);
+    printf("dtRelativity=%.10f\n",dtRelativity);
+    tsDelta += dtRelativity;
 
 }
 
@@ -143,12 +147,12 @@ bool UbloxSolver::ParseRawData(char *message) {
     {
         SvInfo sv = *visibleSvs[i];
         printf("svsfor visiable:%d-%02d:%d,%d,%d\n",sv.type,sv.svId,sv.page1OK,sv.page2OK,sv.page3OK);
-        if(sv.pageOK&&sv.open){
+        if(sv.pageOK&&sv.open&&!(sv.SatH1)){
             SvsForCalcu.push_back(sv);
             printf("svsfor calcu\n");
         }
     }
-    if(SvsForCalcu.size()<5){
+    if(SvsForCalcu.size()<4){
         printf("calcu:Not enough Svs.\n");
         return false;
     }
@@ -233,8 +237,11 @@ bool UbloxSolver::solvePosition() {
             cout<<"earthRotate = \n"<<earthRotate<<endl;
             cout<<"positionRotate = \n"<<svPositionEarthRotate<<endl;
             r = (svPositionEarthRotate-rxyz).norm();
-            cout<<"r = "<<r<<endl;
-//            tempx = sv->position(0)*cos(omegat)+sv->position(1)*sin(omegat);
+            printf("r=%.10f\n",r);
+            r = (sv->position-rxyz).norm()+(sv->position(0)*rxyz(1)-sv->position(1)*rxyz(0))*Omega_e/Light_speed;
+            printf("r=%.10f\n",r);
+            printf("r=%.10f\n",(sv->position-rxyz).norm());
+        // tempx = sv->position(0)*cos(omegat)+sv->position(1)*sin(omegat);
 //            tempy = -sv->position(0)*sin(omegat)+sv->position(1)*cos(omegat);
 //            tempz = sv->position(2);
 
@@ -245,9 +252,7 @@ bool UbloxSolver::solvePosition() {
             G(i,3) = 1;
         }
         MatrixXd GT = G.transpose();
-//        dtxyzt = ((GT*G).inverse())*GT*b;
-        dtxyzt = GT*b;
-        dtxyzt = (GT*G).inverse()*dtxyzt;
+        dtxyzt = ((GT*G).inverse())*GT*b;
 
         cout<<"b = "<<b<<endl;
         cout<<"dt = "<<dtxyzt<<endl;
@@ -255,14 +260,14 @@ bool UbloxSolver::solvePosition() {
         cout<<"++++++++++++xyzt\n"<<rxyzt<<endl;
         cout<<"xyzNorm\n"<<rxyzt.head(3).norm()<<endl;
         XYZ2LLA(rxyzt.head(3),LLA);
-        cout<<"++++++++++++LLA\n"<<(180/GPS_PI)*LLA<<endl;
+        cout<<"++++++++++++LLA\n"<<LLA<<endl;
         if(numCalcu>30)return false;
 
     }
 
     XYZ2LLA(rxyzt.head(3),LLA);
     cout<<"++++++++++++rxyzt\n"<<rxyzt<<endl;
-    cout<<"++++++++++++LLA\n"<<(180/GPS_PI)*LLA<<endl;
+    cout<<"++++++++++++LLA\n"<<LLA<<endl;
     return true;
 
 }
@@ -272,64 +277,66 @@ bool UbloxSolver::CalcuSvTime() {
 }
 
 bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
-    uint32_t bit32,bit32x2[2];
-    uint64_t bit64;
-    //word0:
-    if(1810!=Read1Word(dwrds[0],11))
+
+    if(1810!=Read1Word(dwrds[0],11,2))
         return false;
     int page = Read1Word(dwrds[0],3,17);
-    sv->SOW = Read2Word(dwrds,8,20,12,2);
+    sv->SOW = Read2Word(dwrds[0],8,20,dwrds[1],12,2);
 
     printf(" Frame BeidouD1 svid:%d,page:,%d",sv->svId,page);
     switch (page){
         case 1:
             sv->page1OK = true;
-            sv->WN = Read1Word(dwrds[2],13);
+            sv->SatH1 = Read1Word(dwrds[1],1,14);
+            sv->URAI = Read1Word(dwrds[1],4,20);
+            sv->WN = Read1Word(dwrds[2],13,2);
             sv->ino.a0 = ((int32_t) Read1Word(dwrds[4],8,8,true))*pow(2,-30);
             sv->ino.a1 = ((int32_t) Read1Word(dwrds[4],8,16,true))*pow(2,-27);
             sv->ino.a2 = ((int32_t) Read1Word(dwrds[5],8,2,true))*pow(2,-24);
             sv->ino.a3 = ((int32_t) Read1Word(dwrds[5],8,10,true))*pow(2,-24);
-            sv->ino.b0 = ((int32_t) Read2Word(dwrds+5,6,18,2,2,true))*pow(2,11);
+            sv->ino.b0 = ((int32_t) Read2Word(dwrds[5],6,18,dwrds[6],2,2,true))*pow(2,11);
             sv->ino.b1 = ((int32_t) Read1Word(dwrds[6],8,4,true))*pow(2,14);
             sv->ino.b2 = ((int32_t) Read1Word(dwrds[6],8,12,true))*pow(2,16);
-            sv->ino.b3 = ((int32_t) Read2Word(dwrds+6,4,20,4,2,true))*pow(2,16);
+            sv->ino.b3 = ((int32_t) Read2Word(dwrds[6],4,20,dwrds[7],4,2,true))*pow(2,16);
 
             sv->AODC = Read1Word(dwrds[1],5,15);
 
-            sv->toc = Read2Word(dwrds+2,9,15,8)*8;
-            sv->a0 = (int32_t)Read2Word(dwrds+7,7,17,17,2,true)*pow(2,-33);
-            sv->a1 = (int32_t)Read2Word(dwrds+8,5,19,17,2,true)*pow(2,-50);
+            sv->toc = Read2Word(dwrds[2],9,15,dwrds[3],8,2)*8;
+            sv->a0 = (int32_t)Read2Word(dwrds[7],7,17,dwrds[8],17,2,true)*pow(2,-33);
+            sv->a1 = (int32_t)Read2Word(dwrds[8],5,19,dwrds[9],17,2,true)*pow(2,-50);
             sv->a2 = (int32_t)Read1Word(dwrds[7],11,6,true)*pow(2,-66);
 
             sv->TGD1 = (int32_t)Read1Word(dwrds[3],10,10,true)*0.1;
-            sv->TGD2 = (int32_t)Read2Word(dwrds+3,4,20,6,2,true)*0.1;
-            sv->AODE = Read1Word(dwrds[9],5,19);
+            sv->TGD2 = (int32_t)Read2Word(dwrds[3],4,20,dwrds[4],6,2,true)*0.1;
+            sv->orbit.AODE = Read1Word(dwrds[9],5,19);
             break;
         case 2:
             ///
             sv->page2OK = true;
             sv->orbit.toeF2 = Read1Word(dwrds[9],2,22)<<15<<3;
             sv->orbit.toe = sv->orbit.toeF2|sv->orbit.toeF3;
-            sv->orbit.sq_a = Read2Word(dwrds+8,12,12,20)*pow(2,-19);
-            sv->orbit.e = Read2Word(dwrds+4,10,14,22)*pow(2,-33);
-            sv->orbit.dtn = (int32_t)Read2Word(dwrds+1,10,14,6,2,true)*pow(2,-43)*GPS_PI;
-            sv->orbit.M0 = (int32_t)Read2Word(dwrds+3,20,4,12,2,true)*pow(2,-31)*GPS_PI;
-            sv->orbit.Cuc = (int32_t)Read2Word(dwrds+2,16,8,2,2,true)*pow(2,-31);
+            sv->orbit.sqrtA = Read2Word(dwrds[8],12,12,dwrds[9],20,2)*pow(2,-19);
+            sv->orbit.e = Read2Word(dwrds[4],10,14,dwrds[5],22,2)*pow(2,-33);
+            sv->orbit.dtn = (int32_t)Read2Word(dwrds[1],10,14,dwrds[2],6,2,true)*pow(2,-43)*GPS_PI;
+            sv->orbit.M0 = (int32_t)Read2Word(dwrds[3],20,4,dwrds[4],12,2,true)*pow(2,-31)*GPS_PI;
+            sv->orbit.Cuc = (int32_t)Read2Word(dwrds[2],16,8,dwrds[3],2,2,true)*pow(2,-31);
             sv->orbit.Cus = (int32_t)Read1Word(dwrds[6],18,2,true)*pow(2,-31);
-            sv->orbit.Crc = (int32_t)Read2Word(dwrds+6,4,20,14,2,true)*pow(2,-6);
-            sv->orbit.Crs = (int32_t)Read2Word(dwrds+7,8,16,10,2,true)*pow(2,-6);
+            sv->orbit.Crc = (int32_t)Read2Word(dwrds[6],4,20,dwrds[7],14,2,true)*pow(2,-6);
+            sv->orbit.Crs = (int32_t)Read2Word(dwrds[7],8,16,dwrds[8],10,2,true)*pow(2,-6);
             break;
         case 3:
             sv->page3OK = true;
-            sv->orbit.toeF3 = Read2Word(dwrds+1,10,14,5)<<3;
+            sv->orbit.toeF3 = Read2Word(dwrds[1],10,14,dwrds[2],5,2)<<3;
             sv->orbit.toe = sv->orbit.toeF2|sv->orbit.toeF3;
-            sv->orbit.omega = (int32_t)Read2Word(dwrds+8,11,13,21,2,true)*pow(2,-31)*GPS_PI;
-            sv->orbit.Omega0 = (int32_t)Read2Word(dwrds+7,21,3,11,2,true)*pow(2,-31)*GPS_PI;
-            sv->orbit.OmegaDot = (int32_t)Read2Word(dwrds+4,11,13,13,2,true)*pow(2,-43)*GPS_PI;
-            sv->orbit.i0 = (int32_t)Read2Word(dwrds+2,17,7,15,2,true)*pow(2,-31)*GPS_PI;
-            sv->orbit.IDOT = (int32_t)Read2Word(dwrds+6,13,11,1,2,true)*pow(2,-43)*GPS_PI;
-            sv->orbit.Cic = (int32_t)Read2Word(dwrds+3,7,17,11,2,true)*pow(2,-31);
-            sv->orbit.Cis = (int32_t)Read2Word(dwrds+5,9,15,9,2,true)*pow(2,-31);
+            sv->orbit.omega = (int32_t)Read2Word(dwrds[8],11,13,dwrds[9],21,2,true)*pow(2,-31)*GPS_PI;
+            sv->orbit.Omega0 = (int32_t)Read2Word(dwrds[7],21,3,dwrds[8],11,2,true)*pow(2,-31)*GPS_PI;
+            sv->orbit.OmegaDot = (int32_t)Read2Word(dwrds[4],11,13,dwrds[5],13,2,true)*pow(2,-43)*GPS_PI;
+            sv->orbit.i0 = (int32_t)Read2Word(dwrds[2],17,7,dwrds[3],15,2,true)*pow(2,-31)*GPS_PI;
+            sv->orbit.IDOT = (int32_t)Read2Word(dwrds[6],13,11,dwrds[7],1,2,true)*pow(2,-43)*GPS_PI;
+            sv->orbit.Cic = (int32_t)Read2Word(dwrds[3],7,17,dwrds[4],11,2,true)*pow(2,-31);
+            sv->orbit.Cis = (int32_t)Read2Word(dwrds[5],9,15,dwrds[6],9,2,true)*pow(2,-31);
+            break;
+        default:
             break;
     }
     sv->pageOK = sv->page1OK && sv->page2OK && sv->page3OK;
@@ -338,11 +345,70 @@ bool UbloxSolver::DecodeBeiDouBroadcastD1(uint32_t *dwrds, SvInfo *sv) {
 bool UbloxSolver::DecodeBeiDouBroadcastD2(uint32_t *dwrds, SvInfo *sv) {
     printf(" Frame BeidouD2 page:");
 
+
+
 }
 
 bool UbloxSolver::DecodeGpsBroadcast(uint32_t *dwrds, SvInfo *sv) {
     //todo:
     printf(" Frame GPS  page:");
+    int gpsFrameHead = Read1Word(dwrds[0],8,2);
+    if(139!=gpsFrameHead){
+        printf("GPS frame Head matching failed. head = %d\n",gpsFrameHead);
+        return false;
+    }
+//    sv->SatH1 = Read1Word(dwrds[1],1,19);
+    uint32_t SA = Read1Word(dwrds[1],1,20);
+    if(1==SA){
+        printf("This GPS Satellite is working on SA mode.\n");
+    }
+    int page = Read1Word(dwrds[1],3,21);
+    uint32_t L2,PCodeState;
+    switch(page){
+        case 1:
+            sv->page1OK = true;
+            sv->WN = Read1Word(dwrds[2],10,2);
+            L2 = Read1Word(dwrds[2],2,12);
+            sv->URAI = Read1Word(dwrds[2],4,14);
+            sv->SatH1 = Read1Word(dwrds[2],6,18);
+            sv->IODC = Read2Word(dwrds[3],2,24,dwrds[7],8,2);
+            PCodeState = Read1Word(dwrds[3],1,2);
+            sv->TGD = (int32_t)Read1Word(dwrds[6],8,18,true)*pow(2,-31);
+            sv->toc = Read1Word(dwrds[7],16,10)*pow(2,4);
+            sv->a2 = (int32_t)Read1Word(dwrds[8],8,2,true)*pow(2,-55);
+            sv->a1 = (int32_t)Read1Word(dwrds[8],16,10,true)*pow(2,-43);
+            sv->a0 = (int32_t)Read1Word(dwrds[9],22,2,true)*pow(2,-31);
+            break;
+        case 2:
+            sv->page2OK = true;
+            //todo:IODE judge?
+            sv->orbit.IODE = Read1Word(dwrds[2],8,2);
+            sv->orbit.Crs = (int32_t)Read1Word(dwrds[2],16,10,true)*pow(2,-5);
+            sv->orbit.dtn = (int32_t)Read1Word(dwrds[3],16,2,true)*pow(2,-43)*GPS_PI;
+            sv->orbit.M0 = (int32_t)Read2Word(dwrds[3],8,18,dwrds[4],24,2,true)*pow(2,-31)*GPS_PI;
+            sv->orbit.Cuc = (int32_t)Read1Word(dwrds[5],16,2,true)*pow(2,-29);
+            sv->orbit.e = Read2Word(dwrds[5],8,18,dwrds[6],24,2)*pow(2,-33);
+            sv->orbit.Cus = (int32_t)Read1Word(dwrds[7],16,2,true)*pow(2,-29);
+            sv->orbit.sqrtA = Read2Word(dwrds[7],8,18,dwrds[8],24,2)*pow(2,-19);
+            sv->orbit.toe = Read1Word(dwrds[9],16,2)*pow(2,4);
+            break;
+        case 3:
+            sv->page3OK = true;
+            //IODE
+            sv->orbit.IODE = Read1Word(dwrds[9],8,2);
+            sv->orbit.Cic = (int32_t)Read1Word(dwrds[2],16,2,true)*pow(2,-29);
+            sv->orbit.Omega0 = (int32_t)Read2Word(dwrds[2],8,18,dwrds[3],24,2,true)*pow(2,-31)*GPS_PI;
+            sv->orbit.Cis = (int32_t)Read1Word(dwrds[4],16,2,true)*pow(2,-29);
+            sv->orbit.i0 = (int32_t)Read2Word(dwrds[4],8,18,dwrds[5],24,2,true)*pow(2,-31)*GPS_PI;
+            sv->orbit.Crc = (int32_t)Read1Word(dwrds[6],16,2,true)*pow(2,-5);
+            sv->orbit.omega = (int32_t)Read2Word(dwrds[6],8,18,dwrds[7],24,2,true)*pow(2,-31)*GPS_PI;
+            sv->orbit.OmegaDot = (int32_t)Read1Word(dwrds[8],24,2,true)*pow(2,-43)*GPS_PI;
+            sv->orbit.IDOT = (int32_t)Read1Word(dwrds[9],14,10,true)*pow(2,-43)*GPS_PI;
+            break;
+        default:
+            break;
+    }
+    sv->pageOK = sv->page1OK && sv->page2OK && sv->page3OK;
 
 }
 
@@ -353,15 +419,17 @@ uint32_t UbloxSolver::Read1Word(uint32_t word, int length, int head, bool isInt)
         return word<<head>>(32-length);
 }
 
-uint32_t UbloxSolver::Read2Word(uint32_t *word, int length0, int head0, int length1, int head1, bool isInt) {
+
+uint32_t UbloxSolver::Read2Word(uint32_t word0, int length0, int head0, uint32_t word1,int length1, int head1, bool isInt) {
     uint32_t high,low;
     if(isInt)
-        high = uint32_t (((int32_t)word[0])<<head0>>(32-length0)<<length1);
+        high = uint32_t (((int32_t)word0)<<head0>>(32-length0)<<length1);
     else
-        high = word[0]<<head0>>(32-length0)<<length1;
-    low = word[1]<<head1>>(32-length1);
+        high = word0<<head0>>(32-length0)<<length1;
+    low = word1<<head1>>(32-length1);
     return  high|low;
 }
+
 
 //xyz坐标系转换成纬经高坐标系  input:定位后的XYZ   output：转换后的纬经高
 bool UbloxSolver::XYZ2LLA(Vector3d XYZ,Vector3d &LLA) {
@@ -393,8 +461,8 @@ bool UbloxSolver::XYZ2LLA(Vector3d XYZ,Vector3d &LLA) {
         lati = atan(z/(r*(1-Earth_ee*N/(N+h))));
     }
     //output Longtitude Latitude High  SS[8] 转换矩阵
-    LLA(0) = atan2(y,x);
-    LLA(1) = lati;
+    LLA(0) = atan2(y,x)*180/GPS_PI;
+    LLA(1) = lati*180/GPS_PI;
     LLA(2) = h;
 
     //给转换矩阵赋值
@@ -413,8 +481,6 @@ bool UbloxSolver::XYZ2LLA(Vector3d XYZ,Vector3d &LLA) {
 
     //XYZ向速度，加速度ENU 之后有时间自己实现吧，下面就是一个矩阵乘法然后赋值
     //SS*v_xyz = v_enu   SS*a_xyz = a_enu
-
-
 
 
     return true;
