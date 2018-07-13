@@ -167,6 +167,7 @@ bool UbloxSolver::ParseRawData(char *message) {
     } else{
         solvePositionBeiDouGPS();
     }
+    //here to fix.
 //    thread PositionThread(LaunchPositionThread,this);
 //    PositionThread.detach();
 
