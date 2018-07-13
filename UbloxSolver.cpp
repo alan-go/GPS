@@ -95,7 +95,8 @@ void SvInfo::PrintInfo(int printType) {
 }
 
 UbloxSolver::UbloxSolver(){
-    rxyzt = Vector4d::Zero();
+    rxyzt <<0,0,0,0;
+    rxyzBG<<0,0,0,0,0;
     for(int i = 0;i<32;i++){
         GPSSVs[i].svId = i+1;
         GPSSVs[i].type = SvInfo::GPS;
@@ -143,6 +144,7 @@ bool UbloxSolver::ParseRawData(char *message) {
     printf("start solving rawdata numMesa=%d\n",numMeas);
     //将星历拷贝一份防止计算时被改.
     vector<SvInfo>().swap(SvsForCalcu);
+    int countBeiDou = 0, countGPS = 0;
     for(int i=0;i<numMeas;i++)
     {
         SvInfo sv = *visibleSvs[i];
@@ -150,17 +152,25 @@ bool UbloxSolver::ParseRawData(char *message) {
                sv.type,sv.svId,sv.page1OK,sv.page2OK,sv.page3OK,sv.SatH1);
         if(sv.pageOK&&sv.open&&!(sv.SatH1)){
             SvsForCalcu.push_back(sv);
+            if(SvInfo::BeiDou == sv.type)countBeiDou++;
+            if(SvInfo::GPS == sv.type)countGPS++;
             printf("svsfor calcu\n");
         }
     }
     if(SvsForCalcu.size()<4){
         printf("calcu:Not enough Svs.\n");
         return false;
+    } else if(4==SvsForCalcu.size()&&countBeiDou*countBeiDou){
+        printf("4 SVs with GPS and BeiDou,\nUnable to solve.\n");
+    } else if(0==countBeiDou*countGPS){
+        solvePosition();
+    } else{
+        solvePositionBeiDouGPS();
     }
-
 //    thread PositionThread(LaunchPositionThread,this);
 //    PositionThread.detach();
-    solvePosition();
+
+//    solvePosition();
     return true;
 }
 
@@ -277,7 +287,7 @@ bool UbloxSolver::solvePositionBeiDouGPS(){
     //选星？
     int N = SvsForCalcu.size();
     double omegat,tempx,tempy,tempz;
-    rxyzOld = rxyzt;
+    rxyzBGOld = rxyzBG;
     VectorXd dtxyzBG(5);
     dtxyzBG<<1,1,1,1,1;
     MatrixXd pc(N,1);
@@ -298,14 +308,15 @@ bool UbloxSolver::solvePositionBeiDouGPS(){
     int numCalcu = 0;
     while (dtxyzBG.norm()>0.1){
         numCalcu++;
-        MatrixXd G(N,4);
+        MatrixXd G(N,5);
         for(int i = 0;i< N;i++){
             SvInfo* sv= &SvsForCalcu[i];
-            Vector3d rxyz = rxyzt.head(3);
+            Vector3d rxyz = rxyzBG.head(3);
+            cout<<"rxyz=\n"<<rxyz<<endl;
             double r = (sv->position-rxyz).norm();
             //自转修正,这个我需要考虑一下是不是在这里处理
             omegat = r/Light_speed*Omega_e;
-            MatrixXd earthRotate(3,3);
+            Matrix<double,3,3>earthRotate;
             earthRotate<<cos(omegat),sin(omegat),0,-sin(omegat),cos(omegat),0,0,0,1;
             Vector3d svPositionEarthRotate = earthRotate*sv->position;
             cout<<"positon = \n"<<sv->position<<endl;
@@ -317,21 +328,25 @@ bool UbloxSolver::solvePositionBeiDouGPS(){
 //            printf("r=%.10f\n",r);
 //            printf("r=%.10f\n",(sv->position-rxyz).norm());
 
-            b(i) = pc(i)-r-rxyzt(3);  //这里的r需要考虑一下
-            G(i,0) = (rxyzt(0)-svPositionEarthRotate(0))/r;  //x
-            G(i,1) = (rxyzt(1)-svPositionEarthRotate(1))/r;  //y
-            G(i,2) = (rxyzt(2)-svPositionEarthRotate(2))/r;  //z
-            G(i,3) = 1;
+            b(i) = pc(i)-r-rxyzBG(3)-rxyzBG(4);  //这里的r需要考虑一下
+            G(i,0) = (rxyzBG(0)-svPositionEarthRotate(0))/r;  //x
+            G(i,1) = (rxyzBG(1)-svPositionEarthRotate(1))/r;  //y
+            G(i,2) = (rxyzBG(2)-svPositionEarthRotate(2))/r;  //z
+            G(i,3) = (SvInfo::BeiDou==sv->type)?1:0;
+            G(i,4) = (SvInfo::GPS==sv->type)?1:0;
         }
         MatrixXd GT = G.transpose();
         dtxyzBG = ((GT*G).inverse())*GT*b;
 
+        cout<<"G=\n"<<G<<endl;
+        cout<<"GTG=\n"<<GT*G<<endl;
+        cout<<"GTGi=\n"<<(GT*G).inverse()<<endl;
         cout<<"b = "<<b<<endl;
         cout<<"dt = "<<dtxyzBG<<endl;
-        rxyzt += dtxyzBG;
-        cout<<"++++++++++++xyzt\n"<<rxyzt<<endl;
-        cout<<"xyzNorm\n"<<rxyzt.head(3).norm()<<endl;
-        XYZ2LLA(rxyzt.head(3),LLA);
+        rxyzBG += dtxyzBG;
+        cout<<"++++++++++++xyzt\n"<<rxyzBG<<endl;
+        cout<<"xyzNorm\n"<<rxyzBG.head(3).norm()<<endl;
+        XYZ2LLA(rxyzBG.head(3),LLA);
         cout<<"++++++++++++LLA\n"<<LLA<<endl;
         if(numCalcu>30)return false;
 

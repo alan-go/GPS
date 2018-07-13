@@ -81,6 +81,7 @@ public:
     u_int8_t numMeas = 0;
 
     Vector4d rxyzt,rxyzOld;//ECEF position of receiver
+    Matrix<double,5,1> rxyzBG,rxyzBGOld;
 
 //    double longitude,latitude,height;
     Vector3d LLA;
