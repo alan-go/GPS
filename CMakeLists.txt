@@ -1,7 +1,6 @@
 cmake_minimum_required( VERSION 2.8 )
 project ( GPS )
 
-
 set( CMAKE_BUILD_TYPE "Debug" )
 set( CMAKE_CXX_FLAGS "-std=c++11 -O3" )
 
@@ -26,6 +25,13 @@ include_directories( "/usr/local/include/eigen3" )
 
 set(SOURCE_FILES main.cpp
         UbloxSolver.cpp
+        SVs.cpp
+        NtripRTK.cpp
+        PosSolver.cpp
+        Ntrip.cpp
+        SerialData.cpp
+        GNSS.cpp
+
         )
 add_executable(GPS ${SOURCE_FILES} )
 #target_link_libraries( GPS ${OpenCV_LIBS} )

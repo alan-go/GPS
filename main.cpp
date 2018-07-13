@@ -1,5 +1,6 @@
 #include "dm100.h"
 #include "UBLOXM8L.h"
+#include "GNSS.h"
 using namespace std;
 using namespace Eigen;
 
@@ -42,6 +43,10 @@ void *LogData(void *fileName){
 
 int main()
 {
+    GNSS gnss;
+    gnss.StartGNSS("23",115200);
+    sleep(10);
+    gnss.serialDataManager.stopCapture = true;
     //for testing sv position
     SvInfo sv;
     sv.orbit.toe = 244800;
