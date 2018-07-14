@@ -27,7 +27,6 @@ set(SOURCE_FILES main.cpp
         SVs.cpp
         NtripRTK.cpp
         PosSolver.cpp
-        Ntrip.cpp
         SerialData.cpp
         GNSS.cpp
 
