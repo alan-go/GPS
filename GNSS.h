@@ -8,11 +8,11 @@
 #include <queue>
 #include <chrono>
 #include <unistd.h>
-#include <boost/asio.hpp>
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+
 
 #include "SVs.h"
 #include "PosSolver.h"
@@ -21,12 +21,16 @@
 
 class GNSS{
 public:
+    Eigen::Matrix<double,3,1> xyz, xyzOld;
+    double tu, tuBeiDou, tuGps;
     NtripRTK rtkServer;
     SerialData serialDataManager;
+    SVs svsManager(this);
+    NtripRTK rtkManager;
     std::string serialPort_, serverIP_, rtk_protocol_;
     unsigned short port_;
     int sock_;
-
+    bool useBeiDou,useGPS;
 
 public:
     GNSS();
@@ -37,14 +41,18 @@ public:
 
     int StopGNSS();
 
+    int ParseRawData(char * message);
+
 private:
-    pthread_t thread1_, thread2_;
+    pthread_t thread1_, thread2_, threadPos;
     boost::asio::serial_port *sp_;
     bool stop_rtk_;
 private:
     static void *ThreadAdapterGNSS(void *__this);
 
     static void *ThreadAdapterQianXun(void *__this);
+
+    static void *PositionThread(void *__pos);
 
 };
 #endif

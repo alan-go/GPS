@@ -24,7 +24,6 @@ include_directories( "/usr/local/include/eigen3" )
 ############### dependencies ######################
 
 set(SOURCE_FILES main.cpp
-        UbloxSolver.cpp
         SVs.cpp
         NtripRTK.cpp
         PosSolver.cpp

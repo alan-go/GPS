@@ -8,6 +8,8 @@ public:
     NtripRTK();
 
     ~NtripRTK();
+
+    void UpdatePosition();
 private:
 
 private:

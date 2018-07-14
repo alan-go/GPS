@@ -29,7 +29,6 @@ void SvInfo::PrintInfo(int printType) {
     }
 }
 
-
  bool SvInfo::CalcuECEF(double rcvtow) {
     CalcuTime(rcvtow);
     double A = orbit.sqrtA*orbit.sqrtA;
