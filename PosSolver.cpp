@@ -8,6 +8,8 @@ PosSolver::PosSolver(SVs svs, char *raw, NtripRTK *rtk, GNSS *gnss): svs(svs),ra
     tuGps = gnss->tuGps;
 }
 
+PosSolver::~PosSolver(){}
+
 int PosSolver::CalcuPosition() {
     PrepareData(svs, raw);
 
@@ -30,9 +32,9 @@ int PosSolver::CalcuPosition() {
     } else if(4==SvsForCalcu.size()&&countBeiDou*countBeiDou){
         printf("4 SVs with GPS and BeiDou,\nUnable to solve.\n");
     } else if(0==countBeiDou*countGPS){
-        solvePosition();
+        SolvePosition();
     } else{
-        solvePositionBeiDouGPS();
+        SolvePositionBeiDouGPS();
     }
 }
 
@@ -69,7 +71,7 @@ int PosSolver::PrepareData(SVs svs, char *raw) {
     return 0;
 }
 
-int PosSolver::solvePosition() {
+int PosSolver::SolvePosition() {
     int N = SvsForCalcu.size();
     Vector4d dtxyzt = Vector4d::Ones();
     MatrixXd pc(N,1);
@@ -137,7 +139,7 @@ int PosSolver::solvePosition() {
 
 }
 
-int PosSolver::solvePositionBeiDouGPS(){
+int PosSolver::SolvePositionBeiDouGPS(){
     int N = SvsForCalcu.size();
     VectorXd dtxyzBG(5);
     dtxyzBG<<1,1,1,1,1;
@@ -260,4 +262,16 @@ int PosSolver::XYZ2LLA(Vector3d XYZ, Vector3d &LLA) {
     //XYZ向速度，加速度ENU 之后有时间自己实现吧，下面就是一个矩阵乘法然后赋值
     //SS*v_xyz = v_enu   SS*a_xyz = a_enu
     return 0;
+}
+
+int PosSolver::InosphereCorrect() {
+
+}
+
+int PosSolver::TroposphereCorrect() {
+
+}
+
+int PosSolver::SolvePositionCalman() {
+
 }

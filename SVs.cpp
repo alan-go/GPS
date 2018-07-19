@@ -6,11 +6,13 @@ SV::SV(){
 }
 SV::~SV(){}
 
-SVs::SVs(GNSS* gnss):gnss(gnss){
+SVs::SVs(){
     for(int i = 0; i < 5; i++){
         svBeiDous[i].isBeiDouGEO = true;
     }
 }
+
+SVs::~SVs(){}
 
 bool SV::JudgeUsable(bool useBeiDou, bool useGps) {
     switch (type){

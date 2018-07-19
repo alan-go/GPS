@@ -2,6 +2,7 @@
 
 GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1){
     xyz<<0,0,0;
+    svsManager.gnss = this;
 }
 
 GNSS::~GNSS() {
@@ -26,6 +27,10 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
     pthread_create(&thread1_, nullptr, ThreadAdapterGNSS, &serialDataManager);
     sleep(2);
     return 1;
+}
+
+int GNSS::StartGNSS(const std::string &fileName) {
+
 }
 
 int GNSS::ParseRawData(char *message) {

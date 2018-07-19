@@ -1,5 +1,4 @@
-#include "dm100.h"
-#include "UBLOXM8L.h"
+
 #include "GNSS.h"
 using namespace std;
 using namespace Eigen;
@@ -44,68 +43,7 @@ void *LogData(void *fileName){
 int main()
 {
     GNSS gnss;
-    gnss.StartGNSS("23",115200);
-    sleep(10);
-    gnss.serialDataManager.stopCapture = true;
-    //for testing sv position
-    SvInfo sv;
-    sv.orbit.toe = 244800;
-    sv.orbit.sqrtA = 5153.65531;
-    sv.orbit.e = 0.005912038265;
-    sv.orbit.i0 = 0.9848407943;
-    sv.orbit.Omega0 = 1.038062244;
-    sv.orbit.omega = -1.717457876;
-    sv.orbit.M0 = -1.064739758;
-    sv.orbit.dtn = 4.249105564e-9;
-    sv.orbit.IDOT = 7.422851197e-51;
-    sv.orbit.OmegaDot = -8.151768125e-9;
-    sv.orbit.Cuc = 3.054738045e-7;
-    sv.orbit.Cus = 2.237036824e-6;
-    sv.orbit.Crc = 350.53125;
-    sv.orbit.Crs = 2.53125;
-    sv.orbit.Cic = -8.381903172e-8;
-    sv.orbit.Cis = 8.940696716e-8;
-    sv.CalcuECEF(239050.7223);
-    sv.PrintInfo(1);
-    Vector3d xyz,LLA;
-    xyz<<-2267521,5008960,3221750;
-    UbloxSolver sssver;
-    sssver.XYZ2LLA(xyz,LLA);
-    cout<<"xyz"<<xyz<<endl;
-    cout<<"LLA="<<(180/GPS_PI)*LLA<<endl;
 
-    //test eigen
-    VectorXd vv(5);
-    cout<<"Xd:"<<vv<<endl;
-    double a = 34;
-    Vector2d v2d(a,54);
-    cout<<v2d<<endl;
-    MatrixXd earthRotate(3,3);
-    earthRotate<<1,2,3,2,2,3,2,7,6;
-    Vector3d xyz3;
-    Vector4d xyz4;
-    xyz3<<1,2,3;
-    xyz4<<2,1,3,3;
-    Vector3d xyz43 = xyz4.head(3);
-    double r = (xyz3 - xyz43).squaredNorm();
-    cout<<xyz3<<xyz43<<r<<endl;
-
-    cout <<earthRotate<<endl;
-    SvInfo infoa[2],infob[3];
-    infoa[0].a0 =1.98;
-    infob[2] = infoa[0];
-    infoa[0].a0 = 235;
-    cout<<"infoa/b.a0 = "<<infoa[0].a0<<infob[2].a0<<endl;
-
-	cout<<atof("12.46l4,dji")<<endl;
-	cout<<"start."<<endl;
-
-
-
-
-
-
-    UBLOXM8L ublox;
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
 //    char command = getchar();
     char command = 'd';
@@ -136,15 +74,16 @@ int main()
         inF.open(ss, std::ifstream::binary);
         while (!inF.eof()){
             inF.read(dat,128);
-            ublox.ScanSerialData(dat,128);
+            gnss.serialDataManager.ScanSerialData(dat,128);
         }
         inF.close();
 
     } else if('r'==command){
-        ublox.StartGPS(serialPort);
+        gnss.StartGNSS(serialPort,115200);
         if('x'==getchar()){
             cout<<"stop capture."<<endl;
-            stopUblox = 1;
+//            gnss.stop;
+//            stopUblox = 1;
         }
     }
 

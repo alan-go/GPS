@@ -96,14 +96,16 @@ class SVs{
 public:
     GpsSV svGpss[30];
     BeiDouSV svBeiDous[37];
+    GNSS* gnss;
+
 
 public:
+    SVs();
     SVs(GNSS* gnss);
     ~SVs();
     void UpdateEphemeris(char * subFrame);
 
 private:
-    GNSS* gnss;
 };
 
 #endif

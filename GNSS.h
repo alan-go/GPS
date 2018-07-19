@@ -2,6 +2,7 @@
 #define GNSS_H
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <thread>
 #include <mutex>
@@ -25,7 +26,7 @@ public:
     double tu, tuBeiDou, tuGps;
     NtripRTK rtkServer;
     SerialData serialDataManager;
-    SVs svsManager(this);
+    SVs svsManager;
     NtripRTK rtkManager;
     std::string serialPort_, serverIP_, rtk_protocol_;
     unsigned short port_;
@@ -38,6 +39,8 @@ public:
     ~GNSS();
 
     int StartGNSS(const std::string &serial_port, const unsigned int baudRate);
+
+    int StartGNSS(const std::string &fileName);
 
     int StopGNSS();
 

@@ -26,8 +26,11 @@ private:
     GNSS* gnss;
 private:
     int PrepareData(SVs svs, char *raw);
-    int solvePosition();
-    int solvePositionBeiDouGPS();
+    int SolvePosition();
+    int SolvePositionBeiDouGPS();
+    int SolvePositionCalman();
+    int InosphereCorrect();
+    int TroposphereCorrect();
 };
 
 #endif

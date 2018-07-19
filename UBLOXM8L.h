@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <boost/asio.hpp>
 #include "dm100.h"
-#include "UbloxSolver.h"
 
 #define GPS_MESSAGE_GPGGA       1
 #define GPS_MESSAGE_GPRMC       2
