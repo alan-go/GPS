@@ -31,8 +31,9 @@ int PosSolver::CalcuPosition() {
     if(numberForCalcu<4){
         printf("calcu:%d,Not enough Svs.\n",numberForCalcu);
         return -1;
-    } else if(4==numberForCalcu&&countBeiDou*countBeiDou){
-        printf("4 SVs with GPS and BeiDou,\nUnable to solve.\n");
+    } else if(4==numberForCalcu && countGPS*countBeiDou){
+        printf("4 SVs with GPS and BeiDou:%d, %d,   Unable to solve.\n",countGPS,countBeiDou);
+        return -1;
     } else if(0==countBeiDou*countGPS){
         SolvePosition();
     } else{

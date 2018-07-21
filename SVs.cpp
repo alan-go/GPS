@@ -1,6 +1,6 @@
 #include "SVs.h"
 
-SV::SV():SatH1(0){
+SV::SV():SatH1(1){
     page1OK = page2OK = page3OK = false;
     I = T = 0;
     isBeiDouGEO = false;
@@ -39,7 +39,7 @@ bool SV::JudgeUsable(bool useBeiDou, bool useGps) {
     }
 //    if(!(pageOK&&SatH1))return false;
     if(!pageOK)return false;
-//    if(!SatH1)return false;
+    if(SatH1)return false;
     return true;
 }
 
