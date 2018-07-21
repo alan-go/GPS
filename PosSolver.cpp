@@ -1,16 +1,18 @@
 #include "PosSolver.h"
 #include "GNSS.h"
 
-PosSolver::PosSolver(SVs svs, char *raw, NtripRTK *rtk, GNSS *gnss): svs(svs),raw(raw),rtk(rtk),gnss(gnss){
+PosSolver::PosSolver(SVs svs, NtripRTK *rtk, GNSS *gnss): svs(svs),rtk(rtk),gnss(gnss){
     xyz = gnss->xyz;
     tu = gnss->tu;
     tuBeiDou = gnss->tuBeiDou;
     tuGps = gnss->tuGps;
+    this->svs.svBeiDous[0].a0 = 120;
 }
 
 PosSolver::~PosSolver(){}
 
 int PosSolver::CalcuPosition() {
+
     PrepareData(svs, raw);
 
     int countBeiDou = 0, countGPS = 0;
@@ -26,26 +28,33 @@ int PosSolver::CalcuPosition() {
             printf("svsfor calcu\n");
         }
     }
-    if(SvsForCalcu.size()<4){
-        printf("calcu:Not enough Svs.\n");
+    int numberForCalcu = SvsForCalcu.size();
+    if(numberForCalcu<4){
+        printf("calcu:%d,Not enough Svs.\n",numberForCalcu);
         return -1;
-    } else if(4==SvsForCalcu.size()&&countBeiDou*countBeiDou){
+    } else if(4==numberForCalcu&&countBeiDou*countBeiDou){
         printf("4 SVs with GPS and BeiDou,\nUnable to solve.\n");
     } else if(0==countBeiDou*countGPS){
         SolvePosition();
     } else{
         SolvePositionBeiDouGPS();
     }
+
+    delete(this);
 }
 
 int PosSolver::PrepareData(SVs svs, char *raw) {
+    printf("\nin solever\n");
+    for(int i = 0;i<1024;i++)printf("%02x ",raw[i]);
+
     char* playload = raw + 6;
 
     char* temp = playload;
     rcvtow = *(double*)temp;
     temp = playload + 11;
     numMeas = *(u_int8_t*)temp;
-    if(0==numMeas)return 1;
+    cout<<"numMeas = "<<numMeas<<endl;
+    if(0==numMeas)return -1;
 
     for(u_int8_t n = 0;n<numMeas;n++){
         SV* svTemp;
@@ -67,7 +76,7 @@ int PosSolver::PrepareData(SVs svs, char *raw) {
         svTemp->doMes = *(float *)(playload+32+n32);
 
     }
-    printf("start solving rawdata numMesa=%d\n",numMeas);
+    printf("****************start solving rawdata numMesa=%d\n",numMeas);
     return 0;
 }
 

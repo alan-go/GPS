@@ -24,9 +24,8 @@ class GNSS{
 public:
     Eigen::Matrix<double,3,1> xyz, xyzOld;
     double tu, tuBeiDou, tuGps;
-    NtripRTK rtkServer;
-    SerialData serialDataManager;
     SVs svsManager;
+    SerialData serialDataManager;
     NtripRTK rtkManager;
     std::string serialPort_, serverIP_, rtk_protocol_;
     unsigned short port_;

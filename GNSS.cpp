@@ -3,6 +3,8 @@
 GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1){
     xyz<<0,0,0;
     svsManager.gnss = this;
+    serialDataManager.gnss = this;
+    rtkManager.gnss = this;
 }
 
 GNSS::~GNSS() {
@@ -34,8 +36,11 @@ int GNSS::StartGNSS(const std::string &fileName) {
 }
 
 int GNSS::ParseRawData(char *message) {
-    PosSolver solver(svsManager,message, &rtkManager, this);
-    pthread_create(&threadPos, nullptr, PositionThread, &solver);
+//    PosSolver solver(svsManager, &rtkManager, this);
+    PosSolver *solver1 = new PosSolver(svsManager, &rtkManager, this);
+    memcpy(solver1->raw, message, 1024);
+//    solver.CalcuPosition();
+    pthread_create(&threadPos, nullptr, PositionThread, solver1);
     return 1;
 }
 

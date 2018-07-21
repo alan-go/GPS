@@ -60,7 +60,7 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
             bufferUBX[lengthUBX] = tmp[i];
             if(6==lengthUBX){
                 //length is writen in 4,5 in protocol
-                lengthUBXProtocol = (u_int16_t*)(bufferUBX+4);
+                lengthUBXProtocol = *(u_int16_t*)(bufferUBX+4);
                 ////这里很奇怪，在mac上必须加一行打印，不然崩溃，Ubuntu不需要，还没找到原因。
 //                  printf("MM");
 //					printf("\nlengthUBXProtocol = %d\n",*lengthUBXProtocol);
@@ -76,8 +76,8 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
             flag=0;
         }
         //there are 8 extra bytes besides the playload;
-        if(lengthUBX==*lengthUBXProtocol+8 && 2==flag){
-            printf("\nget a UBX %02x %02x,l = %d, i = %d, count = %d\n",bufferUBX[2],bufferUBX[3], *lengthUBXProtocol, i,count++);
+        if(lengthUBX==lengthUBXProtocol+8 && 2==flag){
+            printf("\nget a UBX %02x %02x,l = %d, i = %d, count = %d\n",bufferUBX[2],bufferUBX[3], lengthUBXProtocol, i,count++);
             if(showData && lengthUBX<1024)
                 for(int k = 0;k<lengthUBX;k++){
                     printf("%02x ",(u_char) bufferUBX[k]);

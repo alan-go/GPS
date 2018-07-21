@@ -10,6 +10,8 @@
 
 using namespace std;
 using namespace Eigen;
+#define NGPS 30
+#define NBeiDou 37
 //PI ???GPs_PI
 constexpr static double GPS_PI = 3.1415926535898;
 constexpr static double M_miu = 3.986004418e14;
@@ -44,8 +46,8 @@ public:
     };
 
     bool page1OK,page2OK,page3OK,pageOK;
-    bool isBeiDouGEO = false;
-    bool open = true;
+    bool isBeiDouGEO;
+    bool open;
     SvType type;
     int svId;
     uint32_t SatH1,URAI;
@@ -68,7 +70,7 @@ public:
     bool CalcuECEF(double rcvtow);
     bool CalcuTime(double rcvtow);
     void PrintInfo(int printType);
-    virtual int DecodeSubFrame(uint32_t* dwrds) = 0;
+//    virtual int DecodeSubFrame(uint32_t* dwrds) = 0;
     //head 指32bit()中的头bit（范围：1-32）
     inline uint32_t Read1Word(uint32_t word, int length, int head, bool isInt = false);
     inline uint32_t Read2Word(uint32_t word0,int length0, int head0, uint32_t word1, int length1, int head1, bool isInt = false);
@@ -77,9 +79,12 @@ public:
 class BeiDouSV:public SV{
 
 public:
+    BeiDouSV();
+    ~BeiDouSV();
     int DecodeSubFrame(uint32_t* dwrds){
         if(isBeiDouGEO)DecodeD2(dwrds);
         else DecodeD1(dwrds);
+        return 1;
     }
     int DecodeD1(uint32_t* dwrds);
     int DecodeD2(uint32_t* dwrds);
@@ -88,20 +93,22 @@ public:
 
 class GpsSV:public SV{
 public:
+    GpsSV();
+    ~GpsSV();
     int DecodeSubFrame(uint32_t* dwrds);
 
 };
 
 class SVs{
 public:
-    GpsSV svGpss[30];
-    BeiDouSV svBeiDous[37];
+    GpsSV svGpss[NGPS];
+    BeiDouSV svBeiDous[NBeiDou];
     GNSS* gnss;
 
 
 public:
     SVs();
-    SVs(GNSS* gnss);
+//    SVs(GNSS* gnss);
     ~SVs();
     void UpdateEphemeris(char * subFrame);
 

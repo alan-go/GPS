@@ -1,14 +1,27 @@
 #include "SVs.h"
 
-SV::SV(){
+SV::SV():SatH1(0){
     page1OK = page2OK = page3OK = false;
     I = T = 0;
+    isBeiDouGEO = false;
 }
 SV::~SV(){}
 
+BeiDouSV::BeiDouSV(){}
+BeiDouSV::~BeiDouSV(){}
+GpsSV::GpsSV(){}
+GpsSV::~GpsSV(){}
+
+
 SVs::SVs(){
-    for(int i = 0; i < 5; i++){
-        svBeiDous[i].isBeiDouGEO = true;
+    for(int i=0;i<NGPS;i++){
+        svGpss[i].type = SV::GPS;
+        svGpss[i].svId = i+1;
+    }
+    for(int i=0;i<NBeiDou;i++){
+        svBeiDous[i].type = SV::BeiDou;
+        svBeiDous[i].svId = i+1;
+        svBeiDous[i].isBeiDouGEO = i<5?true: false;
     }
 }
 
@@ -23,7 +36,9 @@ bool SV::JudgeUsable(bool useBeiDou, bool useGps) {
             if(!useBeiDou)return false;
             break;
     }
-    if(!(pageOK&&SatH1))return false;
+//    if(!(pageOK&&SatH1))return false;
+    if(!pageOK)return false;
+//    if(!SatH1)return false;
     return true;
 }
 
@@ -284,4 +299,5 @@ int BeiDouSV::DecodeD1(uint32_t *dwrds) {
 
 int BeiDouSV::DecodeD2(uint32_t *dwrds) {
     //todo
+    return 1;
 }

@@ -86,7 +86,7 @@ int main()
 //            stopUblox = 1;
         }
     }
-
-
+    cout<<"Quit?"<<endl;
+    getchar();
     return 0;
 }

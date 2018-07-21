@@ -9,14 +9,14 @@
 class PosSolver{
 public:
     SVs svs;
-    char *raw;
+    char raw[1024];
     NtripRTK *rtk;
     double rcvtow;
     Vector3d xyz, LLA;
     double tu, tuBeiDou, tuGps;
     int numMeas;
 public:
-    PosSolver(SVs svs, char *raw, NtripRTK *rtk, GNSS* gnss);
+    PosSolver(SVs svs, NtripRTK *rtk, GNSS* gnss);
     ~PosSolver();
     int CalcuPosition();
     static int XYZ2LLA(Vector3d XYZ,Vector3d &LLA);
