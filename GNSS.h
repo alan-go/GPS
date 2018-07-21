@@ -43,7 +43,7 @@ public:
 
     int StopGNSS();
 
-    int ParseRawData(char * message);
+    int ParseRawData(char * message, int len);
 
 private:
     pthread_t thread1_, thread2_, threadPos;

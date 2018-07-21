@@ -28,6 +28,7 @@ SVs::SVs(){
 SVs::~SVs(){}
 
 bool SV::JudgeUsable(bool useBeiDou, bool useGps) {
+//    printf("type=%d, useGps = %d, useBeidou= %d\n",type,useGps,useBeiDou);
     switch (type){
         case GPS:
             if(!useGps)return false;
@@ -81,7 +82,7 @@ bool SV::CalcuECEF(double rcvtow) {
     }
     //todo:
     //Make Ek within (0-2pi)?????
-    cout<<"EK:"<<Ek<<endl;
+//    cout<<"EK:"<<Ek<<endl;
     double rsinvk = (sqrt(1-orbit.e*orbit.e)*sin(Ek));
     double rcosvk = cos(Ek)-orbit.e;
     double rvk = 1-cos(Ek)*orbit.e;
@@ -91,22 +92,22 @@ bool SV::CalcuECEF(double rcvtow) {
     double vk = atan(tanvk);
     if(cosvk<0&&sinvk<0)vk-=GPS_PI;
     if(cosvk<0&&sinvk>0)vk+=GPS_PI;
-    cout<<"vk="<<vk<<endl;
-    printf("vk = %10f\n",vk);
+//    cout<<"vk="<<vk<<endl;
+//    printf("vk = %10f\n",vk);
     double phyk = vk + orbit.omega;
     double sin2phy = sin(2*phyk),cos2phy = cos(2*phyk);
     double dtuk = orbit.Cus*sin2phy + orbit.Cuc*cos2phy;
     double dtrk = orbit.Crs*sin2phy + orbit.Crc*cos2phy;
     double dtik = orbit.Cis*sin2phy + orbit.Cic*cos2phy;
     double uk = phyk + dtuk;
-    printf("phyk=%10f,dtuk=%.10f,dtrk=%.10f,dtik=%.10f\nuk=%.10f",phyk,dtuk,dtrk,dtik,uk);
+//    printf("phyk=%10f,dtuk=%.10f,dtrk=%.10f,dtik=%.10f\nuk=%.10f",phyk,dtuk,dtrk,dtik,uk);
     double rk = A*(1-orbit.e*cos(Ek)) + dtrk;
-    printf("rk=%.10f\n",rk);
+//    printf("rk=%.10f\n",rk);
     double ik = orbit.i0 + orbit.IDOT*tk + dtik;
     double xk = rk * cos(uk);
     double yk = rk * sin(uk);
     double Omegak = orbit.Omega0 + (orbit.OmegaDot - (isBeiDouGEO?0:Omega_e)) * tk - Omega_e * orbit.toe;
-    cout<<"OmegaK="<<Omegak<<endl;
+//    cout<<"OmegaK="<<Omegak<<endl;
     MatrixXd transfer(3,2);
     transfer<<cos(Omegak),-cos(ik)*sin(Omegak),sin(Omegak),cos(ik)*cos(Omegak),0,sin(ik);
     if(isBeiDouGEO){
@@ -122,7 +123,7 @@ bool SV::CalcuECEF(double rcvtow) {
     }
 //NO TGD here.
     double dtRelativity = -2*sqrt(M_miu)/(Light_speed*Light_speed)*orbit.sqrtA*sin(Ek);
-    printf("dtRelativity=%.10f\n",dtRelativity);
+//    printf("dtRelativity=%.10f\n",dtRelativity);
     tsDelta += dtRelativity;
 }
 

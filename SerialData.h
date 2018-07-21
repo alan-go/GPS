@@ -37,7 +37,7 @@ private:
     int flag,count;
     int lengthNMEA, lengthUBX;
     uint16_t lengthUBXProtocol;
-    char bufferNMEA[128], bufferUBX[1024];
+    char bufferNMEA[128], bufferUBX[5120];
 private:
 
 };

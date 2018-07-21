@@ -61,9 +61,6 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
             if(6==lengthUBX){
                 //length is writen in 4,5 in protocol
                 lengthUBXProtocol = *(u_int16_t*)(bufferUBX+4);
-                ////这里很奇怪，在mac上必须加一行打印，不然崩溃，Ubuntu不需要，还没找到原因。
-//                  printf("MM");
-//					printf("\nlengthUBXProtocol = %d\n",*lengthUBXProtocol);
             }
             lengthUBX++;
         }
@@ -77,7 +74,8 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
         }
         //there are 8 extra bytes besides the playload;
         if(lengthUBX==lengthUBXProtocol+8 && 2==flag){
-            printf("\nget a UBX %02x %02x,l = %d, i = %d, count = %d\n",bufferUBX[2],bufferUBX[3], lengthUBXProtocol, i,count++);
+            printf("\nget a UBX %02x %02x,l = %d, i = %d, count = %d\n",bufferUBX[2],
+                   bufferUBX[3], lengthUBXProtocol, i,count++);
             if(showData && lengthUBX<1024)
                 for(int k = 0;k<lengthUBX;k++){
                     printf("%02x ",(u_char) bufferUBX[k]);
@@ -90,20 +88,19 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
 
 void SerialData::parse_UBX(char *buffer) {
     //todo:
-//    solver.useBeiDou = true;
-//    solver.useGPS = true;
 
     if(0x02==(u_char)buffer[2]){
 
         if(0x15==(u_char)buffer[3]){
-            printf("\n--0--ParseRawData\n");
-            gnss->ParseRawData(buffer);
-            printf("\n--1--ParseRawData\n");
+            printf("\n--0--ParseRawData,%d\n",gnss->useBeiDou);
+            gnss->ParseRawData(buffer, lengthUBX);
+            printf("\n--1--ParseRawData,%d\n",gnss->useBeiDou);
+
         }
         if(0x13==(u_char)buffer[3]){
-            printf("\n----0----ParseBstSubFrame\n");
+            printf("\n----0----ParseBstSubFrame,%d\n",gnss->useBeiDou);
             gnss->svsManager.UpdateEphemeris(buffer);
-            printf("\n----1----ParseBstSubFrame\n");
+            printf("\n----1----ParseBstSubFrame,%d\n",gnss->useBeiDou);
         }
     }
 }

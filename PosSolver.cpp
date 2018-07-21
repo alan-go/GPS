@@ -6,7 +6,6 @@ PosSolver::PosSolver(SVs svs, NtripRTK *rtk, GNSS *gnss): svs(svs),rtk(rtk),gnss
     tu = gnss->tu;
     tuBeiDou = gnss->tuBeiDou;
     tuGps = gnss->tuGps;
-    this->svs.svBeiDous[0].a0 = 120;
 }
 
 PosSolver::~PosSolver(){}
@@ -14,7 +13,6 @@ PosSolver::~PosSolver(){}
 int PosSolver::CalcuPosition() {
 
     PrepareData(svs, raw);
-
     int countBeiDou = 0, countGPS = 0;
     for(int i=0;i<numMeas;i++)
     {
@@ -28,6 +26,7 @@ int PosSolver::CalcuPosition() {
             printf("svsfor calcu\n");
         }
     }
+
     int numberForCalcu = SvsForCalcu.size();
     if(numberForCalcu<4){
         printf("calcu:%d,Not enough Svs.\n",numberForCalcu);
@@ -44,16 +43,13 @@ int PosSolver::CalcuPosition() {
 }
 
 int PosSolver::PrepareData(SVs svs, char *raw) {
-    printf("\nin solever\n");
-    for(int i = 0;i<1024;i++)printf("%02x ",raw[i]);
-
     char* playload = raw + 6;
 
     char* temp = playload;
     rcvtow = *(double*)temp;
     temp = playload + 11;
     numMeas = *(u_int8_t*)temp;
-    cout<<"numMeas = "<<numMeas<<endl;
+    printf("prepare rawdata , numMesa=%d\n",numMeas);
     if(0==numMeas)return -1;
 
     for(u_int8_t n = 0;n<numMeas;n++){
@@ -76,12 +72,12 @@ int PosSolver::PrepareData(SVs svs, char *raw) {
         svTemp->doMes = *(float *)(playload+32+n32);
 
     }
-    printf("****************start solving rawdata numMesa=%d\n",numMeas);
     return 0;
 }
 
 int PosSolver::SolvePosition() {
     int N = SvsForCalcu.size();
+    printf("\nSolve Position N = %d\n",N);
     Vector4d dtxyzt = Vector4d::Ones();
     MatrixXd pc(N,1);
     MatrixXd b(N,1);
@@ -93,16 +89,17 @@ int PosSolver::SolvePosition() {
         //todo: calcu I,T,dtu
         double pci = sv->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
         pc(i) = pci;
-        sv->PrintInfo(1);
-        cout<<"norm"<<sv->position.norm()<<endl;
+//        sv->PrintInfo(1);
+//        cout<<"norm"<<sv->position.norm()<<endl;
 
     }
     cout<<"+++++++++++++ poss\n-------------"<<endl;
 
     int numCalcu = 0;
+    MatrixXd G(N,4);
+    Matrix<double,4,4> H;
     while (dtxyzt.norm()>0.1){
         numCalcu++;
-        MatrixXd G(N,4);
         for(int i = 0;i< N;i++){
             SV *sv= SvsForCalcu[i];
             double r = (sv->position-xyz).norm();
@@ -111,9 +108,9 @@ int PosSolver::SolvePosition() {
             MatrixXd earthRotate(3,3);
             earthRotate<<cos(omegat),sin(omegat),0,-sin(omegat),cos(omegat),0,0,0,1;
             Vector3d svPositionEarthRotate = earthRotate*sv->position;
-            cout<<"positon = \n"<<sv->position<<endl;
-            cout<<"earthRotate = \n"<<earthRotate<<endl;
-            cout<<"positionRotate = \n"<<svPositionEarthRotate<<endl;
+//            cout<<"positon = \n"<<sv->position<<endl;
+//            cout<<"earthRotate = \n"<<earthRotate<<endl;
+//            cout<<"positionRotate = \n"<<svPositionEarthRotate<<endl;
             r = (svPositionEarthRotate-xyz).norm();
 //            printf("r=%.10f\n",r);
 //            r = (sv->position-rxyz).norm()+(sv->position(0)*rxyz(1)-sv->position(1)*rxyz(0))*Omega_e/Light_speed;
@@ -127,29 +124,33 @@ int PosSolver::SolvePosition() {
             G(i,3) = 1;
         }
         MatrixXd GT = G.transpose();
-        dtxyzt = ((GT*G).inverse())*GT*b;
+        H = (GT*G).inverse();
+        dtxyzt = H*GT*b;
 
-        cout<<"b = "<<b<<endl;
-        cout<<"dt = "<<dtxyzt<<endl;
+//        cout<<"b = "<<b<<endl;
+//        cout<<"dt = "<<dtxyzt<<endl;
         xyz += dtxyzt.head(3);
         tu+=dtxyzt(3);
-        cout<<"++++++++++++xyzt\n"<<xyz<<endl;
-        cout<<"xyzNorm\n"<<xyz.norm()<<endl;
-        XYZ2LLA(xyz,LLA);
-        cout<<"++++++++++++LLA\n"<<LLA<<endl;
+//        cout<<"++++++++++++xyzt\n"<<xyz<<endl;
+//        cout<<"xyzNorm\n"<<xyz.norm()<<endl;
+//        XYZ2LLA(xyz,LLA);
+//        cout<<"++++++++++++LLA\n"<<LLA<<endl;
         if(numCalcu>30)return false;
 
     }
+    double PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
 
     XYZ2LLA(xyz.head(3),LLA);
     cout<<"++++++++++++rxyzt\n"<<xyz<<endl;
     cout<<"++++++++++++LLA\n"<<LLA<<endl;
+    printf("PDOP = %lf\n",PDOP);
     return true;
 
 }
 
 int PosSolver::SolvePositionBeiDouGPS(){
     int N = SvsForCalcu.size();
+    printf("\nSolve Position GPS-BeiDou, N = %d\n",N);
     VectorXd dtxyzBG(5);
     dtxyzBG<<1,1,1,1,1;
     MatrixXd pc(N,1);
@@ -162,8 +163,8 @@ int PosSolver::SolvePositionBeiDouGPS(){
         //todo: calcu I,T,dtu
         double pci = sv->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
         pc(i) = pci;
-        sv->PrintInfo(1);
-        cout<<"norm"<<sv->position.norm()<<endl;
+//        sv->PrintInfo(1);
+//        cout<<"norm"<<sv->position.norm()<<endl;
     }
     cout<<"+++++++++++++ poss\n-------------"<<endl;
 
@@ -180,9 +181,9 @@ int PosSolver::SolvePositionBeiDouGPS(){
             Matrix<double,3,3>earthRotate;
             earthRotate<<cos(omegat),sin(omegat),0,-sin(omegat),cos(omegat),0,0,0,1;
             Vector3d svPositionEarthRotate = earthRotate*sv->position;
-            cout<<"positon = \n"<<sv->position<<endl;
-            cout<<"earthRotate = \n"<<earthRotate<<endl;
-            cout<<"positionRotate = \n"<<svPositionEarthRotate<<endl;
+//            cout<<"positon = \n"<<sv->position<<endl;
+//            cout<<"earthRotate = \n"<<earthRotate<<endl;
+//            cout<<"positionRotate = \n"<<svPositionEarthRotate<<endl;
             r = (svPositionEarthRotate-xyz).norm();
 //            printf("r=%.10f\n",r);
 //            r = (sv->position-rxyz).norm()+(sv->position(0)*rxyz(1)-sv->position(1)*rxyz(0))*Omega_e/Light_speed;
@@ -199,18 +200,18 @@ int PosSolver::SolvePositionBeiDouGPS(){
         MatrixXd GT = G.transpose();
         dtxyzBG = ((GT*G).inverse())*GT*b;
 
-        cout<<"G=\n"<<G<<endl;
-        cout<<"GTG=\n"<<GT*G<<endl;
-        cout<<"GTGi=\n"<<(GT*G).inverse()<<endl;
-        cout<<"b = "<<b<<endl;
-        cout<<"dt = "<<dtxyzBG<<endl;
+//        cout<<"G=\n"<<G<<endl;
+//        cout<<"GTG=\n"<<GT*G<<endl;
+//        cout<<"GTGi=\n"<<(GT*G).inverse()<<endl;
+//        cout<<"b = "<<b<<endl;
+//        cout<<"dt = "<<dtxyzBG<<endl;
         xyz += dtxyzBG.head(3);
         tuBeiDou+=dtxyzBG(3);
         tuGps+=dtxyzBG(4);
-        cout<<"++++++++++++xyzt\n"<<xyz<<endl;
-        cout<<"xyzNorm\n"<<xyz.norm()<<endl;
-        XYZ2LLA(xyz,LLA);
-        cout<<"++++++++++++LLA\n"<<LLA<<endl;
+//        cout<<"++++++++++++xyzt\n"<<xyz<<endl;
+//        cout<<"xyzNorm\n"<<xyz.norm()<<endl;
+//        XYZ2LLA(xyz,LLA);
+//        cout<<"++++++++++++LLA\n"<<LLA<<endl;
         if(numCalcu>30)return false;
 
     }

@@ -42,7 +42,8 @@ void *LogData(void *fileName){
 
 int main()
 {
-    GNSS gnss;
+    GNSS *gnss = new GNSS();
+    gnss->useGPS = false;
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
 //    char command = getchar();
@@ -74,18 +75,20 @@ int main()
         inF.open(ss, std::ifstream::binary);
         while (!inF.eof()){
             inF.read(dat,128);
-            gnss.serialDataManager.ScanSerialData(dat,128);
+            gnss->serialDataManager.ScanSerialData(dat,128);
         }
         inF.close();
 
     } else if('r'==command){
-        gnss.StartGNSS(serialPort,115200);
+        gnss->StartGNSS(serialPort,115200);
         if('x'==getchar()){
             cout<<"stop capture."<<endl;
 //            gnss.stop;
 //            stopUblox = 1;
         }
     }
+
+    sleep(2);
     cout<<"Quit?"<<endl;
     getchar();
     return 0;

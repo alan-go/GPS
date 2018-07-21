@@ -35,12 +35,14 @@ int GNSS::StartGNSS(const std::string &fileName) {
 
 }
 
-int GNSS::ParseRawData(char *message) {
-//    PosSolver solver(svsManager, &rtkManager, this);
-    PosSolver *solver1 = new PosSolver(svsManager, &rtkManager, this);
-    memcpy(solver1->raw, message, 1024);
-//    solver.CalcuPosition();
-    pthread_create(&threadPos, nullptr, PositionThread, solver1);
+int GNSS::ParseRawData(char *message, int len) {
+    cout<<"useBEIDOUooooooooo00="<<useBeiDou<<endl;
+    PosSolver *solver = new PosSolver(svsManager, &rtkManager, this);
+    memcpy(solver->raw, message, len);
+
+//    solver->CalcuPosition();
+    pthread_create(&threadPos, nullptr, PositionThread, solver);
+
     return 1;
 }
 
