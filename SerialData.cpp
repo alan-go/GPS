@@ -7,7 +7,7 @@
 
 SerialData::SerialData() :
 flag(0),count(0),lengthNMEA(0),lengthUBX(0),baudRate(115200),stopCapture(false),showData(false){
-
+    sp_ = nullptr;
 }
 
 SerialData::~SerialData() {
@@ -17,13 +17,14 @@ SerialData::~SerialData() {
 void SerialData::StartCapture(const std::string serialPort, unsigned int baudRate) {
     try {
         boost::asio::io_service ios;
-        boost::asio::serial_port sp ( ios, serialPort );
-        sp.set_option ( boost::asio::serial_port::baud_rate ( baudRate ) );
+        sp_ = new boost::asio::serial_port(ios, serialPort);
+
+        sp_->set_option ( boost::asio::serial_port::baud_rate ( baudRate ) );
         printf ( "successfully opened port %s\n", serialPort.c_str() );
 
         while ( !stopCapture ) {
             char tmp[256];
-            auto transferred = sp.read_some ( boost::asio::buffer ( tmp ) );
+            auto transferred = sp_->read_some ( boost::asio::buffer ( tmp ) );
             if ( transferred <= 0 ) {
                 usleep ( 100 );
                 printf ( "serial port return 0\n" );
@@ -32,7 +33,7 @@ void SerialData::StartCapture(const std::string serialPort, unsigned int baudRat
 //                printf ( "transferred = %d , flag = %d\n",transferred, flag );
             ScanSerialData(tmp,transferred);
         }
-        sp.close();
+        sp_->close();
     } catch ( ... ) {
         printf ( "failed to open serial port\n" );
         return;
@@ -65,8 +66,9 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
             lengthUBX++;
         }
         if(('\n'==tmp[i]||'\r'==tmp[i])&&1==flag){
-            printf("get a NMEA,l = %d, i = %d\n",lengthNMEA,i);
-            if (showData)
+            printf("Got a NMEA,l = %d.:",lengthNMEA);
+//            if (showData)
+            if (1)
                 for(int k = 0;k<lengthNMEA;k++){
                     printf("%c",bufferNMEA[k]);
                 }
@@ -74,7 +76,7 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
         }
         //there are 8 extra bytes besides the playload;
         if(lengthUBX==lengthUBXProtocol+8 && 2==flag){
-            printf("\nget a UBX %02x %02x,l = %d, i = %d, count = %d\n",bufferUBX[2],
+            printf("\nGot a UBX %02x %02x,l = %d, i = %d, count = %d\n",bufferUBX[2],
                    bufferUBX[3], lengthUBXProtocol, i,count++);
             if(showData && lengthUBX<1024)
                 for(int k = 0;k<lengthUBX;k++){

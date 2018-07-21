@@ -16,6 +16,7 @@ class GNSS;
 class SerialData {
 public:
     std::string serialPort_;
+    boost::asio::serial_port *sp_;
     unsigned int baudRate;
     bool stopCapture;
     bool showData;

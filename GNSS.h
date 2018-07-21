@@ -10,9 +10,7 @@
 #include <chrono>
 #include <unistd.h>
 
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+
 
 
 #include "SVs.h"
@@ -27,9 +25,8 @@ public:
     SVs svsManager;
     SerialData serialDataManager;
     NtripRTK rtkManager;
-    std::string serialPort_, serverIP_, rtk_protocol_;
-    unsigned short port_;
-    int sock_;
+    std::string serialPort_, rtk_protocol_;
+
     bool useBeiDou,useGPS;
 
 public:
@@ -47,12 +44,10 @@ public:
 
 private:
     pthread_t thread1_, thread2_, threadPos;
-    boost::asio::serial_port *sp_;
-    bool stop_rtk_;
 private:
-    static void *ThreadAdapterGNSS(void *__this);
+    static void *ThreadAdapterGNSS(void *__sData);
 
-    static void *ThreadAdapterQianXun(void *__this);
+    static void *ThreadAdapterQianXun(void *__rtk);
 
     static void *PositionThread(void *__pos);
 
