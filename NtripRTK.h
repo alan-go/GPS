@@ -9,8 +9,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <boost/asio.hpp>
+#include <boost/crc.hpp>
 
 
+#include "SVs.h"
 
 class GNSS;
 class NtripRTK{
@@ -21,6 +23,14 @@ public:
     unsigned short port_;
     int sock_;
 
+    uint32_t refStationId;
+    bool isPhysicalStation;
+    bool singleReceiver;
+    uint32_t ITRFyear;
+    bool supportGPS,supportBeiDou,supportGLONASS,supportGalileo;
+    uint32_t quaterCycle;
+    Eigen::Vector3d ECEF_XYZ;
+
 public:
     NtripRTK();
 
@@ -28,11 +38,15 @@ public:
 
     void UpdateGGA();
     int SentGGA(const char *bufferGGA, int length);
+    int ParaseMSM4(const char *bufferRTK);
     bool NtripLogin(const std::string &rtk_protocol);
     void RecvThread();
 private:
+    boost::crc_basic<24> crc24Q;
 
 private:
+    inline uint32_t NetToHost32(char *begin,int head,int length);
+    int ParaseRtk32_1005(char * buffer);
 };
 
 #endif
