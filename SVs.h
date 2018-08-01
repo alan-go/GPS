@@ -10,8 +10,8 @@
 
 using namespace std;
 using namespace Eigen;
-#define NGPS 30
-#define NBeiDou 37
+#define NGPS 64
+#define NBeiDou 64
 //PI ???GPs_PI
 constexpr static double GPS_PI = 3.1415926535898;
 constexpr static double M_miu = 3.986004418e14;

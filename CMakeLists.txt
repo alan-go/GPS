@@ -23,16 +23,19 @@ include_directories( "/usr/local/include/eigen3" )
 #set( THIRD_PARTY_LIBS ${OpenCV_LIBS} )
 ############### dependencies ######################
 
-set(SOURCE_FILES main.cpp
+set(SOURCE_FILES
         SVs.cpp
         NtripRTK.cpp
         PosSolver.cpp
         SerialData.cpp
         GNSS.cpp
-
+#        test.cpp
         )
-add_executable(GPS ${SOURCE_FILES} )
+add_executable(GPS  main.cpp ${SOURCE_FILES})
+add_executable(test test.cpp ${SOURCE_FILES} )
 #target_link_libraries( GPS ${OpenCV_LIBS} )
-target_link_libraries( GPS  ${Boost_LIBRARIES} )
+target_link_libraries( GPS  ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
-target_link_libraries(GPS ${CMAKE_THREAD_LIBS_INIT})
+#target_link_libraries(GPS )
+
+target_link_libraries(test ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})

@@ -78,9 +78,10 @@ void NtripRTK::RecvThread() {
             //todo:paraseRTK;
 //            fwrite(bufferRecv, recvLength, 1, fp);
             for(int i = 0;i<recvLength;i++){
-                if(0xd3==bufferRecv[i]){
+                if(0xd3==(u_char)bufferRecv[i]&&0==(bufferRecv[i+1]>>2)){
                     uint32_t messageLength = NetToHost32(bufferRecv+i,14,10);
                     uint32_t checkSumGet = NetToHost32(bufferRecv+i+3+messageLength,0,24);
+                    crc24Q.reset();
                     crc24Q.process_bytes(bufferRecv,messageLength+3);
                     if(checkSumGet==crc24Q.checksum()){
                         memcpy(buferRTK,bufferRecv+i+3,messageLength);
@@ -90,6 +91,7 @@ void NtripRTK::RecvThread() {
                                 ParaseRtk32_1005(buferRTK);
                                 break;
                             case 1074:
+                                ParaseMSM4(buferRTK,gnss->svsManager.svGpss);
                                 break;
                             case 1084:
                                 break;
@@ -103,7 +105,7 @@ void NtripRTK::RecvThread() {
                     }
                 }
             }
-            ParaseMSM4(bufferRecv);
+//            ParaseMSM4(bufferRecv);
         }
     }
     fclose(fp);
@@ -122,20 +124,73 @@ int NtripRTK::SentGGA(const char *bufferGGA, int length) {
 void NtripRTK::UpdateGGA() {}
 
 
-int NtripRTK::ParaseMSM4(const char *bufferRTK) {
+int NtripRTK::ParaseMSM4(char *bufferRTK, SV *sv, int *sat, int *sig) {
     //first Parase MSM message Header:
-    //type:
-    uint16_t type = *(uint16_t*)bufferRTK>>4;
-    uint16_t RefID = *(uint16_t*)(bufferRTK+1)<<4>>4;
-    uint32_t rtkTime = *(uint32_t*)(bufferRTK+3)>>2;
+    uint32_t RefID = NetToHost32(bufferRTK,12,12);
+    uint32_t rtkTime = NetToHost32(bufferRTK+3,0,30);
     uint8_t multiMsg = *(uint8_t*)(bufferRTK+6)<<6>>7;
-    uint16_t IODS = *(uint16_t*)(bufferRTK+6)<<7>>13;
+    uint32_t IODS = NetToHost32(bufferRTK+6,7,3);
     uint8_t clockCorrect = *(uint8_t*)(bufferRTK+8)<<1>>6;
     uint8_t clockExtern = *(uint8_t*)(bufferRTK+8)<<3>>6;
     uint8_t smoothType = *(uint8_t*)(bufferRTK+8)<<5>>7;
-    uint16_t smoothRange = *(uint16_t*)(bufferRTK+8)<<6>>13;
-    uint64_t satMask = (*(uint64_t*)(bufferRTK+9)>>56<<57)||(*(uint64_t*)(bufferRTK+10)>>7);
-    uint32_t sigMask = (*(uint32_t*)(bufferRTK+17)>>24<<25)||(*(uint32_t*)(bufferRTK+18)>>7);
+    uint32_t smoothRange = NetToHost32(bufferRTK+8,6,3);
+
+    int nSat = 0, nSig = 0;
+    char *b = bufferRTK+9;
+    u_char temp = (u_char)b[0];
+    int i = 1;
+    //sat
+    for(int id=0;id<64;id++,i++){
+        if(8==i){
+            i=0;
+            b++;
+            temp = (u_char)b[0];
+        }
+        if(temp&(128>>i)){
+            sat[id]=1;
+            nSat++;
+            printf("Sat:%d\n",id+1);
+        } else{
+            sat[id]=0;
+        }
+    }
+
+    //signal
+    b=bufferRTK+17;
+    i=1;
+    for(int id=0;id<32;id++,i++){
+        if(8==i){
+            i=0;
+            b++;
+            temp = (u_char)b[0];
+        }
+        if(temp&(128>>i)){
+            sig[id]=1;
+            nSig++;
+            printf("Sig:%d\n",id+1);
+        } else{
+            sat[id]=0;
+        }
+    }
+
+    b = bufferRTK+21;
+    i=1;
+    for(int isig = 0;isig<nSig;isig++){
+        for(int isat = 0;isat<nSat;isat++){
+            if(8==i){
+                i=0;
+                b++;
+                temp = (u_char)b[0];
+            }
+            if(temp&(128>>i)){
+                //todo
+//                sig[id]=1;
+//                nSig++;
+//                printf("Sig:%d\n",id+1);
+            }
+            i++;
+        }
+    }
 }
 
 
@@ -175,4 +230,43 @@ int NtripRTK::ParaseRtk32_1005(char *buffer) {
 
     ECEF_XYZ<<ARP_X,ARP_Y,ARP_Z;
     ECEF_XYZ*=1e-4;
+}
+
+int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
+    char buferRTK[256];
+
+    for(int i = 0;i<recvLength;i++){
+        if(0xd3==(u_char)bufferRecv[i]&&0==(bufferRecv[i+1]>>2)){
+            printf("get 0xd3,i = %d.\n",i);
+            uint32_t messageLength = NetToHost32(bufferRecv+i,14,10);
+            printf("messageLength = %d\n",messageLength);
+            uint32_t checkSumGet = NetToHost32(bufferRecv+i+3+messageLength,0,24);
+            crc24Q.reset();
+            crc24Q.process_bytes(bufferRecv+i,messageLength+3);
+            if(checkSumGet==crc24Q.checksum()){
+                printf("CheckSum OK.\n");
+                memcpy(buferRTK,bufferRecv+i+3,messageLength);
+                uint32_t type = NetToHost32(buferRTK,0,12);
+                switch (type){
+                    case 1005:
+                        ParaseRtk32_1005(buferRTK);
+                        break;
+                    case 1074:
+                        ParaseMSM4(buferRTK,gnss->svsManager.svGpss,satGps,sigGps);
+                        break;
+                    case 1084:
+                        break;
+                    case 1124:
+                        break;
+                    default:
+                        break;
+                }
+
+                i+=messageLength;
+            } else{
+                printf("CheckSum failed.%d,%d\n",checkSumGet,crc24Q.checksum());
+            }
+        }
+    }
+//    ParaseMSM4(bufferRecv);
 }
