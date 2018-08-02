@@ -1,7 +1,7 @@
 #include "NtripRTK.h"
 #include "GNSS.h"
 
-NtripRTK::NtripRTK():crc24Q( 0x864cfb, 0, 0, false, false ) ,refStationId(0),isPhysicalStation(0) ,
+NtripRTK::NtripRTK():crc24Q( 0x864cfb, 0, 0, false, false ) ,nSat(0),nSig(0),refStationId(0),isPhysicalStation(0) ,
 singleReceiver(0),ITRFyear(0),supportBeiDou(0),supportGalileo(0),supportGLONASS(0),supportGPS(0),quaterCycle(0){
     ECEF_XYZ<<0,0,0;
 }
@@ -91,11 +91,12 @@ void NtripRTK::RecvThread() {
                                 ParaseRtk32_1005(buferRTK);
                                 break;
                             case 1074:
-                                ParaseMSM4(buferRTK,gnss->svsManager.svGpss);
+                                ParaseMSM4(buferRTK,(gnss->svsManager.svGpss));
                                 break;
                             case 1084:
                                 break;
                             case 1124:
+                                ParaseMSM4(buferRTK,gnss->svsManager.svBeiDous);
                                 break;
                             default:
                                 break;
@@ -105,7 +106,6 @@ void NtripRTK::RecvThread() {
                     }
                 }
             }
-//            ParaseMSM4(bufferRecv);
         }
     }
     fclose(fp);
@@ -124,7 +124,7 @@ int NtripRTK::SentGGA(const char *bufferGGA, int length) {
 void NtripRTK::UpdateGGA() {}
 
 
-int NtripRTK::ParaseMSM4(char *bufferRTK, SV *sv, int *sat, int *sig) {
+int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
     //first Parase MSM message Header:
     uint32_t RefID = NetToHost32(bufferRTK,12,12);
     uint32_t rtkTime = NetToHost32(bufferRTK+3,0,30);
@@ -135,11 +135,17 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *sv, int *sat, int *sig) {
     uint8_t smoothType = *(uint8_t*)(bufferRTK+8)<<5>>7;
     uint32_t smoothRange = NetToHost32(bufferRTK+8,6,3);
 
-    int nSat = 0, nSig = 0;
-    char *b = bufferRTK+9;
-    u_char temp = (u_char)b[0];
-    int i = 1;
+    vector<double*> df397,df398;
+    vector<SV::SignalData*>sigData;
+    nSat = 0, nSig = 0;
+    //sats里面是卫星编号，对应手册
+    vector<int> sats,sigs;
+
+
     //sat
+    char *b = bufferRTK+9;
+    int i = 1;
+    u_char temp = (u_char)b[0];
     for(int id=0;id<64;id++,i++){
         if(8==i){
             i=0;
@@ -147,17 +153,14 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *sv, int *sat, int *sig) {
             temp = (u_char)b[0];
         }
         if(temp&(128>>i)){
-            sat[id]=1;
+            sats.push_back(id);
             nSat++;
             printf("Sat:%d\n",id+1);
-        } else{
-            sat[id]=0;
+            df397.push_back(&(svHead[id].df397));
+            df398.push_back(&(svHead[id].df398));
         }
     }
-
     //signal
-    b=bufferRTK+17;
-    i=1;
     for(int id=0;id<32;id++,i++){
         if(8==i){
             i=0;
@@ -165,16 +168,12 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *sv, int *sat, int *sig) {
             temp = (u_char)b[0];
         }
         if(temp&(128>>i)){
-            sig[id]=1;
+            sigs.push_back(id+1);
             nSig++;
             printf("Sig:%d\n",id+1);
-        } else{
-            sat[id]=0;
         }
     }
-
-    b = bufferRTK+21;
-    i=1;
+    //cell
     for(int isig = 0;isig<nSig;isig++){
         for(int isat = 0;isat<nSat;isat++){
             if(8==i){
@@ -184,12 +183,75 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *sv, int *sat, int *sig) {
             }
             if(temp&(128>>i)){
                 //todo
-//                sig[id]=1;
-//                nSig++;
-//                printf("Sig:%d\n",id+1);
+                nCell++;
+//                sigData.push_back(svHead[sats[isat]].SignalTable(sigs[isig]));
+                int m = sats[isat];
+                int n = sigs[isig];
+                printf("m,n=%d,%d\n",m,n);
+                sigData.push_back(gnss->svsManager.svGpss[m].SignalTable(n));
+//                sigData.push_back((svHead+m)->SignalTable(n));
+//                sigData.push_back(svHead[m].SignalTable(n));
             }
             i++;
         }
+    }
+
+    //parase Sat data
+    for(int n = 0;n<nSat;n++){
+        *(df397[n]) = double(NetToHost32(b,i,8));
+        b++;
+    }
+    for(int n = 0;n<nSat;n++){
+        if(i>=8){
+            i-=8;
+            b++;
+        }
+        *(df398[n]) = double(NetToHost32(b,i,10));
+        b++;
+        i+=2;
+    }
+    //parase sig data
+    for(int n = 0; n< nCell; n++){
+        if(i>=8){
+            i-=8;
+            b++;
+        }
+        sigData[n]->df400 = double(NetToHost32(b,i,15));
+        b++;
+        i+=7;
+    }
+    for(int n = 0; n< nCell; n++){
+        if(i>=8){
+            i-=8;
+            b++;
+        }
+        sigData[n]->df401 = double(NetToHost32(b,i,22));
+        b+=2;
+        i+=6;
+    }
+    for(int n = 0; n< nCell; n++){
+        if(i>=8){
+            i-=8;
+            b++;
+        }
+        sigData[n]->df402 = NetToHost32(b,i,4);
+        i+=4;
+    }
+    for(int n = 0; n< nCell; n++){
+        if(i>=8){
+            i-=8;
+            b++;
+        }
+        sigData[n]->df420 = NetToHost32(b,i,1);
+        i++;
+    }
+    for(int n = 0; n< nCell; n++){
+        if(i>=8){
+            i-=8;
+            b++;
+        }
+        sigData[n]->df403 = NetToHost32(b,i,6);
+        i+=6;
     }
 }
 
@@ -252,11 +314,12 @@ int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
                         ParaseRtk32_1005(buferRTK);
                         break;
                     case 1074:
-                        ParaseMSM4(buferRTK,gnss->svsManager.svGpss,satGps,sigGps);
+                        ParaseMSM4(buferRTK,gnss->svsManager.svGpss);
                         break;
                     case 1084:
                         break;
                     case 1124:
+                        ParaseMSM4(buferRTK,gnss->svsManager.svBeiDous);
                         break;
                     default:
                         break;

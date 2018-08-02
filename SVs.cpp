@@ -302,3 +302,61 @@ int BeiDouSV::DecodeD2(uint32_t *dwrds) {
     //todo
     return 1;
 }
+
+SV::SignalData* GpsSV::SignalTable(int index) {
+    switch (index){
+        case 2:
+            return &L1_1C;
+        case 3:
+            return &L1_1P;
+        case 4:
+            return &L1_1W;
+        case 8:
+            return &L2_2C;
+        case 9:
+            return &L2_2P;
+        case 10:
+            return &L2_2W;
+        case 15:
+            return &L2_2S;
+        case 16:
+            return &L2_2L;
+        case 17:
+            return &L2_2X;
+        case 22:
+            return &L5_5I;
+        case 23:
+            return &L5_5Q;
+        case 24:
+            return &L5_5X;
+        default:
+            printf("signal not recorded. return L1_1C\n");
+            return &L1_1C;
+    }
+}
+
+SV::SignalData* BeiDouSV::SignalTable(int index) {
+    switch (index){
+        case 2:
+            return &B1_2I;
+        case 3:
+            return &B1_2Q;
+        case 4:
+            return &B1_2X;
+        case 8:
+            return &B3_6I;
+        case 9:
+            return &B3_6Q;
+        case 10:
+            return &B3_6X;
+        case 14:
+            return &B2_7I;
+        case 15:
+            return &B2_7Q;
+        case 16:
+            return &B2_7X;
+        default:
+            printf("signal not recorded. return L1_1C\n");
+            return &B1_2I;
+    }
+}

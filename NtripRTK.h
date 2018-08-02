@@ -23,8 +23,7 @@ public:
     unsigned short port_;
     int sock_;
 
-    int satGps[NGPS],satBeidou[NBeiDou];
-    int sigGps[NGPS],sigBeidou[NBeiDou];
+    int nSat, nSig, nCell;
     uint32_t refStationId;
     bool isPhysicalStation;
     bool singleReceiver;
@@ -40,7 +39,7 @@ public:
 
     void UpdateGGA();
     int SentGGA(const char *bufferGGA, int length);
-    int ParaseMSM4(char *bufferRTK, SV *sv, int *sat, int *sig);
+    int ParaseMSM4(char *bufferRTK, SV *svHead);
     bool NtripLogin(const std::string &rtk_protocol);
     void RecvThread();
     int TestParase(char *bufferRecv,int recvLength);
