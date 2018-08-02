@@ -68,6 +68,7 @@ public:
     Vector3d position;
     double tsv,tsDelta,tsReal;
 
+    double elevationAngle,azimuthAngle;
     //for RTK:
     double df397,df398;
 public:
@@ -76,6 +77,10 @@ public:
     bool JudgeUsable(bool useBeiDou, bool useGps);
     bool CalcuECEF(double rcvtow);
     bool CalcuTime(double rcvtow);
+    int CalcuelEvationAzimuth(Vector3d receiverPosition, Vector3d LLA);
+    int CalcuTroposhphere(double elev,double azim);
+    int CalcuInoshphere(double elev,double azim,Vector3d LLA,double time);
+    int CorrectIT(Vector3d receiverPosition, Vector3d LLA,double time);
     void PrintInfo(int printType);
 //    virtual int DecodeSubFrame(uint32_t* dwrds) = 0;
     virtual SignalData* SignalTable(int index)=0;

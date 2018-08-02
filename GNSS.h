@@ -20,7 +20,8 @@
 
 class GNSS{
 public:
-    Eigen::Matrix<double,3,1> xyz, xyzOld;
+    Eigen::Vector3d xyz, xyzOld;
+    Eigen::Vector3d LLA, LLAOld;
     double tu, tuBeiDou, tuGps;
     SVs svsManager;
     SerialData serialDataManager;
@@ -28,6 +29,8 @@ public:
     std::string serialPort_, rtk_protocol_;
 
     bool useBeiDou,useGPS;
+    bool isPositioned;
+
 
 public:
     GNSS();

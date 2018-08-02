@@ -1,6 +1,6 @@
 #include "GNSS.h"
 
-GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1){
+GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),isPositioned(false){
     xyz<<0,0,0;
     svsManager.gnss = this;
     serialDataManager.gnss = this;
@@ -45,11 +45,11 @@ int GNSS::StopGNSS() {
         rtkManager.sock_ = 0;
         rtkManager.stopRTK = true;
         serialDataManager.stopCapture = true;
-        if (thread2_ > 0) {
+        if (thread2_ > 0) {//(void*)0
             pthread_join(thread2_, nullptr);
         }
         thread2_ = 0;
-        if (thread1_ > 0) {
+        if (thread1_ > 0) {//(void*)0
             pthread_join(thread1_, nullptr);
         }
         thread1_ = 0;
@@ -69,8 +69,8 @@ int GNSS::ParseRawData(char *message, int len) {
     PosSolver *solver = new PosSolver(svsManager, &rtkManager, this);
     memcpy(solver->raw, message, len);
 
-//    solver->CalcuPosition();
-    pthread_create(&threadPos, nullptr, PositionThread, solver);
+    solver->CalcuPosition();
+//    pthread_create(&threadPos, nullptr, PositionThread, solver);
 
     return 1;
 }

@@ -2,7 +2,10 @@
 #include "GNSS.h"
 
 PosSolver::PosSolver(SVs svs, NtripRTK *rtk, GNSS *gnss): svs(svs),rtk(rtk),gnss(gnss){
+    gnss->xyzOld = gnss->xyz;
+    gnss->LLAOld = gnss->LLA;
     xyz = gnss->xyz;
+    LLA = gnss->LLA;
     tu = gnss->tu;
     tuBeiDou = gnss->tuBeiDou;
     tuGps = gnss->tuGps;
@@ -88,6 +91,10 @@ int PosSolver::SolvePosition() {
         SV *sv= SvsForCalcu[i];
         sv->CalcuECEF(rcvtow);
         //todo: calcu I,T,dtu
+        cout<<"++IT-LLA\n"<<gnss->LLA*180/GPS_PI<<endl;
+        if(gnss->isPositioned)
+            sv->CorrectIT(xyz,LLA,rcvtow);
+        printf("II = %lf,TT = %lf\n",sv->I,sv->T);
         double pci = sv->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
         pc(i) = pci;
 //        sv->PrintInfo(1);
@@ -140,13 +147,15 @@ int PosSolver::SolvePosition() {
 
     }
     double PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
-
     XYZ2LLA(xyz.head(3),LLA);
+    gnss->isPositioned = true;
+    gnss->xyz = xyz;
+    gnss->LLA = LLA;
     cout<<"++++++++++++rxyzt\n"<<xyz<<endl;
-    cout<<"++++++++++++LLA\n"<<LLA<<endl;
+    cout<<"++++++++++++LLA\n"<<LLA*180/GPS_PI<<endl;
+
     printf("PDOP = %lf\n",PDOP);
     return true;
-
 }
 
 int PosSolver::SolvePositionBeiDouGPS(){
@@ -162,6 +171,8 @@ int PosSolver::SolvePositionBeiDouGPS(){
         SV *sv= SvsForCalcu[i];
         sv->CalcuECEF(rcvtow);
         //todo: calcu I,T,dtu
+        if(gnss->isPositioned)sv->CorrectIT(xyz,LLA,rcvtow);
+        printf("II = %lf,TT = %lf\n",sv->I,sv->T);
         double pci = sv->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
         pc(i) = pci;
 //        sv->PrintInfo(1);
@@ -214,12 +225,13 @@ int PosSolver::SolvePositionBeiDouGPS(){
 //        XYZ2LLA(xyz,LLA);
 //        cout<<"++++++++++++LLA\n"<<LLA<<endl;
         if(numCalcu>30)return false;
-
     }
-
     XYZ2LLA(xyz,LLA);
+    gnss->isPositioned = true;
+    gnss->xyz = xyz;
+    gnss->LLA = LLA;
     cout<<"++++++++++++rxyzt\n"<<xyz<<endl;
-    cout<<"++++++++++++LLA\n"<<LLA<<endl;
+    cout<<"++++++++++++LLA\n"<<LLA*180/GPS_PI<<endl;
     return true;
 }
 
@@ -252,8 +264,8 @@ int PosSolver::XYZ2LLA(Vector3d XYZ, Vector3d &LLA) {
         lati = atan(z/(r*(1-Earth_ee*N/(N+h))));
     }
     //output Longtitude Latitude High  SS[8] 转换矩阵
-    LLA(0) = atan2(y,x)*180/GPS_PI;
-    LLA(1) = lati*180/GPS_PI;
+    LLA(0) = atan2(y,x);
+    LLA(1) = lati;
     LLA(2) = h;
 
     //给转换矩阵赋值

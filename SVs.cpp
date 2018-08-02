@@ -360,3 +360,70 @@ SV::SignalData* BeiDouSV::SignalTable(int index) {
             return &B1_2I;
     }
 }
+
+int SV::CalcuelEvationAzimuth(Vector3d receiverPosition, Vector3d LLA) {
+    double x = receiverPosition(0);
+    double y = receiverPosition(1);
+    double z = receiverPosition(2);
+    double r = sqrt(x*x+y*y);
+    double sinB = y/r;
+    double cosB = x/r;
+    double sinA = sin(LLA(1));
+    double cosA = cos(LLA(1));
+    Matrix<double ,3,3>SS;
+    SS<<-sinB,cosB,0,-sinA*cosB,-sinA*sinB,cosA,cosA*cosB,cosA*sinB,sinA;
+
+    Vector3d dtxyz = position - receiverPosition;
+    Vector3d dtenu = SS * dtxyz;
+    elevationAngle = asin(dtenu(2)/dtenu.norm());
+    azimuthAngle = atan(dtenu(0)/dtenu(1));
+}
+
+int SV::CalcuInoshphere(double elev, double azim,Vector3d LLA,double time) {
+    double F,t,Psi,Phi_i,Phi_m,Lambda,Tiono,PER,AMP,x;
+
+    x = (0.53-elev/GPS_PI);
+    F = 1.0 + 16.0*x*x*x;//方向因子
+    Tiono = 5.0e-9*F;
+
+    Psi = 0.0137/(elev/GPS_PI+0.11)-0.022;
+    Phi_i = LLA(1)/GPS_PI + Psi*cos(azim);
+    if(Phi_i>0.416)
+        Phi_i = 0.416;
+    else
+        Phi_i = -0.416;
+    Lambda = LLA(1)/GPS_PI + Psi*sin(azim)/cos(Phi_i*GPS_PI);
+    Phi_m = Phi_i + 0.416*cos((Lambda-1.617)*GPS_PI);
+    t = 4.32e4*Lambda + time;//接收机时间不准也没问题
+    while (t>86400)t-=86400;
+    if(t<0)
+        t+=86400.0;
+    PER = ino.b0 + Phi_m * (ino.b1 + Phi_m * ( ino.b2 + Phi_m * ino.b3));
+    if(PER<72000.0)
+        PER = 72000.0;
+    t = 2.0*GPS_PI*(t-50400.0)/PER;
+    AMP = ino.a0 + Phi_m * (ino.a1 + Phi_m * ( ino.a2 + Phi_m * ino.a3));
+    if(AMP<0.0)
+        AMP = 0.0;
+    if(t>-1.57 &&t<1.57)
+        Tiono += F*AMP*(1-t*t*(0.5-t*t/24.0));
+    if(Tiono>30.0/Light_speed)
+        Tiono = 30.0/Light_speed;
+    else
+        Tiono = 0;
+    I = Tiono*Light_speed;
+}
+
+int SV::CalcuTroposhphere(double elev, double azim) {
+    if(elev<0.1116)
+        T=20;
+    else
+        T=2.47/(sin(elev)+0.0121);
+    return 0;
+}
+
+int SV::CorrectIT(Vector3d receiverPosition, Vector3d LLA,double time) {
+    CalcuelEvationAzimuth(receiverPosition,LLA);
+    CalcuTroposhphere(elevationAngle,azimuthAngle);
+    CalcuInoshphere(elevationAngle,azimuthAngle,LLA,time);
+}
