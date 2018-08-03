@@ -29,10 +29,9 @@ set(SOURCE_FILES
         PosSolver.cpp
         SerialData.cpp
         GNSS.cpp
-#        test.cpp
         )
 add_executable(GPS  main.cpp ${SOURCE_FILES})
-add_executable(test test.cpp ${SOURCE_FILES} )
+add_executable(testrtk testrtk.cpp ${SOURCE_FILES} )
 #target_link_libraries( GPS ${OpenCV_LIBS} )
 target_link_libraries( GPS  ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 

@@ -70,6 +70,7 @@ int GNSS::ParseRawData(char *message, int len) {
     memcpy(solver->raw, message, len);
 
     solver->CalcuPosition();
+    //todo:多线程算电离层会出错
 //    pthread_create(&threadPos, nullptr, PositionThread, solver);
 
     return 1;
