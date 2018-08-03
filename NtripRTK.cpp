@@ -75,7 +75,7 @@ void NtripRTK::RecvThread() {
 //            if(sp_->write_some(boost::asio::buffer(bufferRecv, recvLength)) != recvLength) {
 //                printf("failed to write data to serial port\n");
 //            }
-            //todo:paraseRTK;
+            //paraseRTK;
 //            fwrite(bufferRecv, recvLength, 1, fp);
             for(int i = 0;i<recvLength;i++){
                 if(0xd3==(u_char)bufferRecv[i]&&0==(bufferRecv[i+1]>>2)){
@@ -137,7 +137,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
 
     vector<double*> df397,df398;
     vector<SV::SignalData*>sigData;
-    nSat = 0, nSig = 0;
+    nSat = 0, nSig = 0, nCell = 0;
     //sats里面是卫星编号，对应手册
     vector<int> sats,sigs;
 
@@ -188,7 +188,8 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
                 int m = sats[isat];
                 int n = sigs[isig];
                 printf("m,n=%d,%d\n",m,n);
-                sigData.push_back(gnss->svsManager.svGpss[m].SignalTable(n));
+                SV * abc = (SV*)(((char*)svHead)+m* sizeof(GpsSV));
+                sigData.push_back(abc->SignalTable(n));
 //                sigData.push_back((svHead+m)->SignalTable(n));
 //                sigData.push_back(svHead[m].SignalTable(n));
             }
@@ -199,6 +200,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
     //parase Sat data
     for(int n = 0;n<nSat;n++){
         *(df397[n]) = double(NetToHost32(b,i,8));
+        printf("df397=%lf\n",*(df397[n]));
         b++;
     }
     for(int n = 0;n<nSat;n++){
@@ -207,6 +209,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
             b++;
         }
         *(df398[n]) = double(NetToHost32(b,i,10));
+        printf("df398=%lf\n",*(df398[n]));
         b++;
         i+=2;
     }
@@ -217,6 +220,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
             b++;
         }
         sigData[n]->df400 = double(NetToHost32(b,i,15));
+        printf("df400=%d\n",sigData[n]->df400);
         b++;
         i+=7;
     }
@@ -226,6 +230,8 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
             b++;
         }
         sigData[n]->df401 = double(NetToHost32(b,i,22));
+        printf("df401=%d\n",sigData[n]->df401);
+
         b+=2;
         i+=6;
     }
@@ -235,6 +241,8 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
             b++;
         }
         sigData[n]->df402 = NetToHost32(b,i,4);
+        printf("df402=%d\n",sigData[n]->df402);
+
         i+=4;
     }
     for(int n = 0; n< nCell; n++){
@@ -251,6 +259,8 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
             b++;
         }
         sigData[n]->df403 = NetToHost32(b,i,6);
+        printf("df403=%d\n",sigData[n]->df403);
+
         i+=6;
     }
 }
@@ -265,8 +275,6 @@ uint32_t NtripRTK::NetToHost32(char *begin, int head, int length) {
     data[3] = begin[0];
     return  *(uint32_t*)data<<head>>(32-length);
 }
-
-//todo:test 1005
 
 int NtripRTK::ParaseRtk32_1005(char *buffer) {
     refStationId = NetToHost32(buffer,12,12);

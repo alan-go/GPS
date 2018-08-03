@@ -37,4 +37,4 @@ target_link_libraries( GPS  ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
 #target_link_libraries(GPS )
 
-target_link_libraries(test ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(testrtk ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
