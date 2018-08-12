@@ -91,12 +91,12 @@ void NtripRTK::RecvThread() {
                                 ParaseRtk32_1005(buferRTK);
                                 break;
                             case 1074:
-                                ParaseMSM4(buferRTK,(gnss->svsManager.svGpss));
+//                                ParaseMSM4(buferRTK,(gnss->svsManager.svGpss));
                                 break;
                             case 1084:
                                 break;
                             case 1124:
-                                ParaseMSM4(buferRTK,gnss->svsManager.svBeiDous);
+//                                ParaseMSM4(buferRTK,gnss->svsManager.svBeiDous);
                                 break;
                             default:
                                 break;
@@ -124,7 +124,7 @@ int NtripRTK::SentGGA(const char *bufferGGA, int length) {
 void NtripRTK::UpdateGGA() {}
 
 
-int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
+int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
     //first Parase MSM message Header:
     uint32_t RefID = NetToHost32(bufferRTK,12,12);
     uint32_t rtkTime = NetToHost32(bufferRTK+3,0,30);
@@ -156,8 +156,8 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
             sats.push_back(id);
             nSat++;
             printf("Sat:%d\n",id+1);
-            df397.push_back(&(svHead[id].df397));
-            df398.push_back(&(svHead[id].df398));
+            df397.push_back(&(gnss->svsManager.SatTable(type,id)->df397));
+            df398.push_back(&(gnss->svsManager.SatTable(type,id)->df398));
         }
     }
     //signal
@@ -188,10 +188,8 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
                 int m = sats[isat];
                 int n = sigs[isig];
                 printf("m,n=%d,%d\n",m,n);
-                SV * abc = (SV*)(((char*)svHead)+m* sizeof(GpsSV));
-                sigData.push_back(abc->SignalTable(n));
-//                sigData.push_back((svHead+m)->SignalTable(n));
-//                sigData.push_back(svHead[m].SignalTable(n));
+                SV * temp = gnss->svsManager.SatTable(type,m);
+                sigData.push_back(temp->SignalTable(n));
             }
             i++;
         }
@@ -220,7 +218,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
             b++;
         }
         sigData[n]->df400 = double(NetToHost32(b,i,15));
-        printf("df400=%d\n",sigData[n]->df400);
+        printf("df400=%lf\n",sigData[n]->df400);
         b++;
         i+=7;
     }
@@ -230,7 +228,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
             b++;
         }
         sigData[n]->df401 = double(NetToHost32(b,i,22));
-        printf("df401=%d\n",sigData[n]->df401);
+        printf("df401=%lf\n",sigData[n]->df401);
 
         b+=2;
         i+=6;
@@ -263,6 +261,23 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV *svHead) {
 
         i+=6;
     }
+
+//    GNSS * g2 = gnss;
+//    printf("df400=%lf\n",g2->svsManager.svGpss[11].L1_1C.df400);
+//    printf("df400=%lf\n",gnss->svsManager.svGpss[12].L1_1C.df400);
+//    printf("df400=%lf\n",g2->svsManager.svGpss[13].L1_1C.df400);
+//    printf("df400=%lf\n",g2->svsManager.svGpss[14].L1_1C.df400);
+//    printf("df397=%lf\n",g2->svsManager.svGpss[11].df397);
+//    printf("df397=%lf\n",g2->svsManager.svGpss[13].df397);
+//    for(int i=0;i<nSat;i++) {
+//        int ind = sats[i];
+//        printf("ind = %d\n",ind);
+//        SV *temp1 = gnss->svsManager.SatTable(SV::GPS, ind);
+//        double pp = temp1->df397 + temp1->df398 / 1024;
+//        double c1 = pp + (temp1->SignalTable(2)->df400) * pow(2,-24);
+//        double l1 = pp + temp1->SignalTable(2)->df401 / 1024 / 1024 / 512;
+//        printf("c1=%lf,l1=%lf\n", pp * Light_speed, l1 * Light_speed);
+//    }
 }
 
 
@@ -322,12 +337,12 @@ int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
                         ParaseRtk32_1005(buferRTK);
                         break;
                     case 1074:
-                        ParaseMSM4(buferRTK,gnss->svsManager.svGpss);
+                        ParaseMSM4(buferRTK, SV::GPS);
                         break;
                     case 1084:
                         break;
                     case 1124:
-                        ParaseMSM4(buferRTK,gnss->svsManager.svBeiDous);
+                        ParaseMSM4(buferRTK, SV::BeiDou);
                         break;
                     default:
                         break;

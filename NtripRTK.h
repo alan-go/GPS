@@ -39,7 +39,7 @@ public:
 
     void UpdateGGA();
     int SentGGA(const char *bufferGGA, int length);
-    int ParaseMSM4(char *bufferRTK, SV *svHead);
+    int ParaseMSM4(char *bufferRTK, SV::SvType type);
     bool NtripLogin(const std::string &rtk_protocol);
     void RecvThread();
     int TestParase(char *bufferRecv,int recvLength);

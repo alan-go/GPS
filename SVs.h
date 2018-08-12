@@ -83,7 +83,7 @@ public:
     int CorrectIT(Vector3d receiverPosition, Vector3d LLA,double time);
     void PrintInfo(int printType);
 //    virtual int DecodeSubFrame(uint32_t* dwrds) = 0;
-    virtual SignalData* SignalTable(int index)=0;
+    virtual SignalData* SignalTable(int index) = 0;
 
     //head 指32bit()中的头bit（范围：1-32）
     inline uint32_t Read1Word(uint32_t word, int length, int head, bool isInt = false);
@@ -130,7 +130,7 @@ public:
 //    SVs(GNSS* gnss);
     ~SVs();
     void UpdateEphemeris(char * subFrame);
-
+    SV* SatTable(SV::SvType type,int ind);
 private:
 };
 

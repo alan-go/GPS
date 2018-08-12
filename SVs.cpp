@@ -427,3 +427,16 @@ int SV::CorrectIT(Vector3d receiverPosition, Vector3d LLA,double time) {
     CalcuTroposhphere(elevationAngle,azimuthAngle);
     CalcuInoshphere(elevationAngle,azimuthAngle,LLA,time);
 }
+
+SV* SVs::SatTable(SV::SvType type, int ind) {
+    switch (type){
+        case SV::GPS:
+            return &(svGpss[ind]);
+            break;
+        case SV::BeiDou:
+            return &(svBeiDous[ind]);
+            break;
+        default:
+            break;
+    }
+}
