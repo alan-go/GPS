@@ -19,16 +19,22 @@
 #include "SerialData.h"
 
 class GNSS{
+    struct PosRcd{
+        double rcvtow;
+        Eigen::Vector3d xyz,lla;
+        PosRcd(double tow,Vector3d xyz, Vector3d lla):rcvtow(tow),xyz(xyz),lla(lla){}
+    };
 public:
-    Eigen::Vector3d xyz, xyzOld;
-    Eigen::Vector3d LLA, LLAOld;
+//    Eigen::Vector3d xyz, xyzOld;
+//    Eigen::Vector3d LLA, LLAOld;
+    vector<PosRcd> records;
     double tu, tuBeiDou, tuGps;
     SVs svsManager;
     SerialData serialDataManager;
     NtripRTK rtkManager;
     std::string serialPort_, rtk_protocol_;
 
-    bool useBeiDou,useGPS;
+    bool useBeiDou,useGPS,useQianXun;
     bool isPositioned;
 
 
@@ -44,6 +50,8 @@ public:
     int StopGNSS();
 
     int ParseRawData(char * message, int len);
+
+    int AddPosRecord(PosRcd record);
 
 private:
     pthread_t thread1_, thread2_, threadPos;

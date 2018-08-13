@@ -2,10 +2,10 @@
 #include "GNSS.h"
 
 PosSolver::PosSolver(SVs svs, NtripRTK *rtk, GNSS *gnss): svs(svs),rtk(rtk),gnss(gnss){
-    gnss->xyzOld = gnss->xyz;
-    gnss->LLAOld = gnss->LLA;
-    xyz = gnss->xyz;
-    LLA = gnss->LLA;
+    if(gnss->isPositioned){
+        xyz = gnss->records[0].xyz;
+        LLA = gnss->records[0].lla;
+    }
     tu = gnss->tu;
     tuBeiDou = gnss->tuBeiDou;
     tuGps = gnss->tuGps;
@@ -13,14 +13,14 @@ PosSolver::PosSolver(SVs svs, NtripRTK *rtk, GNSS *gnss): svs(svs),rtk(rtk),gnss
 
 PosSolver::~PosSolver(){}
 
-int PosSolver::CalcuPosition() {
+int PosSolver::PositionSingle() {
 
     PrepareData(svs, raw);
     int countBeiDou = 0, countGPS = 0;
     for(int i=0;i<numMeas;i++)
     {
         SV *svTemp = visibleSvs[i];
-        printf("svsfor visiable:%d,%02d:%d,%d,%d.health:%d\n",
+        printf("svs visiable:%d,%02d:%d,%d,%d.health:%d\n",
                svTemp->type,svTemp->svId,svTemp->page1OK,svTemp->page2OK,svTemp->page3OK,svTemp->SatH1);
         if(svTemp->JudgeUsable(gnss->useBeiDou,gnss->useGPS)){
             SvsForCalcu.push_back(svTemp);
@@ -149,6 +149,7 @@ int PosSolver::SolvePosition() {
     double PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
     XYZ2LLA(xyz.head(3),LLA);
     gnss->isPositioned = true;
+    gnss->AddPosRecord(GNSS::P)
     gnss->xyz = xyz;
     gnss->LLA = LLA;
     cout<<"++++++++++++rxyzt\n"<<xyz<<endl;
@@ -297,4 +298,8 @@ int PosSolver::TroposphereCorrect() {
 
 int PosSolver::SolvePositionCalman() {
 
+}
+
+int PosSolver::PositionRtk() {
+    //插值
 }

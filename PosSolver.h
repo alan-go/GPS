@@ -19,7 +19,8 @@ public:
 public:
     PosSolver(SVs svs, NtripRTK *rtk, GNSS *gnss);
     ~PosSolver();
-    int CalcuPosition();
+    int PositionSingle();
+    int PositionRtk();
     static int XYZ2LLA(Vector3d XYZ,Vector3d &LLA);
 
 private:

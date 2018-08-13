@@ -1,6 +1,6 @@
 #include "GNSS.h"
 
-GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),isPositioned(false){
+GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(0),isPositioned(false){
     xyz<<0,0,0;
     svsManager.gnss = this;
     serialDataManager.gnss = this;
@@ -28,7 +28,8 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
 
     pthread_create(&thread2_, nullptr, ThreadAdapterQianXun, &rtkManager);
     sleep(2);
-    pthread_create(&thread1_, nullptr, ThreadAdapterGNSS, &serialDataManager);
+    //todo : for temmp
+//    pthread_create(&thread1_, nullptr, ThreadAdapterGNSS, &serialDataManager);
     sleep(2);
     return 1;
 }
@@ -68,8 +69,11 @@ int GNSS::StopGNSS() {
 int GNSS::ParseRawData(char *message, int len) {
     PosSolver *solver = new PosSolver(svsManager, &rtkManager, this);
     memcpy(solver->raw, message, len);
-
-    solver->CalcuPosition();
+    if(useQianXun&&isPositioned){
+        solver->PositionRtk();
+    } else{
+        solver->PositionSingle();
+    }
     //todo:多线程算电离层会出错
 //    pthread_create(&threadPos, nullptr, PositionThread, solver);
 
@@ -90,5 +94,9 @@ void* GNSS::ThreadAdapterQianXun(void *__rtk) {
 
 void* GNSS::PositionThread(void *__pos) {
     auto _pos = ( PosSolver* ) __pos;
-    _pos->CalcuPosition();
+    _pos->PositionSingle();
+}
+
+int GNSS::AddPosRecord(GNSS::PosRcd record) {
+    records.insert(records.begin(),record);
 }

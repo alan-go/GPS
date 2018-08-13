@@ -9,6 +9,20 @@ using namespace Eigen;
 
 
 int main(){
+    vector<int> vi ;
+    vi.insert(vi.begin(),30);
+    vi.insert(vi.begin(),20);
+    vi.push_back(1);
+    vi.push_back(2);
+    vi.push_back(3);
+    printf("size = %d",vi.size());
+    vi.erase(vi.begin());
+    printf("size = %d",vi.size());
+    printf("vi 1 = %d",vi[0]);
+
+    vi.insert(vi.begin(),30);
+    vi.insert(vi.begin(),20);
+
     printf("\nin testing\n");
     GNSS gnss;
 
@@ -44,12 +58,25 @@ int main(){
     memcpy(msm1074,ttt,256);
 
 
-    gnss.rtkManager.TestParase(msm1074,256);
+//    gnss.rtkManager.TestParase(msm1074,256);
+//
+//    gnss.rtkManager.TestParase(aaa,30);
+//    cout<<"ECEF = "<<gnss.rtkManager.ECEF_XYZ<<endl;
+//    printf("Y = %lf\n",gnss.rtkManager.ECEF_XYZ(1));
 
+    string serialPort = "/dev/ttyUSB0";
+    gnss.StartGNSS(serialPort,115200);
+    if('x'==getchar()){
+        cout<<"stop capture."<<endl;
+            gnss.StopGNSS();
+    }
 
-    gnss.rtkManager.TestParase(aaa,30);
-    cout<<"ECEF = "<<gnss.rtkManager.ECEF_XYZ<<endl;
-    printf("Y = %lf\n",gnss.rtkManager.ECEF_XYZ(1));
+    char gga[512] = "$GNGGA,133409.00,3958.76249,N,11620.33816,E,1,08,0.80,57.0,M,-8.7,M,,*6C\r\n";
+
+//    char commad;
+//    while ('x'!=getchar()){
+//        gnss.rtkManager.SentGGA(gga,strlen(gga));
+//    }
 
 
     return 0;
