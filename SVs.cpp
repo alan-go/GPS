@@ -121,10 +121,12 @@ bool SV::CalcuECEF(double rcvtow) {
     } else {
         position = transfer*Vector2d(xk,yk);
     }
-//NO TGD here.
-    double dtRelativity = -2*sqrt(M_miu)/(Light_speed*Light_speed)*orbit.sqrtA*sin(Ek);
+//TGD and relativity fix.
+    double dtRelativity = -2*sqrt(M_miu)/(Light_speed*Light_speed)*Earth_ee*orbit.sqrtA*sin(Ek);
 //    printf("dtRelativity=%.10f\n",dtRelativity);
     tsDelta += dtRelativity;
+    tsDelta -= TGD1;
+    tsReal-=tsDelta;
 }
 
 void SVs::UpdateEphemeris(char *subFrame) {
@@ -194,7 +196,7 @@ int GpsSV::DecodeSubFrame(uint32_t *dwrds) {
             SatH1 = Read1Word(dwrds[2],6,18);
             IODC = Read2Word(dwrds[3],2,24,dwrds[7],8,2);
             PCodeState = Read1Word(dwrds[3],1,2);
-            TGD = (int32_t)Read1Word(dwrds[6],8,18,true)*pow(2,-31);
+            TGD1 = (int32_t)Read1Word(dwrds[6],8,18,true)*pow(2,-31);
             toc = Read1Word(dwrds[7],16,10)*pow(2,4);
             a2 = (int32_t)Read1Word(dwrds[8],8,2,true)*pow(2,-55);
             a1 = (int32_t)Read1Word(dwrds[8],16,10,true)*pow(2,-43);
@@ -380,38 +382,62 @@ int SV::CalcuelEvationAzimuth(Vector3d receiverPosition, Vector3d LLA) {
 }
 
 int SV::CalcuInoshphere(double elev, double azim,Vector3d LLA,double time) {
-    double F,t,Psi,Phi_i,Phi_m,Lambda,Tiono,PER,AMP,x;
+//    double F,t,Psi,Phi_i,Phi_m,Lambda,Tiono,PER,AMP,x;
+//
+//    x = (0.53-elev/GPS_PI);
+//    F = 1.0 + 16.0*x*x*x;//方向因子
+//    Tiono = 5.0e-9*F;
+//
+//    Psi = 0.0137/(elev/GPS_PI+0.11)-0.022;
+//    Phi_i = LLA(1)/GPS_PI + Psi*cos(azim);
+//    if(Phi_i>0.416)
+//        Phi_i = 0.416;
+//    else
+//        Phi_i = -0.416;
+//    Lambda = LLA(1)/GPS_PI + Psi*sin(azim)/cos(Phi_i*GPS_PI);
+//    Phi_m = Phi_i + 0.416*cos((Lambda-1.617)*GPS_PI);
+//    t = 4.32e4*Lambda + time;//接收机时间不准也没问题
+//    while (t>86400)t-=86400;
+//    if(t<0)
+//        t+=86400.0;
+//    PER = ino.b0 + Phi_m * (ino.b1 + Phi_m * ( ino.b2 + Phi_m * ino.b3));
+//    if(PER<72000.0)
+//        PER = 72000.0;
+//    t = 2.0*GPS_PI*(t-50400.0)/PER;
+//    AMP = ino.a0 + Phi_m * (ino.a1 + Phi_m * ( ino.a2 + Phi_m * ino.a3));
+//    if(AMP<0.0)
+//        AMP = 0.0;
+//    if(t>-1.57 && t<1.57)
+//        Tiono += F*AMP*(1-t*t*(0.5-t*t/24.0));
+//    if(Tiono>30.0/Light_speed)
+//        Tiono = 30.0/Light_speed;
+//    else
+//        Tiono = 0;
+//    I = Tiono*Light_speed;
 
-    x = (0.53-elev/GPS_PI);
-    F = 1.0 + 16.0*x*x*x;//方向因子
-    Tiono = 5.0e-9*F;
+    double temp = Earth_a/(Earth_a+375000);
+    double phy = GPS_PI/2 - elev - asin(temp*cos(elev));
+    double phyM = asin(sin(LLA(1))*cos(phy) + cos(LLA(0))*sin(phy)*cos(azim));
+    double lambdaM = LLA(0)+asin(sin(phy)*sin(azim)/cos(phyM));
+    double t = time + lambdaM*43200/GPS_PI;
+    t = fmod(t,86400);
+    if(t<0)t+=86400;
 
-    Psi = 0.0137/(elev/GPS_PI+0.11)-0.022;
-    Phi_i = LLA(1)/GPS_PI + Psi*cos(azim);
-    if(Phi_i>0.416)
-        Phi_i = 0.416;
-    else
-        Phi_i = -0.416;
-    Lambda = LLA(1)/GPS_PI + Psi*sin(azim)/cos(Phi_i*GPS_PI);
-    Phi_m = Phi_i + 0.416*cos((Lambda-1.617)*GPS_PI);
-    t = 4.32e4*Lambda + time;//接收机时间不准也没问题
-    while (t>86400)t-=86400;
-    if(t<0)
-        t+=86400.0;
-    PER = ino.b0 + Phi_m * (ino.b1 + Phi_m * ( ino.b2 + Phi_m * ino.b3));
-    if(PER<72000.0)
-        PER = 72000.0;
-    t = 2.0*GPS_PI*(t-50400.0)/PER;
-    AMP = ino.a0 + Phi_m * (ino.a1 + Phi_m * ( ino.a2 + Phi_m * ino.a3));
-    if(AMP<0.0)
-        AMP = 0.0;
-    if(t>-1.57 &&t<1.57)
-        Tiono += F*AMP*(1-t*t*(0.5-t*t/24.0));
-    if(Tiono>30.0/Light_speed)
-        Tiono = 30.0/Light_speed;
-    else
-        Tiono = 0;
-    I = Tiono*Light_speed;
+    double phyMpi = phyM/GPS_PI;
+    double A2 = ino.a0 + phyMpi * (ino.a1 + phyMpi * (ino.a2 + phyMpi * ino.a3));
+    if(A2<0)A2 = 0;
+    double A4 = ino.b0 + phyMpi * (ino.b1 + phyMpi * (ino.b2 + phyMpi * ino.b3));
+    if(A4<72000)A4 = 72000;
+    if(A4>172800)A4 = 172800;
+
+    double Iz_ = 5e-9;
+    if(abs(t - 50400) < A4/4)
+        Iz_ += A2*cos(2*GPS_PI*(t-50400)/A4);
+
+    I = Iz_ / sqrt(1 - temp*temp);
+    I *= Light_speed;
+
+    return 0;
 }
 
 int SV::CalcuTroposhphere(double elev, double azim) {
@@ -424,6 +450,7 @@ int SV::CalcuTroposhphere(double elev, double azim) {
 
 int SV::CorrectIT(Vector3d receiverPosition, Vector3d LLA,double time) {
     CalcuelEvationAzimuth(receiverPosition,LLA);
+    printf("elevation = %lf, azim = %lf\n",elevationAngle,azimuthAngle);
     CalcuTroposhphere(elevationAngle,azimuthAngle);
     CalcuInoshphere(elevationAngle,azimuthAngle,LLA,time);
 }

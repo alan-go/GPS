@@ -60,7 +60,7 @@ public:
     uint32_t AODC;//BeiDou
     uint32_t IODC;//GPS
     double toc,a0,a1,a2,a3;
-    double TGD,TGD1,TGD2;
+    double TGD1,TGD2;
     Orbit orbit;
     double prMes, cpMes, doMes;
     double I,T;

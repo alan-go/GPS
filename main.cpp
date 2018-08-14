@@ -42,13 +42,14 @@ void *LogData(void *fileName){
 
 int main()
 {
+
     GNSS *gnss = new GNSS();
 //    gnss->useGPS = false;
-//    gnss->useBeiDou = false;
+    gnss->useBeiDou = false;
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-    char command = getchar();
-//    char command = 'd';
+//    char command = getchar();
+    char command = 'd';
     if('l'==command){
         printf("\nfile name : ");
         char name[64];
@@ -71,7 +72,7 @@ int main()
         ifstream inF;
         char name[128],dat[128];
         printf("open file name:");
-        string ss = "0802-1";
+        string ss = "../data/0802-1";
 //        scanf("%s",name);
         inF.open(ss, std::ifstream::binary);
         while (!inF.eof()){

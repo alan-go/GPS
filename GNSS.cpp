@@ -1,7 +1,6 @@
 #include "GNSS.h"
 
 GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(0),isPositioned(false){
-    xyz<<0,0,0;
     svsManager.gnss = this;
     serialDataManager.gnss = this;
     rtkManager.gnss = this;

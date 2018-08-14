@@ -91,9 +91,10 @@ int PosSolver::SolvePosition() {
         SV *sv= SvsForCalcu[i];
         sv->CalcuECEF(rcvtow);
         //todo: calcu I,T,dtu
-        cout<<"++IT-LLA\n"<<gnss->LLA*180/GPS_PI<<endl;
-        if(gnss->isPositioned)
+        if(gnss->isPositioned){
+//            cout<<"++IT-LLA\n"<<gnss->records[0].lla*180/GPS_PI<<endl;
             sv->CorrectIT(xyz,LLA,rcvtow);
+        }
         printf("II = %lf,TT = %lf\n",sv->I,sv->T);
         double pci = sv->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
         pc(i) = pci;
@@ -113,6 +114,8 @@ int PosSolver::SolvePosition() {
             double r = (sv->position-xyz).norm();
             //自转修正,这个我需要考虑一下是不是在这里处理
             double omegat = r/Light_speed*Omega_e;
+//            printf("r=%lf,omegat = %lf\n",r,omegat);
+//            double omegat = 0;
             MatrixXd earthRotate(3,3);
             earthRotate<<cos(omegat),sin(omegat),0,-sin(omegat),cos(omegat),0,0,0,1;
             Vector3d svPositionEarthRotate = earthRotate*sv->position;
@@ -136,24 +139,25 @@ int PosSolver::SolvePosition() {
         dtxyzt = H*GT*b;
 
 //        cout<<"b = "<<b<<endl;
-//        cout<<"dt = "<<dtxyzt<<endl;
+        cout<<"dt = "<<dtxyzt<<endl;
         xyz += dtxyzt.head(3);
         tu+=dtxyzt(3);
 //        cout<<"++++++++++++xyzt\n"<<xyz<<endl;
 //        cout<<"xyzNorm\n"<<xyz.norm()<<endl;
 //        XYZ2LLA(xyz,LLA);
 //        cout<<"++++++++++++LLA\n"<<LLA<<endl;
+        printf("num = %d, norm = %lf\n",numCalcu,dtxyzt.norm());
         if(numCalcu>30)return false;
 
     }
     double PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
-    XYZ2LLA(xyz.head(3),LLA);
+    XYZ2LLA(xyz,LLA);
     gnss->isPositioned = true;
-    gnss->AddPosRecord(GNSS::P)
-    gnss->xyz = xyz;
-    gnss->LLA = LLA;
-    cout<<"++++++++++++rxyzt\n"<<xyz<<endl;
-    cout<<"++++++++++++LLA\n"<<LLA*180/GPS_PI<<endl;
+    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
+    gnss->tu = tu;
+    cout<<"++++++++++++xyz\n"<<xyz<<endl;
+    printf("++++++++++++LLA\n%lf\n%lf\n%lf\n",LLA(0)*180/GPS_PI,LLA(1)*180/GPS_PI,LLA(2));
+//    cout<<"++++++++++++LLA\n"<<LLA*180/GPS_PI<<endl;
 
     printf("PDOP = %lf\n",PDOP);
     return true;
@@ -163,6 +167,7 @@ int PosSolver::SolvePositionBeiDouGPS(){
     int N = SvsForCalcu.size();
     printf("\nSolve Position GPS-BeiDou, N = %d\n",N);
     VectorXd dtxyzBG(5);
+    Matrix<double, 5,5> H;
     dtxyzBG<<1,1,1,1,1;
     MatrixXd pc(N,1);
     MatrixXd b(N,1);
@@ -187,7 +192,7 @@ int PosSolver::SolvePositionBeiDouGPS(){
         MatrixXd G(N,5);
         for(int i = 0;i< N;i++){
             SV *sv= SvsForCalcu[i];
-            cout<<"rxyz=\n"<<xyz<<endl;
+//            cout<<"rxyz=\n"<<xyz<<endl;
             double r = (sv->position-xyz).norm();
             //自转修正,这个我需要考虑一下是不是在这里处理
             double omegat = r/Light_speed*Omega_e;
@@ -203,21 +208,23 @@ int PosSolver::SolvePositionBeiDouGPS(){
 //            printf("r=%.10f\n",r);
 //            printf("r=%.10f\n",(sv->position-rxyz).norm());
 
-            b(i) = pc(i)-r-tuBeiDou-tuGps;  //这里的r需要考虑一下
             G(i,0) = (xyz(0)-svPositionEarthRotate(0))/r;  //x
             G(i,1) = (xyz(1)-svPositionEarthRotate(1))/r;  //y
             G(i,2) = (xyz(2)-svPositionEarthRotate(2))/r;  //z
             G(i,3) = (SV::BeiDou==sv->type)?1:0;
             G(i,4) = (SV::GPS==sv->type)?1:0;
+            b(i) = pc(i)-r-tuBeiDou*G(i,3)-tuGps*G(i,4);  //这里的r需要考虑一下
+
         }
         MatrixXd GT = G.transpose();
-        dtxyzBG = ((GT*G).inverse())*GT*b;
+        H = (GT*G).inverse();
+        dtxyzBG = H*GT*b;
 
 //        cout<<"G=\n"<<G<<endl;
 //        cout<<"GTG=\n"<<GT*G<<endl;
 //        cout<<"GTGi=\n"<<(GT*G).inverse()<<endl;
 //        cout<<"b = "<<b<<endl;
-//        cout<<"dt = "<<dtxyzBG<<endl;
+        cout<<"dt = "<<dtxyzBG<<endl;
         xyz += dtxyzBG.head(3);
         tuBeiDou+=dtxyzBG(3);
         tuGps+=dtxyzBG(4);
@@ -225,14 +232,18 @@ int PosSolver::SolvePositionBeiDouGPS(){
 //        cout<<"xyzNorm\n"<<xyz.norm()<<endl;
 //        XYZ2LLA(xyz,LLA);
 //        cout<<"++++++++++++LLA\n"<<LLA<<endl;
+        printf("num = %d, norm = %lf\n",numCalcu,dtxyzBG.norm());
         if(numCalcu>30)return false;
     }
     XYZ2LLA(xyz,LLA);
     gnss->isPositioned = true;
-    gnss->xyz = xyz;
-    gnss->LLA = LLA;
+    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
+    gnss->tuGps = tuGps;
+    gnss->tuBeiDou = tuBeiDou;
     cout<<"++++++++++++rxyzt\n"<<xyz<<endl;
     cout<<"++++++++++++LLA\n"<<LLA*180/GPS_PI<<endl;
+    double PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
+    printf("PDOP = %lf\n",PDOP);
     return true;
 }
 
@@ -257,12 +268,13 @@ int PosSolver::XYZ2LLA(Vector3d XYZ, Vector3d &LLA) {
     r = sqrt(x*x+y*y);
     h = 0;
     lati = 0;
-    for (i=0;i<6;i++){
+    for (i=0;i<5;i++){
         sinA = sin(lati);
         cosA = cos(lati);
         N = Earth_a / sqrt(1-sinA*sinA*Earth_ee);
         h = r/cosA - N;
         lati = atan(z/(r*(1-Earth_ee*N/(N+h))));
+//        printf("lati = %lf\n",lati);
     }
     //output Longtitude Latitude High  SS[8] 转换矩阵
     LLA(0) = atan2(y,x);
