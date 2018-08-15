@@ -45,7 +45,7 @@ int main()
 
     GNSS *gnss = new GNSS();
 //    gnss->useGPS = false;
-    gnss->useBeiDou = false;
+//    gnss->useBeiDou = false;
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
 //    char command = getchar();
