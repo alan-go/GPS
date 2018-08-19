@@ -1,9 +1,7 @@
 #include "SVs.h"
 
-SV::SV():SatH1(1){
-    page1OK = page2OK = page3OK = false;
-    I = T = 0;
-    isBeiDouGEO = false;
+SV::SV():SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0){
+    memset(bstEphemOK,0,10 * sizeof(int8_t));
 }
 SV::~SV(){}
 
@@ -29,16 +27,22 @@ SVs::~SVs(){}
 
 bool SV::JudgeUsable(bool useBeiDou, bool useGps) {
 //    printf("type=%d, useGps = %d, useBeidou= %d\n",type,useGps,useBeiDou);
+    int ephemeric = bstEphemOK[0]*bstEphemOK[1]*bstEphemOK[2];
     switch (type){
         case GPS:
             if(!useGps)return false;
             break;
         case BeiDou:
             if(!useBeiDou)return false;
+            if(isBeiDouGEO){
+                for(int i = 3;i<10;i++){
+                    ephemeric*=bstEphemOK[i];
+                }
+            }
             break;
     }
-//    if(!(pageOK&&SatH1))return false;
-    if(!pageOK)return false;
+//    if(!(bstEphemOk&&SatH1))return false;
+    if(!ephemeric)return false;
     if(SatH1)return false;
     return true;
 }
@@ -56,12 +60,30 @@ bool SV::CalcuTime(double rcvtow) {
 
 
 void SV::PrintInfo(int printType) {
-    if(1==printType){
-        cout<<"+++++++SvPosition:"<<type<<","<<svId<<endl;
-        cout<<position<<endl;
-        cout<<"norm="<<position.norm()<<endl;
-        cout<<"tsDelta"<<tsDelta<<"a0"<<a0<<endl;
-    }
+    //1:position and tsDelta
+    //2:bst ephemeris
+    switch (printType){
+        case 1:
+            cout<<"+++++++SvPosition:"<<type<<","<<svId<<endl;
+            cout<<position<<endl;
+            cout<<"norm="<<position.norm()<<endl;
+            printf("svLLA\n%lf\n%lf\n%lf\n",sLLA(0)*180/GPS_PI,sLLA(1)*180/GPS_PI,sLLA(2));
+
+            cout<<"tsDelta"<<tsDelta<<"a0"<<a0<<endl;
+            break;
+        case 2:
+            printf("\n%d,%d\n",type,svId);
+            printf("%d,\t%e,\t%e,\t%e,\t\n",SOW,a0,a1,a2);
+            printf("%e,\t%e,\t%e,\t%e,\t\n",orbit.IODE,orbit.Crs,orbit.dtn,orbit.M0);
+            printf("%e,\t%e,\t%e,\t%e,\t\n",orbit.Cuc,orbit.e,orbit.Cus,orbit.sqrtA);
+            printf("%e,\t%e,\t%e,\t%e,\t\n",orbit.toe,orbit.Cic,orbit.Omega0,orbit.Cis);
+            printf("%e,\t%e,\t%e,\t%e,\t\n",orbit.i0,orbit.Cis,orbit.omega,orbit.OmegaDot);
+            printf("%e,\t%e,\t%d,\t%e,\t\n",orbit.IDOT,0,WN,0);
+            printf("%e,\t%d,\t%e,\t%e,\t\n",0,SatH1,TGD1,IODC);
+            break;
+        default:
+            break;
+    };
 }
 
 bool SV::CalcuECEF(double rcvtow) {
@@ -106,13 +128,13 @@ bool SV::CalcuECEF(double rcvtow) {
     double ik = orbit.i0 + orbit.IDOT*tk + dtik;
     double xk = rk * cos(uk);
     double yk = rk * sin(uk);
-    double Omegak = orbit.Omega0 + (orbit.OmegaDot - (isBeiDouGEO?0:Omega_e)) * tk - Omega_e * orbit.toe;
+    double Omegak = orbit.Omega0 + (orbit.OmegaDot - (isBeiDouGEO?0:Omega_e))*tk - Omega_e*orbit.toe;
 //    cout<<"OmegaK="<<Omegak<<endl;
     MatrixXd transfer(3,2);
     transfer<<cos(Omegak),-cos(ik)*sin(Omegak),sin(Omegak),cos(ik)*cos(Omegak),0,sin(ik);
     if(isBeiDouGEO){
         Vector3d xyzGK = transfer*Vector2d(xk,yk);
-        double phyX = -5/180*M_PI;
+        double phyX = -5/180*GPS_PI;
         double phyZ = Omega_e * tk;
         Matrix3d Rz,Rx;
         Rx<<1,0,0,0,cos(phyX),sin(phyX),0,-sin(phyX),cos(phyX);
@@ -173,23 +195,34 @@ uint32_t SV::Read2Word(uint32_t word0, int length0, int head0,
     return  high|low;
 }
 
+uint32_t SV::Read3Word(uint32_t word0, int length0, int head0, uint32_t word1, int length1, int head1, uint32_t word2,
+                       int length2, int head2, bool isInt) {
+    uint32_t high,low;
+//    high = Read1Word(word0,length0,head0,isInt)<<length1<<length2;
+//    low = Read2Word(word1,length1,head1,word2,length2,head2, false);
+    high = Read2Word(word0,length0,head0,word1,length1,head1,isInt)<<length2;
+    low = word2<<head2>>(32-length2);
+    return  high|low;
+}
+
 int GpsSV::DecodeSubFrame(uint32_t *dwrds) {
-    printf(" Frame GPS  page:");
     int gpsFrameHead = Read1Word(dwrds[0],8,2);
     if(139!=gpsFrameHead){
         printf("GPS frame Head matching failed. head = %d\n",gpsFrameHead);
         return false;
     }
 //    sv->SatH1 = Read1Word(dwrds[1],1,19);
-    uint32_t SA = Read1Word(dwrds[1],1,20);
-    if(1==SA){
-        printf("This GPS Satellite is working on SA mode.\n");
+    uint32_t AS = Read1Word(dwrds[1],1,20);
+    if(1==AS){
+        printf("This GPS Satellite is working on A-S mode.\n");
     }
-    int page = Read1Word(dwrds[1],3,21);
+    int frame = Read1Word(dwrds[1],3,21);
+    bstEphemOK[frame-1] = 1;
+    printf(" Frame GPS  frame:%d",frame);
+
     uint32_t L2,PCodeState;
-    switch(page){
+    switch(frame){
         case 1:
-            page1OK = true;
             WN = Read1Word(dwrds[2],10,2);
             L2 = Read1Word(dwrds[2],2,12);
             URAI = Read1Word(dwrds[2],4,14);
@@ -203,7 +236,6 @@ int GpsSV::DecodeSubFrame(uint32_t *dwrds) {
             a0 = (int32_t)Read1Word(dwrds[9],22,2,true)*pow(2,-31);
             break;
         case 2:
-            page2OK = true;
             //todo:IODE judge?
             orbit.IODE = Read1Word(dwrds[2],8,2);
             orbit.Crs = (int32_t)Read1Word(dwrds[2],16,10,true)*pow(2,-5);
@@ -216,7 +248,6 @@ int GpsSV::DecodeSubFrame(uint32_t *dwrds) {
             orbit.toe = Read1Word(dwrds[9],16,2)*pow(2,4);
             break;
         case 3:
-            page3OK = true;
             //IODE
             orbit.IODE = Read1Word(dwrds[9],8,2);
             orbit.Cic = (int32_t)Read1Word(dwrds[2],16,2,true)*pow(2,-29);
@@ -231,22 +262,21 @@ int GpsSV::DecodeSubFrame(uint32_t *dwrds) {
         default:
             break;
     }
-    pageOK = page1OK && page2OK && page3OK;
     return 1;
 }
 
 int BeiDouSV::DecodeD1(uint32_t *dwrds) {
     if(1810!=Read1Word(dwrds[0],11,2))
         return false;
-    int page = Read1Word(dwrds[0],3,17);
+    int frame = Read1Word(dwrds[0],3,17);
+    bstEphemOK[frame-1] = 1;
     SOW = Read2Word(dwrds[0],8,20,dwrds[1],12,2);
-
-    printf(" Frame BeidouD1 svid:%d,page:,%d",svId,page);
-    switch (page){
+    printf(" Frame BeidouD1 svid:%d,frame:,%d\n",svId,frame);
+    switch (frame){
         case 1:
-            page1OK = true;
             SatH1 = Read1Word(dwrds[1],1,14);
             URAI = Read1Word(dwrds[1],4,20);
+            if(URAI)printf("\n\n\nUARI not ok = %d\n\n\n",URAI);
             WN = Read1Word(dwrds[2],13,2);
             ino.a0 = ((int32_t) Read1Word(dwrds[4],8,8,true))*pow(2,-30);
             ino.a1 = ((int32_t) Read1Word(dwrds[4],8,16,true))*pow(2,-27);
@@ -264,15 +294,13 @@ int BeiDouSV::DecodeD1(uint32_t *dwrds) {
             a1 = (int32_t)Read2Word(dwrds[8],5,19,dwrds[9],17,2,true)*pow(2,-50);
             a2 = (int32_t)Read1Word(dwrds[7],11,6,true)*pow(2,-66);
 
-            TGD1 = (int32_t)Read1Word(dwrds[3],10,10,true)*0.1;
-            TGD2 = (int32_t)Read2Word(dwrds[3],4,20,dwrds[4],6,2,true)*0.1;
+            TGD1 = (int32_t)Read1Word(dwrds[3],10,10,true)*1e-10;
+            TGD2 = (int32_t)Read2Word(dwrds[3],4,20,dwrds[4],6,2,true)*1e-10;
             orbit.AODE = Read1Word(dwrds[9],5,19);
             break;
         case 2:
-            ///
-            page2OK = true;
-            orbit.toeF2 = Read1Word(dwrds[9],2,22)<<15<<3;
-            orbit.toe = orbit.toeF2|orbit.toeF3;
+            orbit.toeHigh = Read1Word(dwrds[9],2,22)<<15;
+            orbit.toe = (orbit.toeHigh|orbit.toeLow)*8;
             orbit.sqrtA = Read2Word(dwrds[8],12,12,dwrds[9],20,2)*pow(2,-19);
             orbit.e = Read2Word(dwrds[4],10,14,dwrds[5],22,2)*pow(2,-33);
             orbit.dtn = (int32_t)Read2Word(dwrds[1],10,14,dwrds[2],6,2,true)*pow(2,-43)*GPS_PI;
@@ -283,9 +311,8 @@ int BeiDouSV::DecodeD1(uint32_t *dwrds) {
             orbit.Crs = (int32_t)Read2Word(dwrds[7],8,16,dwrds[8],10,2,true)*pow(2,-6);
             break;
         case 3:
-            page3OK = true;
-            orbit.toeF3 = Read2Word(dwrds[1],10,14,dwrds[2],5,2)<<3;
-            orbit.toe = orbit.toeF2|orbit.toeF3;
+            orbit.toeLow = Read2Word(dwrds[1],10,14,dwrds[2],5,2);
+            orbit.toe = (orbit.toeHigh|orbit.toeLow)*8;
             orbit.omega = (int32_t)Read2Word(dwrds[8],11,13,dwrds[9],21,2,true)*pow(2,-31)*GPS_PI;
             orbit.Omega0 = (int32_t)Read2Word(dwrds[7],21,3,dwrds[8],11,2,true)*pow(2,-31)*GPS_PI;
             orbit.OmegaDot = (int32_t)Read2Word(dwrds[4],11,13,dwrds[5],13,2,true)*pow(2,-43)*GPS_PI;
@@ -297,11 +324,100 @@ int BeiDouSV::DecodeD1(uint32_t *dwrds) {
         default:
             break;
     }
-    pageOK = page1OK && page2OK && page3OK;
 }
 
-int BeiDouSV::DecodeD2(uint32_t *dwrds) {
+int BeiDouSV::DecodeD2Frame1(uint32_t *dwrds) {
     //todo
+//    return 0;
+    if(1810!=Read1Word(dwrds[0],11,2))return -1;
+    int frame = Read1Word(dwrds[0],3,17);
+    if(1!=frame)return -1;
+    SOW = Read2Word(dwrds[0],8,20,dwrds[1],12,2);
+    int Pnum1 = Read1Word(dwrds[1],4,14);
+    bstEphemOK[Pnum1-1] = 1;
+
+    printf(" Frame BeidouD2 svid:%d,frame1,page:,%d",svId,Pnum1);
+    switch(Pnum1){
+        case 1:
+            SatH1 = Read1Word(dwrds[1],1,18);
+            AODC = Read1Word(dwrds[1],5,19);
+            URAI = Read1Word(dwrds[2],4,2);
+            if(URAI)printf("\n\n\nUARI not ok = %d\n\n\n",URAI);
+            WN = Read1Word(dwrds[2],13,6);
+            toc = Read2Word(dwrds[2],5,19,dwrds[3],12,2)*8;
+            TGD1 = (int32_t)Read1Word(dwrds[3],10,14,true)*1e-10;
+            TGD2 = (int32_t)Read1Word(dwrds[4],10,2,true)*1e-10;
+            break;
+        case 2:
+            ino.a0 = ((int32_t) Read2Word(dwrds[1],6,18,dwrds[2],2,2,true))*pow(2,-30);
+            ino.a1 = ((int32_t) Read1Word(dwrds[2],8,4,true))*pow(2,-27);
+            ino.a2 = ((int32_t) Read1Word(dwrds[2],8,12,true))*pow(2,-24);
+            ino.a3 = ((int32_t) Read2Word(dwrds[2],4,20,dwrds[3],4,2,true))*pow(2,-24);
+            ino.b0 = ((int32_t) Read1Word(dwrds[3],8,6,true))*pow(2,11);
+            ino.b1 = ((int32_t) Read1Word(dwrds[3],8,14,true))*pow(2,14);
+            ino.b2 = ((int32_t) Read2Word(dwrds[3],2,22,dwrds[4],6,2,true))*pow(2,16);
+            ino.b3 = ((int32_t) Read1Word(dwrds[4],8,8,true))*pow(2,16);
+            break;
+        case 3:
+            a0 = (int32_t)Read2Word(dwrds[3],12,12,dwrds[4],12,2,true)*pow(2,-33);
+            a1High = Read1Word(dwrds[4],4,14,true)<<18;
+            a1 = (int32_t)(a1High|a1Low)*pow(2,-50);
+            break;
+        case 4:
+            a1Low = Read2Word(dwrds[1],6,18,dwrds[2],12,2);
+            a1 = (int32_t)(a1High|a1Low)*pow(2,-50);
+            a2 = (int32_t)Read2Word(dwrds[2],10,14,dwrds[3],1,2,true)*pow(2,-66);
+            orbit.AODE = Read1Word(dwrds[3],5,3);
+            orbit.dtn = (int32_t)Read1Word(dwrds[3],16,8,true)*pow(2,-43)*GPS_PI;
+            orbit.CucHigh = Read1Word(dwrds[4],14,2,true)<<4;
+            orbit.Cuc = (int32_t)(orbit.CucHigh|orbit.CucLow)*pow(2,-31);
+            break;
+        case 5:
+            orbit.CucLow = Read1Word(dwrds[1],4,18);
+            orbit.Cuc = (int32_t)(orbit.CucHigh|orbit.CucLow)*pow(2,-31);
+            orbit.M0 = (int32_t)(Read3Word(dwrds[1],2,22,dwrds[2],22,2,dwrds[3],8,2,true))*pow(2,-31)*GPS_PI;
+            orbit.Cus = (int32_t)Read2Word(dwrds[3],14,10,dwrds[4],4,2,true)*pow(2,-31);
+            orbit.eHigh = Read1Word(dwrds[4],10,6)<<22;
+            orbit.e = (orbit.eHigh|orbit.eLow)*pow(2,-33);
+            break;
+        case 6:
+            orbit.eLow = Read2Word(dwrds[1],6,18,dwrds[2],16,2);
+            orbit.e = (orbit.eHigh|orbit.eLow)*pow(2,-33);
+            orbit.sqrtA = Read3Word(dwrds[2],6,18,dwrds[3],22,2,dwrds[4],4,2)*pow(2,-19);
+            orbit.CicHigh = Read1Word(dwrds[4],10,6,true)<<8;
+            orbit.Cic = (int32_t)(orbit.CicHigh|orbit.CicLow)*pow(2,-31);
+            break;
+        case 7:
+            orbit.CicLow = Read2Word(dwrds[1],6,18,dwrds[2],2,2);
+            orbit.Cic = (int32_t)(orbit.CicHigh|orbit.CicLow)*pow(2,-31);
+            orbit.Cis = (int32_t)Read1Word(dwrds[2],18,4,true)*pow(2,-31);
+            orbit.toe = Read2Word(dwrds[2],2,22,dwrds[3],15,2)*8;
+            orbit.i0High = Read2Word(dwrds[3],7,17,dwrds[4],14,2,true)<<11;
+            orbit.i0 = (int32_t)(orbit.i0High|orbit.i0Low)*pow(2,-31)*GPS_PI;
+            break;
+        case 8:
+            orbit.i0Low = Read2Word(dwrds[1],6,18,dwrds[2],5,2);
+            orbit.i0 = (int32_t)(orbit.i0High|orbit.i0Low)*pow(2,-31)*GPS_PI;
+            orbit.Crc = (int32_t)Read2Word(dwrds[2],17,7,dwrds[3],1,2,true)*pow(2,-6);
+            orbit.Crs = (int32_t)Read1Word(dwrds[3],18,3,true)*pow(2,-6);
+            orbit.OmegaDotHigh = Read2Word(dwrds[3],3,21,dwrds[4],16,2,true)<<5;
+            orbit.OmegaDot = (int32_t)(orbit.OmegaDotHigh|orbit.OmegaDotLow)*pow(2,-43)*GPS_PI;
+            break;
+        case 9:
+            orbit.OmegaDotLow = Read1Word(dwrds[1],5,18);
+            orbit.OmegaDot = (int32_t)(orbit.OmegaDotHigh|orbit.OmegaDotLow)*pow(2,-43)*GPS_PI;
+            orbit.Omega0 = (int32_t)Read3Word(dwrds[1],1,23,dwrds[2],22,2,dwrds[3],9,2,true)*pow(2,-31)*GPS_PI;
+            orbit.omegaHigh = Read2Word(dwrds[3],13,11,dwrds[4],14,2,true)<<5;
+            orbit.omega = (int32_t)(orbit.omegaHigh|orbit.omegaLow)*pow(2,-31)*GPS_PI;
+            break;
+        case 10:
+            orbit.omegaLow = Read1Word(dwrds[1],5,18);
+            orbit.omega = (int32_t)(orbit.omegaHigh|orbit.omegaLow)*pow(2,-31)*GPS_PI;
+            orbit.IDOT = (int32_t)Read2Word(dwrds[1],1,23,dwrds[2],13,2,true)*pow(2,-43)*GPS_PI;
+            break;
+        default:
+            break;
+    }
     return 1;
 }
 
@@ -467,3 +583,21 @@ SV* SVs::SatTable(SV::SvType type, int ind) {
             break;
     }
 }
+
+bool SV::ElevGood() {
+    if(0==elevationAngle)
+        return 1;
+    elevGood = elevationAngle>0.17;
+    if(!elevGood){
+        printf("\nelev angle bad sv:%d,%02d,angle:%lf\n",type,svId,elevationAngle);
+    }
+    return elevGood;
+}
+bool SV::MeasureGood() {
+    measureGood = prMes<40e6&&prMes>19e6;
+    if(!measureGood){
+        printf("\npr measure bad sv:%d,%02d,angle:%lf\n",type,svId,prMes);
+    }
+    return measureGood;
+}
+

@@ -42,9 +42,27 @@ void *LogData(void *fileName){
 
 int main()
 {
-
     GNSS *gnss = new GNSS();
-//    gnss->useGPS = false;
+
+
+
+    Vector3d pc[5],LLA[5];
+    pc[0]<<-32266.820980,  27124.853177,    906.205938 ;
+    pc[1]<<  4400.134192 , 41915.732667,  -1365.859786;
+    pc[2]<< -14745.236689 , 39472.607477 ,   182.402842 ;
+    pc[3]<< -39601.975815,  14487.068645 ,   296.185988 ;
+    pc[4]<<  21941.580921,  35977.919079,  -1076.982485 ;
+
+    SVs svs; NtripRTK *rtk;
+    PosSolver svlr(svs,rtk,gnss);
+    for (int i=0;i<5;i++){
+        svlr.XYZ2LLA(pc[i]*1000,LLA[i]);
+        printf("\nBDS_GEO_LLA, %02d\n%lf\n%lf\n%lf\n",i+1,LLA[i](0)*180/GPS_PI,LLA[i](1)*180/GPS_PI,LLA[i](2));
+    }
+
+
+
+    gnss->useGPS = false;
 //    gnss->useBeiDou = false;
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
@@ -72,7 +90,8 @@ int main()
         ifstream inF;
         char name[128],dat[128];
         printf("open file name:");
-        string ss = "../data/0802-1";
+//        string ss = "../data/0802-1";
+        string ss = "../data/0708-2";
 //        scanf("%s",name);
         inF.open(ss, std::ifstream::binary);
         while (!inF.eof()){
