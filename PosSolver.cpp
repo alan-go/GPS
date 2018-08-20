@@ -79,6 +79,8 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
     MatrixXd b(N,1);
     cout<<"-----------------start clacu svPosition\n-------------"<<endl;
 
+//    rcvtow = 48600;
+
     for(int i = 0;i< N;i++){
         SV *sv= svsForCalcu[i];
         sv->CalcuECEF(rcvtow);
@@ -91,8 +93,8 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
         double pci = sv->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
         pc(i) = pci;
         XYZ2LLA(sv->position,sv->sLLA);
-//        sv->PrintInfo(1);
         sv->PrintInfo(2);
+        sv->PrintInfo(1);
         cout<<"norm"<<sv->position.norm()<<endl;
 
     }

@@ -69,7 +69,7 @@ void SV::PrintInfo(int printType) {
             cout<<"norm="<<position.norm()<<endl;
             printf("svLLA\n%lf\n%lf\n%lf\n",sLLA(0)*180/GPS_PI,sLLA(1)*180/GPS_PI,sLLA(2));
 
-            cout<<"tsDelta"<<tsDelta<<"a0"<<a0<<endl;
+            cout<<"tsDelta"<<tsDelta*Light_speed<<" ,a0"<<a0<<endl;
             break;
         case 2:
             printf("\n%d,%d\n",type,svId);
@@ -91,8 +91,8 @@ bool SV::CalcuECEF(double rcvtow) {
     double A = orbit.sqrtA*orbit.sqrtA;
     double n0 = sqrt(M_miu/(A*A*A));
     double tk = tsReal - orbit.toe;
-    if(tk > 302400)tk-=604800;
-    if(tk < -302400)tk+=604800;
+    while(tk > 302400)tk-=604800;
+    while(tk < -302400)tk+=604800;
     double n = n0 + orbit.dtn;
     double Mk = orbit.M0 + n*tk;
     while (Mk<0)Mk+=2*GPS_PI;
@@ -129,12 +129,13 @@ bool SV::CalcuECEF(double rcvtow) {
     double xk = rk * cos(uk);
     double yk = rk * sin(uk);
     double Omegak = orbit.Omega0 + (orbit.OmegaDot - (isBeiDouGEO?0:Omega_e))*tk - Omega_e*orbit.toe;
+//    double Omegak = orbit.Omega0 + (orbit.OmegaDot - Omega_e)*tk - Omega_e*orbit.toe;
 //    cout<<"OmegaK="<<Omegak<<endl;
     MatrixXd transfer(3,2);
     transfer<<cos(Omegak),-cos(ik)*sin(Omegak),sin(Omegak),cos(ik)*cos(Omegak),0,sin(ik);
     if(isBeiDouGEO){
         Vector3d xyzGK = transfer*Vector2d(xk,yk);
-        double phyX = -5/180*GPS_PI;
+        double phyX = -5.0/180.0*GPS_PI;
         double phyZ = Omega_e * tk;
         Matrix3d Rz,Rx;
         Rx<<1,0,0,0,cos(phyX),sin(phyX),0,-sin(phyX),cos(phyX);
