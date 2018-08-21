@@ -64,22 +64,23 @@ void SV::PrintInfo(int printType) {
     //2:bst ephemeris
     switch (printType){
         case 1:
-            cout<<"+++++++SvPosition:"<<type<<","<<svId<<endl;
-            cout<<position<<endl;
+//            cout<<"+++++++SvPosition:"<<type<<","<<svId<<endl;
+//            cout<<position<<endl;
+            printf("\n+++SvPosition:%d,%d === %10f,%10f,%10f\n",type,svId,position(0),position(1),position(2));
             cout<<"norm="<<position.norm()<<endl;
-            printf("svLLA\n%lf\n%lf\n%lf\n",sLLA(0)*180/GPS_PI,sLLA(1)*180/GPS_PI,sLLA(2));
+            printf("+++svLLA === %lf, %lf, %lf\n",sLLA(0)*180/GPS_PI,sLLA(1)*180/GPS_PI,sLLA(2));
 
-            cout<<"tsDelta"<<tsDelta*Light_speed<<" ,a0"<<a0<<endl;
+            cout<<"tsDelta === "<<tsDelta*Light_speed<<" ,a0"<<a0<<endl;
             break;
         case 2:
             printf("\n%d,%d\n",type,svId);
-            printf("%d,\t%e,\t%e,\t%e,\t\n",SOW,a0,a1,a2);
-            printf("%e,\t%e,\t%e,\t%e,\t\n",orbit.IODE,orbit.Crs,orbit.dtn,orbit.M0);
-            printf("%e,\t%e,\t%e,\t%e,\t\n",orbit.Cuc,orbit.e,orbit.Cus,orbit.sqrtA);
-            printf("%e,\t%e,\t%e,\t%e,\t\n",orbit.toe,orbit.Cic,orbit.Omega0,orbit.Cis);
-            printf("%e,\t%e,\t%e,\t%e,\t\n",orbit.i0,orbit.Cis,orbit.omega,orbit.OmegaDot);
-            printf("%e,\t%e,\t%d,\t%e,\t\n",orbit.IDOT,0,WN,0);
-            printf("%e,\t%d,\t%e,\t%e,\t\n",0,SatH1,TGD1,IODC);
+            printf("%d,\t%.10e,\t%.10e,\t%.10e,\t\n",SOW,a0,a1,a2);
+            printf("%d,\t%.10e,\t%.10e,\t%.10e,\t\n",orbit.IODE,orbit.Crs,orbit.dtn,orbit.M0);
+            printf("%.10e,\t%.10e,\t%.10e,\t%.10e,\t\n",orbit.Cuc,orbit.e,orbit.Cus,orbit.sqrtA);
+            printf("%d,\t%.10e,\t%.10e,\t%.10e,\t\n",orbit.toe,orbit.Cic,orbit.Omega0,orbit.Cis);
+            printf("%.10e,\t%.10e,\t%.10e,\t%.10e,\t\n",orbit.i0,orbit.Crc,orbit.omega,orbit.OmegaDot);
+            printf("%.10e,\t%d,\t%d,\t%d,\t\n",orbit.IDOT,0,WN,0);
+            printf("%d,\t%d,\t%.10e,\t%d,\t\n",0,SatH1,TGD1,IODC);
             break;
         default:
             break;
@@ -91,16 +92,17 @@ bool SV::CalcuECEF(double rcvtow) {
     double A = orbit.sqrtA*orbit.sqrtA;
     double n0 = sqrt(M_miu/(A*A*A));
     double tk = tsReal - orbit.toe;
+//    double tk = rcvtow - orbit.toe;
     while(tk > 302400)tk-=604800;
     while(tk < -302400)tk+=604800;
     double n = n0 + orbit.dtn;
     double Mk = orbit.M0 + n*tk;
-    while (Mk<0)Mk+=2*GPS_PI;
-    while (Mk>2*GPS_PI)Mk-=2*GPS_PI;
+    while (Mk<0.0)Mk+=2.0*GPS_PI;
+    while (Mk>2.0*GPS_PI)Mk-=2.0*GPS_PI;
     double Ek = Mk,EkOld = Ek-1;
     while(abs(Ek-EkOld)>1e-8){
         EkOld = Ek;
-        Ek = EkOld-(EkOld-orbit.e*sin(EkOld)-Mk)/(1-orbit.e*cos(EkOld));
+        Ek = EkOld-(EkOld-orbit.e*sin(EkOld)-Mk)/(1.0-orbit.e*cos(EkOld));
     }
     //todo:
     //Make Ek within (0-2pi)?????
@@ -110,29 +112,27 @@ bool SV::CalcuECEF(double rcvtow) {
     double rvk = 1-cos(Ek)*orbit.e;
     double sinvk = rsinvk/rvk;
     double cosvk = rcosvk/rvk;
-    double tanvk = rsinvk/rcosvk;
-    double vk = atan(tanvk);
-    if(cosvk<0&&sinvk<0)vk-=GPS_PI;
-    if(cosvk<0&&sinvk>0)vk+=GPS_PI;
-//    cout<<"vk="<<vk<<endl;
-//    printf("vk = %10f\n",vk);
+//    double tanvk = rsinvk/rcosvk;
+    double vk = atan2(rsinvk,rcosvk);
+//    if(cosvk<0&&sinvk<0)vk-=GPS_PI;
+//    if(cosvk<0&&sinvk>0)vk+=GPS_PI;
+
     double phyk = vk + orbit.omega;
-    double sin2phy = sin(2*phyk),cos2phy = cos(2*phyk);
+    double sin2phy = sin(2.0*phyk),cos2phy = cos(2.0*phyk);
     double dtuk = orbit.Cus*sin2phy + orbit.Cuc*cos2phy;
     double dtrk = orbit.Crs*sin2phy + orbit.Crc*cos2phy;
     double dtik = orbit.Cis*sin2phy + orbit.Cic*cos2phy;
     double uk = phyk + dtuk;
 //    printf("phyk=%10f,dtuk=%.10f,dtrk=%.10f,dtik=%.10f\nuk=%.10f",phyk,dtuk,dtrk,dtik,uk);
-    double rk = A*(1-orbit.e*cos(Ek)) + dtrk;
+    double rk = A*rvk + dtrk;
 //    printf("rk=%.10f\n",rk);
     double ik = orbit.i0 + orbit.IDOT*tk + dtik;
     double xk = rk * cos(uk);
     double yk = rk * sin(uk);
     double Omegak = orbit.Omega0 + (orbit.OmegaDot - (isBeiDouGEO?0:Omega_e))*tk - Omega_e*orbit.toe;
-//    double Omegak = orbit.Omega0 + (orbit.OmegaDot - Omega_e)*tk - Omega_e*orbit.toe;
-//    cout<<"OmegaK="<<Omegak<<endl;
     MatrixXd transfer(3,2);
     transfer<<cos(Omegak),-cos(ik)*sin(Omegak),sin(Omegak),cos(ik)*cos(Omegak),0,sin(ik);
+
     if(isBeiDouGEO){
         Vector3d xyzGK = transfer*Vector2d(xk,yk);
         double phyX = -5.0/180.0*GPS_PI;
@@ -144,10 +144,12 @@ bool SV::CalcuECEF(double rcvtow) {
     } else {
         position = transfer*Vector2d(xk,yk);
     }
+
+
 //TGD and relativity fix.
-    double dtRelativity = -2*sqrt(M_miu)/(Light_speed*Light_speed)*Earth_ee*orbit.sqrtA*sin(Ek);
+    double dtRelativity = 2.0*sqrt(M_miu)/(Light_speed*Light_speed)*Earth_ee*orbit.sqrtA*sin(Ek);
 //    printf("dtRelativity=%.10f\n",dtRelativity);
-    tsDelta += dtRelativity;
+    tsDelta -= dtRelativity;
     tsDelta -= TGD1;
     tsReal-=tsDelta;
 }
@@ -595,7 +597,7 @@ bool SV::ElevGood() {
     return elevGood;
 }
 bool SV::MeasureGood() {
-    measureGood = prMes<40e6&&prMes>19e6;
+    measureGood = prMes<40e6&&prMes>16e6;
     if(!measureGood){
         printf("\npr measure bad sv:%d,%02d,angle:%lf\n",type,svId,prMes);
     }

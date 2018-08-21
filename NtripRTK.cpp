@@ -409,3 +409,4 @@ MSM4data* NtripRTK::GetRtkRecord(int satInd, int timeInd, SV::SvType type) {
 
     }
 }
+

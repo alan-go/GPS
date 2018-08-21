@@ -84,7 +84,6 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
     for(int i = 0;i< N;i++){
         SV *sv= svsForCalcu[i];
         sv->CalcuECEF(rcvtow);
-        //todo: calcu I,T,dtu
         if(gnss->isPositioned){
 //            cout<<"++IT-LLA\n"<<gnss->records[0].lla*180/GPS_PI<<endl;
             sv->CorrectIT(xyz,LLA,rcvtow);
@@ -108,7 +107,7 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
         for(int i = 0;i< N;i++){
             SV *sv= svsForCalcu[i];
             double r = (sv->position-xyz).norm();
-            //自转修正,这个我需要考虑一下是不是在这里处理
+            //todo 自转修正
             double omegat = -r/Light_speed*Omega_e;
 //            printf("r=%lf,omegat = %lf\n",r,omegat);
 //            double omegat = 0;
@@ -151,7 +150,7 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
     gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
     gnss->tu = tu;
     cout<<"++++++++++++xyz\n"<<xyz<<endl;
-    printf("++++++++++++LLA\n%lf\n%lf\n%lf\n",LLA(0)*180/GPS_PI,LLA(1)*180/GPS_PI,LLA(2));
+    printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
 //    cout<<"++++++++++++LLA\n"<<LLA*180/GPS_PI<<endl;
 
     printf("rcvtow = %lf\n",rcvtow);
@@ -160,8 +159,8 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
         double prres = b(i);
         SV *svTemp = svsForCalcu[i];
 //        svTemp->CalcuelEvationAzimuth(xyz,LLA);
-        printf("svs visiable:%d,%02d:pr:%lf\tprres:%lf\n",
-               svTemp->type,svTemp->svId,svTemp->prMes,prres);
+        printf("svs visiable:%d,%02d:pr:%lf\tprres:%.4f,\t%f\n",
+               svTemp->type,svTemp->svId,svTemp->prMes,prres,svTemp->elevationAngle);
     }
     
     printf("PDOP = %lf\n",PDOP);
@@ -178,10 +177,14 @@ int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
     MatrixXd b(N,1);
     cout<<"-----------------start clacu svPosition\n-------------"<<endl;
 
+
+//    rcvtow = 48600;
+
+
+
     for(int i = 0;i< N;i++){
         SV *sv= svsForCalcu[i];
         sv->CalcuECEF(rcvtow);
-        //todo: calcu I,T,dtu
         if(gnss->isPositioned)sv->CorrectIT(xyz,LLA,rcvtow);
         printf("II = %lf,TT = %lf\n",sv->I,sv->T);
         double pci = sv->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
@@ -189,6 +192,7 @@ int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
 
         XYZ2LLA(sv->position,sv->sLLA);
         sv->PrintInfo(2);
+        sv->PrintInfo(1);
         cout<<"norm"<<sv->position.norm()<<endl;
     }
     cout<<"+++++++++++++ poss\n-------------"<<endl;
@@ -249,7 +253,7 @@ int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
     gnss->tuGps = tuGps;
     gnss->tuBeiDou = tuBeiDou;
     cout<<"++++++++++++rxyzt\n"<<xyz<<endl;
-    printf("++++++++++++LLA\n%lf\n%lf\n%lf\n",LLA(0)*180/GPS_PI,LLA(1)*180/GPS_PI,LLA(2));
+    printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
     double PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
     printf("PDOP = %lf\n",PDOP);
 
@@ -259,8 +263,8 @@ int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
         double prres = b(i);
         SV *svTemp = svsForCalcu[i];
 //        svTemp->CalcuelEvationAzimuth(xyz,LLA);
-        printf("svs visiable:%d,%02d:pr:%lf\tprres:%lf\n",
-               svTemp->type,svTemp->svId,svTemp->prMes,prres);
+        printf("svs visiable:%d,%02d:pr:%lf\tprres:%.4f,\t%f\n",
+               svTemp->type,svTemp->svId,svTemp->prMes,prres,svTemp->elevationAngle);
     }
 
     return 1;

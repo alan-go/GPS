@@ -15,7 +15,7 @@
 #include "SVs.h"
 
 class GNSS;
-class MSM4Cell{
+class MSM4Cell{//每个星的每一个信号有一个MSM4Cell
 public:
     double df400,df401;
     double df420,df402;
@@ -23,7 +23,8 @@ public:
 
     MSM4Cell():df400(0),df401(0),df420(0),df402(0),df403(0){}
 };
-class MSM4data{
+
+class MSM4data{//每个星有一个MSM4data
 public:
     double rtktime;
     double df397, df398;
@@ -40,7 +41,7 @@ public:
     std::string serverIP_;
     unsigned short port_;
     int sock_;
-
+    //vector<MSM4data*>里面是不同时刻的数据，0是最近的记录
     vector<MSM4data*> rtkDataGps[NGPS],rtkDataBeiDou[NBeiDou];
     uint32_t refStationId;
     bool isPhysicalStation;
@@ -62,6 +63,7 @@ public:
     void RecvThread();
     int TestParase(char *bufferRecv,int recvLength);
     MSM4data* GetRtkRecord(int satInd,int timeInd, SV::SvType type);
+    MSM4data InterpolationRecord(double time, int satInd, int sigInd);
 
 private:
     boost::crc_basic<24> crc24Q;
