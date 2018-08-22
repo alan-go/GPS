@@ -31,7 +31,7 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
     }
 
     //todo : for temmp
-//    pthread_create(&thread1_, nullptr, ThreadAdapterGNSS, &serialDataManager);
+    pthread_create(&thread1_, nullptr, ThreadAdapterGNSS, &serialDataManager);
     sleep(2);
     return 1;
 }

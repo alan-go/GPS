@@ -73,8 +73,8 @@ int main()
     gnss->useQianXun = false;
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-//    char command = getchar();
-    char command = 'd';
+    char command = getchar();
+//    char command = 'd';
     if('l'==command){
         printf("\nfile name : ");
         char name[64];

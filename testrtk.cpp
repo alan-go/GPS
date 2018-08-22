@@ -10,26 +10,12 @@ using namespace Eigen;
 
 
 int main(){
-
-
-
-    vector<int> vi ;
-    vi.insert(vi.begin(),30);
-    vi.insert(vi.begin(),20);
-    vi.push_back(1);
-    vi.push_back(2);
-    vi.push_back(3);
-    printf("size = %d",vi.size());
-    vi.erase(vi.begin());
-    printf("size = %d",vi.size());
-    printf("vi 1 = %d",vi[0]);
-
-    vi.insert(vi.begin(),30);
-    vi.insert(vi.begin(),20);
-
+    
     printf("\nin testing\n");
     GNSS gnss;
-
+    gnss.useGPS = false;
+//    gnss.useBeiDou = false;
+    gnss.useQianXun = false;
 
     u_char bbb[36] = {0xD3 ,0x00 ,0x13 ,0x3E ,0xD7 ,0xD3 ,0x02 ,0x02 ,0x98 ,0x0E ,0xDE ,0xEF ,0x34 ,0xB4 ,0xBD ,0x62
             ,0xAC ,0x09 ,0x41 ,0x98 ,0x6F ,0x33 ,0x36 ,0x0B ,0x98 ,0xd3, 0x00};

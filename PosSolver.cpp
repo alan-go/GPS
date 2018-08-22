@@ -27,8 +27,8 @@ int PosSolver::PrepareSVsData(vector<SV *> &svsForCalcu) {
         if(gnss->isPositioned)sv->CorrectIT(xyz,LLA,timeForECEF);
 
         XYZ2LLA(sv->position,sv->sLLA);
-        sv->PrintInfo(2);
-        sv->PrintInfo(1);
+//        sv->PrintInfo(2);
+//        sv->PrintInfo(1);
 //        cout<<"norm"<<sv->position.norm()<<endl;
     }
 }

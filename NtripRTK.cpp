@@ -164,8 +164,8 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
         if(temp&(128>>i)){
             sats.push_back(id);
             nSat++;
-            printf("time = %f,,",rtkTime);
-            printf("Sat:%d\n",id+1);
+//            printf("time = %f,,",rtkTime);
+//            printf("Sat:%d\n",id+1);
             MSM4data *tempData = new MSM4data;
             tempData->rtktime = rtkTime;
             satsData.push_back(tempData);
@@ -222,8 +222,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
         }
         satsData[n]->df398 = double(NetToHost32(b,i,10))*pow(2,-10);
         satsData[n]->prRough = satsData[n]->df397 + satsData[n]->df398;
-        printf("pr"
-               "Rough = %.2f\n",satsData[n]->prRough);
+//        printf("prRough = %.2f\n",satsData[n]->prRough);
         b++;
         i+=2;
     }
@@ -369,7 +368,7 @@ int NtripRTK::AddRtkRecord(MSM4data *data, SV::SvType type, int id) {
             double prTemp = (*temp)[i]->sigData[1].df400+(*temp)[i]->prRough;
             prTemp = prTemp*1e-3*Light_speed;
             (*temp)[i]->sigData[1].prMes = prTemp;
-            printf("time,prmes = ,%f,%f\n",(*temp)[i]->rtktime,(*temp)[i]->sigData[1].prMes);
+//            printf("time,prmes = ,%f,%f\n",(*temp)[i]->rtktime,(*temp)[i]->sigData[1].prMes);
         }
     }
     if(temp->size()>maxNumber){
