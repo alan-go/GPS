@@ -68,8 +68,9 @@ int main()
 
 
 
-//    gnss->useGPS = false;
-    gnss->useBeiDou = false;
+    gnss->useGPS = false;
+//    gnss->useBeiDou = false;
+    gnss->useQianXun = false;
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
 //    char command = getchar();
@@ -97,8 +98,8 @@ int main()
         char name[128],dat[128];
         printf("open file name:");
 //        string ss = "../data/0802-1";
-//        string ss = "../data/0708-2";
-        string ss = "../data/0815-2";
+        string ss = "../data/0708-2";
+//        string ss = "../data/0815-2";
 //        scanf("%s",name);
         inF.open(ss, std::ifstream::binary);
         while (!inF.eof()){

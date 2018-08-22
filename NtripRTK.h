@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <boost/asio.hpp>
 #include <boost/crc.hpp>
+#include <mutex>
 
 
 #include "SVs.h"
@@ -20,18 +21,18 @@ public:
     double df400,df401;
     double df420,df402;
     double df403;
-
-    MSM4Cell():df400(0),df401(0),df420(0),df402(0),df403(0){}
+    double prMes,cpMes;
+    MSM4Cell():df400(0),df401(0),df420(0),df402(0),df403(0),prMes(0),cpMes(0){}
 };
 
 class MSM4data{//每个星有一个MSM4data
 public:
     double rtktime;
-    double df397, df398;
+    double df397, df398, prRough;
     vector<int>sigs;
     MSM4Cell sigData[32];
 
-    MSM4data():rtktime(0),df397(0),df398(0){}
+    MSM4data():rtktime(0),df397(0),df398(0),prRough(0){}
 };
 
 class NtripRTK{
@@ -42,7 +43,7 @@ public:
     unsigned short port_;
     int sock_;
     //vector<MSM4data*>里面是不同时刻的数据，0是最近的记录
-    vector<MSM4data*> rtkDataGps[NGPS],rtkDataBeiDou[NBeiDou];
+//    vector<MSM4data*> rtkDataGps[NGPS],rtkDataBeiDou[NBeiDou];
     uint32_t refStationId;
     bool isPhysicalStation;
     bool singleReceiver;
@@ -50,6 +51,8 @@ public:
     bool supportGPS,supportBeiDou,supportGLONASS,supportGalileo;
     uint32_t quaterCycle;
     Eigen::Vector3d ECEF_XYZ;
+    char ggaDefault[128];
+    std::mutex mtxData;
 
 public:
     NtripRTK();
@@ -63,7 +66,7 @@ public:
     void RecvThread();
     int TestParase(char *bufferRecv,int recvLength);
     MSM4data* GetRtkRecord(int satInd,int timeInd, SV::SvType type);
-    MSM4data InterpolationRecord(double time, int satInd, int sigInd);
+
 
 private:
     boost::crc_basic<24> crc24Q;

@@ -25,14 +25,15 @@ public:
 
 private:
     vector<SV*>visibleSvs;
+    int numBDSUsed,numGPSUsed;
 private:
+    int PrepareSVsData(vector<SV*> &svsForCalcu);
     int ReadVisibalSvsRaw(SVs svs, vector<SV*> &svVisable, char *raw);
-    int SelectSvsFromVisible(vector<SV*> &all,vector<SV*> &select,int &bds,int &gps);
+    int SelectSvsFromVisible(vector<SV*> &all,vector<SV*> &select);
     int SolvePosition(vector<SV*>svsForCalcu);
     int SolvePositionBeiDouGPS(vector<SV*>svsForCalcu);
     int SolvePositionCalman();
-    int InosphereCorrect();
-    int TroposphereCorrect();
+
 };
 
 #endif

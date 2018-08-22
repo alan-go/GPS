@@ -8,7 +8,11 @@ using namespace std;
 using namespace Eigen;
 
 
+
 int main(){
+
+
+
     vector<int> vi ;
     vi.insert(vi.begin(),30);
     vi.insert(vi.begin(),20);
@@ -66,18 +70,7 @@ int main(){
 
     string serialPort = "/dev/ttyUSB0";
     gnss.StartGNSS(serialPort,115200);
-    if('x'==getchar()){
-        cout<<"stop capture."<<endl;
-            gnss.StopGNSS();
-    }
-
-    char gga[512] = "$GNGGA,133409.00,3958.76249,N,11620.33816,E,1,08,0.80,57.0,M,-8.7,M,,*6C\r\n";
-
-//    char commad;
-//    while ('x'!=getchar()){
-//        gnss.rtkManager.SentGGA(gga,strlen(gga));
-//    }
-
+    getchar();
 
     return 0;
 }

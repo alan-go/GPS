@@ -1,4 +1,5 @@
 #include "SVs.h"
+#include "NtripRTK.h"
 
 SV::SV():SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0){
     memset(bstEphemOK,0,10 * sizeof(int8_t));
@@ -47,8 +48,8 @@ bool SV::JudgeUsable(bool useBeiDou, bool useGps) {
     return true;
 }
 
-bool SV::CalcuTime(double rcvtow) {
-    tsv = rcvtow - prMes/Light_speed;
+bool SV::CalcuTime(double tow) {
+    tsv = tow - prMes/Light_speed;
     tsReal = tsv;
     //此时的钟差是没有考虑相对论效应和 TGD的
     for(int i = 0;i<5;i++){
@@ -87,12 +88,11 @@ void SV::PrintInfo(int printType) {
     };
 }
 
-bool SV::CalcuECEF(double rcvtow) {
-    CalcuTime(rcvtow);
+bool SV::CalcuECEF(double tow) {
+
     double A = orbit.sqrtA*orbit.sqrtA;
     double n0 = sqrt(M_miu/(A*A*A));
-    double tk = tsReal - orbit.toe;
-//    double tk = rcvtow - orbit.toe;
+    double tk = tow - orbit.toe;
     while(tk > 302400)tk-=604800;
     while(tk < -302400)tk+=604800;
     double n = n0 + orbit.dtn;
@@ -144,7 +144,6 @@ bool SV::CalcuECEF(double rcvtow) {
     } else {
         position = transfer*Vector2d(xk,yk);
     }
-
 
 //TGD and relativity fix.
     double dtRelativity = 2.0*sqrt(M_miu)/(Light_speed*Light_speed)*Earth_ee*orbit.sqrtA*sin(Ek);
@@ -604,3 +603,36 @@ bool SV::MeasureGood() {
     return measureGood;
 }
 
+double SV::InterpRtkData(double time, int sigInd) {
+    int InterpLength = 5;
+    if(rtkData.size()<InterpLength)return 0;
+    vector<double> timeline, pr_df400, pr_df401;
+    for(int i=0;i<InterpLength;i++){
+        MSM4data* data = rtkData[i];
+        if(data->sigData->df400*data->sigData->df401){
+            data->sigData->prMes = (data->prRough+data->sigData->df400)*Light_speed*1e-3;
+            data->sigData->cpMes = (data->prRough+data->sigData->df401)*Light_speed*1e-3;
+            timeline.push_back(data->rtktime);
+            pr_df400.push_back(data->sigData->prMes);
+            pr_df401.push_back(data->sigData->cpMes);
+        }
+    }
+    if(timeline.size()<InterpLength)return 0;
+    prInterp[sigInd] = InterpLine(time,timeline,pr_df400);
+    cpInterp[sigInd] = InterpLine(time,timeline,pr_df401);
+}
+
+double SV::InterpLine(double x0, vector<double> &x, vector<double> &y) {
+    if(x.size()!=y.size()) return 0;
+    int N = x.size();
+    MatrixXd x2(N,2);
+    MatrixXd y1(N,1);
+    for(int i=0;i<N;i++){
+        x2(i,0) = 1;
+        x2(i,1) = x[i];
+        y1(i) = y[i];
+    }
+    MatrixXd x2T = x2.transpose();
+    Vector2d ab = (x2T*x2).inverse()*x2T*y1;
+    return ab(0) + ab(1)*x0;
+}

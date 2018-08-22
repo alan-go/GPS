@@ -22,6 +22,7 @@ constexpr static double Earth_f = 3.352810664747481e-003;   //基准椭球体的
 constexpr static double Earth_ee = 6.694379990141317e-003;   //偏心率e   e^2 = f(2-f)
 
 class GNSS;
+class MSM4data;
 class SV{
 public:
     enum SvType{
@@ -82,14 +83,17 @@ public:
     double elevationAngle,azimuthAngle;
     //for RTK:
     double df397,df398;
+    //vector<MSM4data*>里面是不同时刻的数据，0是最近的记录
+    vector<MSM4data*> rtkData;
+    double prInterp[32], cpInterp[32];
 public:
     SV();
     ~SV();
     bool JudgeUsable(bool useBeiDou, bool useGps);
     bool MeasureGood();
     bool ElevGood();
-    bool CalcuECEF(double rcvtow);
-    bool CalcuTime(double rcvtow);
+    bool CalcuECEF(double tow);
+    bool CalcuTime(double tow);
     int CalcuelEvationAzimuth(Vector3d receiverPosition, Vector3d LLA);
     int CalcuTroposhphere(double elev,double azim);
     int CalcuInoshphere(double elev,double azim,Vector3d LLA,double time);
@@ -97,6 +101,7 @@ public:
     void PrintInfo(int printType);
 //    virtual int DecodeSubFrame(uint32_t* dwrds) = 0;
     virtual SignalData* SignalTable(int index) = 0;
+    double InterpRtkData(double time, int sigInd);
 
     //head 指32bit()中的头bit（范围：1-32）
     inline uint32_t Read1Word(uint32_t word, int length, int head, bool isInt = false);
@@ -104,6 +109,9 @@ public:
             uint32_t word1, int length1, int head1, bool isInt = false);
     inline uint32_t Read3Word(uint32_t word0,int length0, int head0,
             uint32_t word1, int length1, int head1, uint32_t word2, int length2, int head2, bool isInt = false);
+
+private:
+    double InterpLine(double x0,vector<double>&x,vector<double>&y);
 };
 
 class BeiDouSV:public SV{

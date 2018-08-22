@@ -1,6 +1,6 @@
 #include "GNSS.h"
 
-GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(0),isPositioned(false){
+GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),isPositioned(false){
     svsManager.gnss = this;
     serialDataManager.gnss = this;
     rtkManager.gnss = this;
@@ -18,15 +18,18 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
     serialDataManager.serialPort_ = serial_port;
     serialDataManager.baudRate = baudRate;
     serialDataManager.stopCapture = false;
-    rtkManager.stopRTK = false;
 
-    if(!rtkManager.NtripLogin(rtk_protocol_)) {
-        printf("cannot login ntrip server\n");
-        exit(0);
+    if(useQianXun){
+        if(!rtkManager.NtripLogin(rtk_protocol_)) {
+            printf("cannot login ntrip server\n");
+            exit(0);
+        }
+        rtkManager.SentGGA(rtkManager.ggaDefault,strlen(rtkManager.ggaDefault));
+
+        pthread_create(&thread2_, nullptr, ThreadAdapterQianXun, &rtkManager);
+        sleep(2);
     }
 
-    pthread_create(&thread2_, nullptr, ThreadAdapterQianXun, &rtkManager);
-    sleep(2);
     //todo : for temmp
 //    pthread_create(&thread1_, nullptr, ThreadAdapterGNSS, &serialDataManager);
     sleep(2);
@@ -68,7 +71,8 @@ int GNSS::StopGNSS() {
 int GNSS::ParseRawData(char *message, int len) {
     PosSolver *solver = new PosSolver(svsManager, &rtkManager, this);
     memcpy(solver->raw, message, len);
-    if(useQianXun&&isPositioned){
+    if(useQianXun){
+//    if(useQianXun&&isPositioned){
         solver->PositionRtk();
     } else{
         solver->PositionSingle();

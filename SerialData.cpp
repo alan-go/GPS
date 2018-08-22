@@ -51,7 +51,6 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
             flag = 2;
             lengthUBX = 0;
             //printf ( "\n\nflag -> 2, i = %d\n",i );
-
         }
         if(1==flag){
             bufferNMEA[lengthNMEA] = tmp[i];
