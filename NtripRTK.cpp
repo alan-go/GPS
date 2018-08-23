@@ -269,6 +269,14 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
         cells[n]->df403 = NetToHost32(b,i,6);
         i+=6;
     }
+
+//    for(int n = 0; n< nSat; n++){
+//        int m = sats[n];
+////                printf("m,n=%d,%d\n",m,n);
+//        MSM4data *dataTemp = GetRtkRecord(m,0,type);
+//        printf("m=%d,rough p = %f\n",m,dataTemp->prRough);
+//    }
+    printf("1 rough = %f\n",gnss->svsManager.svBeiDous[1].rtkData[0]->prRough);
 }
 
 

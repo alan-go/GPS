@@ -614,6 +614,7 @@ double SV::InterpRtkData(double time, int sigInd) {
     vector<double> timeline, pr_df400, pr_df401;
     for(int i=0;i<InterpLength;i++){
         MSM4data* data = rtkData[i];
+        printf("rough pr = %f",data->prRough);
         if(data->sigData->df400*data->sigData->df401){
             data->sigData->prMes = (data->prRough+data->sigData->df400)*Light_speed*1e-3;
             data->sigData->cpMes = (data->prRough+data->sigData->df401)*Light_speed*1e-3;
