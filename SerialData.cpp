@@ -75,8 +75,8 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
         }
         //there are 8 extra bytes besides the playload;
         if(lengthUBX==lengthUBXProtocol+8 && 2==flag){
-            printf("\nGot a UBX %02x %02x,l = %d, i = %d, count = %d\n",bufferUBX[2],
-                   bufferUBX[3], lengthUBXProtocol, i,count++);
+//            printf("\nGot a UBX %02x %02x,l = %d, i = %d, count = %d\n",bufferUBX[2],
+//                   bufferUBX[3], lengthUBXProtocol, i,count++);
             if(showData && lengthUBX<1024)
                 for(int k = 0;k<lengthUBX;k++){
                     printf("%02x ",(u_char) bufferUBX[k]);
@@ -99,9 +99,9 @@ void SerialData::parse_UBX(char *buffer) {
 
         }
         if(0x13==(u_char)buffer[3]){
-            printf("\n----0----ParseBstSubFrame,%d\n",gnss->useBeiDou);
+//            printf("\n----0----ParseBstSubFrame,%d\n",gnss->useBeiDou);
             gnss->svsManager.UpdateEphemeris(buffer);
-            printf("\n----1----ParseBstSubFrame,%d\n",gnss->useBeiDou);
+//            printf("\n----1----ParseBstSubFrame,%d\n",gnss->useBeiDou);
         }
     }
 }

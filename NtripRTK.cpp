@@ -180,7 +180,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             temp = (u_char)b[0];
         }
         if(temp&(128>>i)){
-            sigs.push_back(id+1);
+            sigs.push_back(id);
             nSig++;
             printf("Sig:%d\n",id+1);
         }

@@ -160,7 +160,7 @@ void SVs::UpdateEphemeris(char *subFrame) {
     uint8_t svId = *(uint8_t*)(playload + 1);
     uint8_t numWords = *(uint8_t*)(playload+4);
 
-    printf("Update subframe;;gnssid:%d,svid:%d\n",gnssId,svId);
+//    printf("Update subframe;;gnssid:%d,svid:%d\n",gnssId,svId);
 
     char* tmp = playload+8;
 
@@ -273,7 +273,7 @@ int BeiDouSV::DecodeD1(uint32_t *dwrds) {
     int frame = Read1Word(dwrds[0],3,17);
     bstEphemOK[frame-1] = 1;
     SOW = Read2Word(dwrds[0],8,20,dwrds[1],12,2);
-    printf(" Frame BeidouD1 svid:%d,frame:,%d\n",svId,frame);
+//    printf(" Frame BeidouD1 svid:%d,frame:,%d\n",svId,frame);
     switch (frame){
         case 1:
             SatH1 = Read1Word(dwrds[1],1,14);
@@ -338,7 +338,7 @@ int BeiDouSV::DecodeD2Frame1(uint32_t *dwrds) {
     int Pnum1 = Read1Word(dwrds[1],4,14);
     bstEphemOK[Pnum1-1] = 1;
 
-    printf(" Frame BeidouD2 svid:%d,frame1,page:,%d",svId,Pnum1);
+//    printf(" Frame BeidouD2 svid:%d,frame1,page:,%d",svId,Pnum1);
     switch(Pnum1){
         case 1:
             SatH1 = Read1Word(dwrds[1],1,18);
@@ -596,7 +596,7 @@ bool SV::ElevGood() {
     return elevGood;
 }
 bool SV::MeasureGood() {
-    measureGood = prMes<40e6&&prMes>16e6;
+    measureGood = prMes<45e6&&prMes>15e6;
     if(!measureGood){
         printf("\npr measure bad sv:%d,%02d,angle:%lf\n",type,svId,prMes);
     }
@@ -605,7 +605,12 @@ bool SV::MeasureGood() {
 
 double SV::InterpRtkData(double time, int sigInd) {
     int InterpLength = 5;
-    if(rtkData.size()<InterpLength)return 0;
+    printf("rtk data num = %d\n",rtkData.size());
+    if(rtkData.size()<InterpLength)
+    {
+        printf("rtk data num = %d, not enough\n",rtkData.size());
+        return 0;
+    }
     vector<double> timeline, pr_df400, pr_df401;
     for(int i=0;i<InterpLength;i++){
         MSM4data* data = rtkData[i];
@@ -615,9 +620,15 @@ double SV::InterpRtkData(double time, int sigInd) {
             timeline.push_back(data->rtktime);
             pr_df400.push_back(data->sigData->prMes);
             pr_df401.push_back(data->sigData->cpMes);
+        } else{
+            printf("i=%d,zero cell data\n",i);
         }
     }
-    if(timeline.size()<InterpLength)return 0;
+    if(timeline.size()<InterpLength)
+    {
+        printf("time line size = %d, not ok\n",timeline.size());
+        return 0;
+    }
     prInterp[sigInd] = InterpLine(time,timeline,pr_df400);
     cpInterp[sigInd] = InterpLine(time,timeline,pr_df401);
 }

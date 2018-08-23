@@ -36,17 +36,22 @@ int PosSolver::PrepareSVsData(vector<SV *> &svsForCalcu) {
 int PosSolver::PositionRtk() {
     int sigInd = 1;
     //插值
-    printf("rcvtow = %lf\n",rcvtow);
     int result = 0;
     vector<SV*> svs0, svs1;
     PrepareSVsData(svs0);
+    printf("rcvtow = %lf\n",rcvtow);
     //暂时单模计算
-    if(numGPSUsed*numBDSUsed)
+    if(numGPSUsed*numBDSUsed){
+        printf("-------------------count 0\n");
         return -1;
+    }
     SV* svCectre;
     int svCentreInd;
     double elevMax = 0;
-    gnss->rtkManager.mtxData.lock();
+//    gnss->rtkManager.mtxData.lock();
+    printf(" positon rtk lock 0\n");
+    printf("---------calcu N0 = %d\n",svs0.size());
+
     for(int i = 0,k=-1; i<svs0.size();i++){
         SV* sv = svs0[i];
         int time = rcvtow;
@@ -62,10 +67,15 @@ int PosSolver::PositionRtk() {
             }
         }
     }
+    printf("---------calcu N = %d\n",svs1.size());
     svs1.erase(svs1.begin()+svCentreInd);
 
     int N = svs1.size();
-    if(N<3)return -1;
+    printf("---------calcu N = %d\n",N);
+    if(N<3){
+        gnss->rtkManager.mtxData.unlock();
+        return -1;
+    }
     MatrixXd pur(N,1);
     MatrixXd Gur(N,3);
 
@@ -84,7 +94,9 @@ int PosSolver::PositionRtk() {
         Gur(i,1) = Ir_0i(1);
         Gur(i,2) = Ir_0i(2);
     }
-    gnss->rtkManager.mtxData.unlock();
+    printf(" positon rtk unlock 0\n");
+//    gnss->rtkManager.mtxData.unlock();
+    printf(" positon rtk unlock 1\n");
 
     MatrixXd GurT = Gur.transpose();
     Vector3d bur = (GurT*Gur).inverse()*GurT*pur;
@@ -99,10 +111,10 @@ int PosSolver::PositionRtk() {
 }
 
 int PosSolver::PositionSingle() {
-    printf("rcvtow = %lf\n",rcvtow);
     int result = 0;
     vector<SV*> svsForCalcu;
     PrepareSVsData(svsForCalcu);
+    printf("rcvtow = %lf\n",rcvtow);
     int N = svsForCalcu.size();
     if(N<4){
         printf("\n\n----------calcu:%d,Not enough Svs.\n",N);
