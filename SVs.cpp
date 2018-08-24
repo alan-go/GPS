@@ -605,33 +605,34 @@ bool SV::MeasureGood() {
 
 double SV::InterpRtkData(double time, int sigInd) {
     int InterpLength = 5;
-    printf("rtk data num = %d\n",rtkData.size());
+    printf("TTTTTTTTTTTTTTTtime = %f\n",time);
+    printf("rtk data num = %d,sat num = %d\n",rtkData.size(),svId);
     if(rtkData.size()<InterpLength)
     {
         printf("rtk data num = %d, not enough\n",rtkData.size());
         return 0;
     }
+
     vector<double> timeline, pr_df400, pr_df401;
-    for(int i=0;i<InterpLength;i++){
-        MSM4data* data = rtkData[i];
-        printf("rough pr = %f",data->prRough);
-        if(data->sigData->df400*data->sigData->df401){
-            data->sigData->prMes = (data->prRough+data->sigData->df400)*Light_speed*1e-3;
-            data->sigData->cpMes = (data->prRough+data->sigData->df401)*Light_speed*1e-3;
-            timeline.push_back(data->rtktime);
-            pr_df400.push_back(data->sigData->prMes);
-            pr_df401.push_back(data->sigData->cpMes);
-        } else{
-            printf("i=%d,zero cell data\n",i);
-        }
+    for(vector<MSM4data*>::iterator it = rtkData.begin();it<rtkData.begin()+InterpLength;it++){
+//    for(int i=0;i<InterpLength;i++){
+//        MSM4data* data = rtkData[i];
+        MSM4data* data = *it;
+        MSM4Cell* cell = &data->sigData[sigInd];
+        printf("\n\nrtktime = %f, df397=%f,df398=%f\n",data->rtktime,data->df397,data->df398);
+        printf("rough pr = %f\n",data->prRough);
+        printf("prmes=%f,cpmes=%f\n",cell->prMes,cell->cpMes);
+
     }
-    if(timeline.size()<InterpLength)
+    if(timeline.size()<InterpLength-2)
     {
         printf("time line size = %d, not ok\n",timeline.size());
         return 0;
     }
     prInterp[sigInd] = InterpLine(time,timeline,pr_df400);
     cpInterp[sigInd] = InterpLine(time,timeline,pr_df401);
+    printf("---pr interp = %f\n",prInterp[sigInd]/Light_speed*1000);
+    return prInterp[sigInd];
 }
 
 double SV::InterpLine(double x0, vector<double> &x, vector<double> &y) {

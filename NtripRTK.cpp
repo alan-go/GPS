@@ -86,7 +86,7 @@ void NtripRTK::RecvThread() {
                         memcpy(buferRTK,bufferRecv+i+3,messageLength);
                         uint32_t type = NetToHost32(buferRTK,0,12);
                         printf("messageLength = %d, type = %d\n",messageLength,type);
-                        mtxData.lock();
+//                        mtxData.lock();
                         switch (type){
                             case 1005:
                                 ParaseRtk32_1005(buferRTK);
@@ -102,7 +102,7 @@ void NtripRTK::RecvThread() {
                             default:
                                 break;
                         }
-                        mtxData.unlock();
+//                        mtxData.unlock();
                         i+=messageLength;
                     } else{
                         printf("CheckSum failed.%d,%d\n",checkSumGet,crc24Q.checksum());
@@ -142,7 +142,11 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             IODS,clockCorrect,clockExtern,smoothType,smoothType);
 
     vector<MSM4data*> satsData;
-    vector<MSM4Cell*> cells;
+//    pair<double,double>a;
+
+    typedef pair<MSM4data*,MSM4Cell*> pairCell;
+    vector<pairCell> cells;
+
 //    vector<SV::SignalData*>sigData;
     int nSat = 0, nSig = 0, nCell = 0;
 
@@ -200,8 +204,9 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
                 int m = sats[isat];
                 int n = sigs[isig];
 //                printf("m,n=%d,%d\n",m,n);
-                MSM4data *dataTemp = GetRtkRecord(m,0,type);
-                cells.push_back(dataTemp->sigData+n);
+//                MSM4data *dataTemp = GetRtkRecord(m,0,type);
+                MSM4data *dataTemp = satsData[isat];
+                cells.push_back(pairCell(dataTemp,&(dataTemp->sigData[n])));
                 dataTemp->sigs.push_back(n);
 //                SV * temp = gnss->svsManager.SatTable(type,m);
 //                sigData.push_back(temp->SignalTable(n));
@@ -232,7 +237,8 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             i-=8;
             b++;
         }
-        cells[n]->df400 = double(NetToHost32(b,i,15))*pow(2,-24);
+        cells[n].second->df400= double(NetToHost32(b,i,15))*pow(2,-24);
+        cells[n].second->prMes = (cells[n].first->prRough + cells[n].second->df400)*Light_speed*1e-3;
         b++;
         i+=7;
     }
@@ -241,7 +247,8 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             i-=8;
             b++;
         }
-        cells[n]->df401 = double(NetToHost32(b,i,22))*pow(2,-29);
+        cells[n].second->df401 = double(NetToHost32(b,i,22))*pow(2,-29);
+        cells[n].second->cpMes = (cells[n].first->prRough + cells[n].second->df401)*Light_speed*1e-3;
         b+=2;
         i+=6;
     }
@@ -250,7 +257,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             i-=8;
             b++;
         }
-        cells[n]->df402 = NetToHost32(b,i,4);
+        cells[n].second->df402 = NetToHost32(b,i,4);
         i+=4;
     }
     for(int n = 0; n< nCell; n++){
@@ -258,7 +265,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             i-=8;
             b++;
         }
-        cells[n]->df420 = NetToHost32(b,i,1);
+        cells[n].second->df420 = NetToHost32(b,i,1);
         i++;
     }
     for(int n = 0; n< nCell; n++){
@@ -266,7 +273,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             i-=8;
             b++;
         }
-        cells[n]->df403 = NetToHost32(b,i,6);
+        cells[n].second->df403 = NetToHost32(b,i,6);
         i+=6;
     }
 
@@ -276,7 +283,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
 //        MSM4data *dataTemp = GetRtkRecord(m,0,type);
 //        printf("m=%d,rough p = %f\n",m,dataTemp->prRough);
 //    }
-    printf("1 rough = %f\n",gnss->svsManager.svBeiDous[1].rtkData[0]->prRough);
+    printf("1 rough = %f\n",gnss->svsManager.svBeiDous[7].rtkData[0]->prRough);
 }
 
 
@@ -358,7 +365,7 @@ int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
 
 int NtripRTK::AddRtkRecord(MSM4data *data, SV::SvType type, int id) {
     //maximum:5
-    int maxNumber = 15;
+    int maxNumber = 50;
     vector<MSM4data*> *temp;
     switch (type){
         case SV::GPS:

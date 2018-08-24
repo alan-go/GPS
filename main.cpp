@@ -88,7 +88,7 @@ int main()
 
         while (command=getchar()){
             if('x'==command){
-                            stopLog = 1;
+                stopLog = 1;
                 pthread_join(logThread, nullptr);
                 printf("stopLogging");
                 break;
@@ -107,6 +107,7 @@ int main()
         inF.open(ss, std::ifstream::binary);
         while (!inF.eof()){
             inF.read(dat,128);
+//            sleep(1);
             gnss->serialDataManager.ScanSerialData(dat,128);
         }
         inF.close();

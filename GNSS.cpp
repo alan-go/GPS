@@ -27,11 +27,11 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
         rtkManager.SentGGA(rtkManager.ggaDefault,strlen(rtkManager.ggaDefault));
 
         pthread_create(&thread2_, nullptr, ThreadAdapterQianXun, &rtkManager);
-        sleep(10);
+        sleep(3);
     }
 
     //todo : for temmp
-    pthread_create(&thread1_, nullptr, ThreadAdapterGNSS, &serialDataManager);
+//    pthread_create(&thread1_, nullptr, ThreadAdapterGNSS, &serialDataManager);
     sleep(2);
     return 1;
 }

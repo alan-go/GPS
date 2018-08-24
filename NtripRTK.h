@@ -31,8 +31,8 @@ public:
     double df397, df398, prRough;
     vector<int>sigs;
     MSM4Cell sigData[32];
-
-    MSM4data():rtktime(0),df397(0),df398(0),prRough(0){}
+    bool isOk;
+    MSM4data():rtktime(0),df397(0),df398(0),prRough(0),isOk(0){}
 };
 
 class NtripRTK{
