@@ -626,6 +626,7 @@ double SV::InterpRtkData(double time, int sigInd) {
             timeline.push_back(data->rtktime);
             pr_df400.push_back(cell->prMes);
             pr_df401.push_back(cell->cpMes);
+            printf("t=%f,pr=%f\n",data->rtktime,cell->prMes);
         }
 
     }
@@ -636,20 +637,23 @@ double SV::InterpRtkData(double time, int sigInd) {
     }
     prInterp[sigInd] = InterpLine(time,timeline,pr_df400);
     cpInterp[sigInd] = InterpLine(time,timeline,pr_df401);
+    printf("Interp t=%f,pr=%f\n",time,prInterp[sigInd]);
     return prInterp[sigInd];
 }
 
-double SV::InterpLine(double x0, vector<double> &x, vector<double> &y) {
+double SV::InterpLine(double xi, vector<double> &x, vector<double> &y) {
     if(x.size()!=y.size()) return 0;
     int N = x.size();
     MatrixXd x2(N,2);
     MatrixXd y1(N,1);
     for(int i=0;i<N;i++){
         x2(i,0) = 1;
-        x2(i,1) = x[i];
-        y1(i) = y[i];
+        x2(i,1) = x[i]-x[0];
+        y1(i) = y[i]-y[0];
+//        printf("xi,yi = %f,%f\n",x2(i,1),y1(i));
     }
     MatrixXd x2T = x2.transpose();
-    Vector2d ab = (x2T*x2).inverse()*x2T*y1;
-    return ab(0) + ab(1)*x0;
+    Vector2d ab = (x2T*x2).inverse()*(x2T*y1);
+//    printf("ab = %f,%f\n",ab(0),ab(1));
+    return ab(0) + ab(1)*(xi-x[0]) + y[0];
 }

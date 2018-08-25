@@ -110,8 +110,8 @@ public:
     inline uint32_t Read3Word(uint32_t word0,int length0, int head0,
             uint32_t word1, int length1, int head1, uint32_t word2, int length2, int head2, bool isInt = false);
 
-private:
-    double InterpLine(double x0,vector<double>&x,vector<double>&y);
+//private:
+    double InterpLine(double xi,vector<double>&x,vector<double>&y);
 };
 
 class BeiDouSV:public SV{

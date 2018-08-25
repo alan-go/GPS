@@ -10,11 +10,29 @@ using namespace Eigen;
 
 
 int main(){
-    
+    BeiDouSV sv;
+    vector<double >xx,yy;
+    xx.push_back(553185);
+    xx.push_back(553184);
+    xx.push_back(553183);
+    xx.push_back(553182);
+    xx.push_back(553181);
+
+    yy.push_back(38231393.730568);
+    yy.push_back(38231389.495611);
+    yy.push_back(38231385.242785);
+    yy.push_back(38231380.989959);
+    yy.push_back(38231376.737132);
+
+    double t=553185.002000,pr=38230924.070819;
+    double yt = sv.InterpLine(t,xx,yy);
+    printf("yt = %f\n",yt);
+
+
     printf("\nin testing\n");
     GNSS gnss;
 //    gnss.useGPS = false;
-    gnss.useBeiDou = false;
+//    gnss.useBeiDou = false;
 //    gnss.useQianXun = false;
 
     u_char bbb[36] = {0xD3 ,0x00 ,0x13 ,0x3E ,0xD7 ,0xD3 ,0x02 ,0x02 ,0x98 ,0x0E ,0xDE ,0xEF ,0x34 ,0xB4 ,0xBD ,0x62

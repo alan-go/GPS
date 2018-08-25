@@ -169,7 +169,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             sats.push_back(id);
             nSat++;
 //            printf("time = %f,,",rtkTime);
-            printf("Sat:%d\n",id+1);
+//            printf("Sat:%d\n",id+1);
             MSM4data *tempData = new MSM4data;
             tempData->rtktime = rtkTime;
             satsData.push_back(tempData);
@@ -190,7 +190,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
         }
     }
     //cell
-    printf("cell\n");
+//    printf("cell\n");
     for(int isig = 0;isig<nSig;isig++){
         for(int isat = 0;isat<nSat;isat++){
             if(8==i){
@@ -214,7 +214,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
     }
 
     //parase Sat data
-    printf("Sat data\n");
+//    printf("Sat data\n");
     for(int n = 0;n<nSat;n++){
         satsData[n]->df397 = double(NetToHost32(b,i,8));
         b++;
@@ -231,7 +231,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
         i+=2;
     }
     //parase sig data
-    printf("Sig data\n");
+//    printf("Sig data\n");
     for(int n = 0; n< nCell; n++){
         if(i>=8){
             i-=8;

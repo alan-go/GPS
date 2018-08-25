@@ -59,10 +59,11 @@ int PosSolver::PositionRtk() {
 
     for(int i = 0,k=-1; i<svs0.size();i++){
         SV* sv = svs0[i];
-        int time = rcvtow;
+        double time = rcvtow;
         if(sv->type==SV::BeiDou)time-=14;
         double pr = sv->InterpRtkData(time,sigInd);
-        printf("--sv:%d,%d-pr interp = %f\n",sv->type,sv->svId,pr);
+        printf("--sv:%d,%d-pr time= %f, interp = %f\n",
+                sv->type,sv->svId,time,pr);
 
         if(0.0!=pr){
             svs1.push_back(sv);
@@ -93,6 +94,7 @@ int PosSolver::PositionRtk() {
     MatrixXd Gur(N,3);
 
     double pur0 = svCectre->prMes - svCectre->prInterp[sigInd];
+    printf("pur0-base:%f - %f\n",svCectre->prMes ,svCectre->prInterp[sigInd]);
     Vector3d referBase = gnss->rtkManager.ECEF_XYZ;
     Vector3d referLLA;
     XYZ2LLA(referBase,referLLA);
@@ -115,16 +117,16 @@ int PosSolver::PositionRtk() {
         Gur(i,1) = Ir_0i(1);
         Gur(i,2) = Ir_0i(2);
     }
-    printf(" positon rtk unlock 0\n");
+//    printf(" positon rtk unlock 0\n");
 //    gnss->rtkManager.mtxData.unlock();
-    printf(" positon rtk unlock 1\n");
-    cout<<"++++++++++++Gur\n"<<Gur<<endl;
+//    printf(" positon rtk unlock 1\n");
+//    cout<<"++++++++++++Gur\n"<<Gur<<endl;
     cout<<"++++++++++++pur\n"<<pur<<endl;
 
 
     MatrixXd GurT = Gur.transpose();
     Matrix3d H = (GurT*Gur).inverse();
-    cout<<"+++++H\n"<<H<<endl;
+//    cout<<"+++++H\n"<<H<<endl;
 
     Vector3d bur = H*(GurT*pur);
     cout<<"++++++bur\n"<<bur<<endl;
@@ -134,8 +136,8 @@ int PosSolver::PositionRtk() {
     cout<<"++++++++++++xyz\n"<<xyz<<endl;
 
     XYZ2LLA(xyz,LLA);
-//    gnss->isPositioned = true;
-//    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
+    gnss->isPositioned = true;
+    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
     printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
 
     delete (this);
