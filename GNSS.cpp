@@ -7,6 +7,8 @@ GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),is
 
     rtkManager.serverIP_ = "60.205.8.49";
     rtkManager.port_ = 8002;
+    xyzDefault<<-2.17166e+06, 4.38439e+06, 4.07802e+06;
+    llaDefault<<40.0*GPS_PI/180.0, 116.345*GPS_PI/180.0, 59.07;
 }
 
 GNSS::~GNSS() {
@@ -27,11 +29,11 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
         rtkManager.SentGGA(rtkManager.ggaDefault,strlen(rtkManager.ggaDefault));
 
         pthread_create(&thread2_, nullptr, ThreadAdapterQianXun, &rtkManager);
-        sleep(3);
+        sleep(2);
     }
 
     //todo : for temmp
-//    pthread_create(&thread1_, nullptr, ThreadAdapterGNSS, &serialDataManager);
+    pthread_create(&thread1_, nullptr, ThreadAdapterGNSS, &serialDataManager);
     sleep(2);
     return 1;
 }

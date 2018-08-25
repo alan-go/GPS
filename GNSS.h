@@ -25,7 +25,7 @@ public:
         Eigen::Vector3d xyz,lla;
         PosRcd(double tow,Vector3d xyz, Vector3d lla):rcvtow(tow),xyz(xyz),lla(lla){}
     };
-//    Eigen::Vector3d xyz, xyzOld;
+    Eigen::Vector3d xyzDefault, llaDefault;
 //    Eigen::Vector3d LLA, LLAOld;
     vector<PosRcd> records;
     double tu, tuBeiDou, tuGps;

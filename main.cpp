@@ -42,6 +42,25 @@ void *LogData(void *fileName){
 
 int main()
 {
+    vector<int >va,vb;
+    va.push_back(0);
+    va.push_back(1);
+    va.push_back(3);
+    vb = va;
+
+    vb.push_back(44);
+    va.push_back(6);
+
+    vb.erase(vb.begin()+2);
+    for(int i = 0;i<va.size();i++){
+        printf("va(%d) = %d\n",i,va[i]);
+    }
+    for(int i = 0;i<vb.size();i++){
+        printf("vb(%d) = %d\n",i,vb[i]);
+    }
+
+
+
     GNSS *gnss = new GNSS();
 
     Vector3d pc[5],LLA[5];
@@ -68,7 +87,7 @@ int main()
 
 
 
-    gnss->useGPS = false;
+//    gnss->useGPS = false;
 //    gnss->useBeiDou = false;
 //    gnss->useQianXun = false;
 
@@ -100,8 +119,8 @@ int main()
         char name[128],dat[128];
         printf("open file name:");
 //        string ss = "../data/0802-1";
-//        string ss = "../data/0708-2";
-        string ss = "../data/0823";
+        string ss = "../data/0708-2";
+//        string ss = "../data/0823";
 //        string ss = "../data/0815-2";
 //        scanf("%s",name);
         inF.open(ss, std::ifstream::binary);

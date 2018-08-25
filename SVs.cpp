@@ -605,8 +605,8 @@ bool SV::MeasureGood() {
 
 double SV::InterpRtkData(double time, int sigInd) {
     int InterpLength = 5;
-    printf("TTTTTTTTTTTTTTTtime = %f\n",time);
-    printf("rtk data num = %d,sat num = %d\n",rtkData.size(),svId);
+//    printf("TTTTTTTTTTTTTTTtime = %f\n",time);
+//    printf("rtk data num = %d,sat num = %d\n",rtkData.size(),svId);
     if(rtkData.size()<InterpLength)
     {
         printf("rtk data num = %d, not enough\n",rtkData.size());
@@ -619,19 +619,23 @@ double SV::InterpRtkData(double time, int sigInd) {
 //        MSM4data* data = rtkData[i];
         MSM4data* data = *it;
         MSM4Cell* cell = &data->sigData[sigInd];
-        printf("\n\nrtktime = %f, df397=%f,df398=%f\n",data->rtktime,data->df397,data->df398);
-        printf("rough pr = %f\n",data->prRough);
-        printf("prmes=%f,cpmes=%f\n",cell->prMes,cell->cpMes);
+//        printf("\n\nrtktime = %f, df397=%f,df398=%f\n",data->rtktime,data->df397,data->df398);
+//        printf("rough pr = %f\n",data->prRough);
+//        printf("prmes=%f,cpmes=%f\n",cell->prMes,cell->cpMes);
+        if(cell->cpMes!=0){
+            timeline.push_back(data->rtktime);
+            pr_df400.push_back(cell->prMes);
+            pr_df401.push_back(cell->cpMes);
+        }
 
     }
     if(timeline.size()<InterpLength-2)
     {
-        printf("time line size = %d, not ok\n",timeline.size());
+        printf("interp time line size = %d, not ok\n",timeline.size());
         return 0;
     }
     prInterp[sigInd] = InterpLine(time,timeline,pr_df400);
     cpInterp[sigInd] = InterpLine(time,timeline,pr_df401);
-    printf("---pr interp = %f\n",prInterp[sigInd]/Light_speed*1000);
     return prInterp[sigInd];
 }
 

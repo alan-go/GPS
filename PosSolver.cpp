@@ -13,7 +13,7 @@ PosSolver::PosSolver(SVs svs, NtripRTK *rtk, GNSS *gnss): svs(svs),rtk(rtk),gnss
 
 PosSolver::~PosSolver(){}
 
-int PosSolver::PrepareSVsData(vector<SV *> &svsForCalcu) {
+int PosSolver::PrepareSVsData(vector<SV*> &svsForCalcu) {
     ReadVisibalSvsRaw(svs, visibleSvs, raw);
     numGPSUsed = 0;numBDSUsed = 0;
     SelectSvsFromVisible(visibleSvs,svsForCalcu);
@@ -24,7 +24,11 @@ int PosSolver::PrepareSVsData(vector<SV *> &svsForCalcu) {
         if(SV::BeiDou == sv->type)timeForECEF-=14;
         sv->CalcuTime(timeForECEF);
         sv->CalcuECEF(sv->tsReal);
-        if(gnss->isPositioned)sv->CorrectIT(xyz,LLA,timeForECEF);
+        if(gnss->isPositioned){
+            sv->CorrectIT(xyz,LLA,timeForECEF);
+        } else{
+            sv->CalcuelEvationAzimuth(gnss->xyzDefault,gnss->llaDefault);
+        }
 
         XYZ2LLA(sv->position,sv->sLLA);
 //        sv->PrintInfo(2);
@@ -37,17 +41,18 @@ int PosSolver::PositionRtk() {
     int sigInd = 1;
     //插值
     int result = 0;
+
     vector<SV*> svs0, svs1;
     PrepareSVsData(svs0);
     printf("rcvtow = %lf\n",rcvtow);
-    //暂时单模计算
-    if(numGPSUsed*numBDSUsed){
-        printf("-------------------count 0\n");
-        return -1;
-    }
+//    //暂时单模计算
+//    if(numGPSUsed*numBDSUsed){
+//        printf("-------------------count 0\n");
+//        return -1;
+//    }
     SV* svCectre;
-    int svCentreInd;
-    double elevMax = 0;
+    int svCentreInd = -2;
+    double elevMax = -5;
 //    gnss->rtkManager.mtxData.lock();
     printf(" positon rtk lock 0\n");
     printf("---------calcu N0 = %d\n",svs0.size());
@@ -57,9 +62,12 @@ int PosSolver::PositionRtk() {
         int time = rcvtow;
         if(sv->type==SV::BeiDou)time-=14;
         double pr = sv->InterpRtkData(time,sigInd);
-        if(0!=pr){
-            k++;
+        printf("--sv:%d,%d-pr interp = %f\n",sv->type,sv->svId,pr);
+
+        if(0.0!=pr){
             svs1.push_back(sv);
+            k++;
+            printf("angle = %.2f\n",sv->elevationAngle);
             if(sv->elevationAngle>elevMax){
                 elevMax = sv->elevationAngle;
                 svCectre = sv;
@@ -67,13 +75,18 @@ int PosSolver::PositionRtk() {
             }
         }
     }
-    printf("---------calcu N = %d\n",svs1.size());
+    printf("---------calcu N1 = %d, svCentreInd = %d\n",svs1.size(),svCentreInd);
+    if(svs1.size()<4){
+        printf("N1 not enough");
+        return -1;
+    }
+
     svs1.erase(svs1.begin()+svCentreInd);
 
     int N = svs1.size();
-    printf("---------calcu N = %d\n",N);
+    printf("---------calcu N2 = %d\n",N);
     if(N<3){
-        gnss->rtkManager.mtxData.unlock();
+//        gnss->rtkManager.mtxData.unlock();
         return -1;
     }
     MatrixXd pur(N,1);
@@ -81,12 +94,20 @@ int PosSolver::PositionRtk() {
 
     double pur0 = svCectre->prMes - svCectre->prInterp[sigInd];
     Vector3d referBase = gnss->rtkManager.ECEF_XYZ;
+    Vector3d referLLA;
+    XYZ2LLA(referBase,referLLA);
+//    printf("++++++++++++BaseLLA === %lf,%lf,%lf\n",referLLA(1)*180/GPS_PI,referLLA(0)*180/GPS_PI,referLLA(2));
+
     Vector3d Ir0 = svCectre->position - referBase;
     Ir0 = Ir0/Ir0.norm();
 
-    for(int i=0;i<svs1.size();i++){
+    printf("start 2222222222222SSSSSSSSSSSSSSSSS\n");
+
+    for(int i=0;i<N;i++){
         SV* sv = svs1[i];
         pur(i) = (sv->prMes-sv->prInterp[sigInd])-pur0;
+        printf("sv in N2:%d,%d,%f\n",sv->type,sv->svId,pur(i));
+
         Vector3d Iri = sv->position - referBase;
         Iri = Iri/Iri.norm();
         Vector3d Ir_0i = Ir0 - Iri;
@@ -97,17 +118,27 @@ int PosSolver::PositionRtk() {
     printf(" positon rtk unlock 0\n");
 //    gnss->rtkManager.mtxData.unlock();
     printf(" positon rtk unlock 1\n");
+    cout<<"++++++++++++Gur\n"<<Gur<<endl;
+    cout<<"++++++++++++pur\n"<<pur<<endl;
+
 
     MatrixXd GurT = Gur.transpose();
-    Vector3d bur = (GurT*Gur).inverse()*GurT*pur;
-    xyz = referBase+bur;
+    Matrix3d H = (GurT*Gur).inverse();
+    cout<<"+++++H\n"<<H<<endl;
 
+    Vector3d bur = H*(GurT*pur);
+    cout<<"++++++bur\n"<<bur<<endl;
+
+    xyz = referBase+bur;
+    cout<<"++++++++++++basexyz\n"<<referBase<<endl;
+    cout<<"++++++++++++xyz\n"<<xyz<<endl;
 
     XYZ2LLA(xyz,LLA);
-    gnss->isPositioned = true;
-    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
-    cout<<"++++++++++++xyz\n"<<xyz<<endl;
+//    gnss->isPositioned = true;
+//    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
     printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
+
+    delete (this);
 }
 
 int PosSolver::PositionSingle() {
@@ -334,7 +365,7 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all, vector<SV*> &select) {
 }
 
 
-int PosSolver::ReadVisibalSvsRaw(SVs svs,vector<SV*> &svVisable, char *raw) {
+int PosSolver::ReadVisibalSvsRaw(SVs &svs,vector<SV*> &svVisable, char *raw) {
     char* playload = raw + 6;
 
     char* temp = playload;

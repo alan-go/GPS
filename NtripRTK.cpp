@@ -169,7 +169,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             sats.push_back(id);
             nSat++;
 //            printf("time = %f,,",rtkTime);
-//            printf("Sat:%d\n",id+1);
+            printf("Sat:%d\n",id+1);
             MSM4data *tempData = new MSM4data;
             tempData->rtktime = rtkTime;
             satsData.push_back(tempData);
@@ -190,6 +190,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
         }
     }
     //cell
+    printf("cell\n");
     for(int isig = 0;isig<nSig;isig++){
         for(int isat = 0;isat<nSat;isat++){
             if(8==i){
@@ -200,7 +201,6 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             if(temp&(128>>i)){
                 //todo
                 nCell++;
-//                sigData.push_back(svHead[sats[isat]].SignalTable(sigs[isig]));
                 int m = sats[isat];
                 int n = sigs[isig];
 //                printf("m,n=%d,%d\n",m,n);
@@ -208,14 +208,13 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
                 MSM4data *dataTemp = satsData[isat];
                 cells.push_back(pairCell(dataTemp,&(dataTemp->sigData[n])));
                 dataTemp->sigs.push_back(n);
-//                SV * temp = gnss->svsManager.SatTable(type,m);
-//                sigData.push_back(temp->SignalTable(n));
             }
             i++;
         }
     }
 
     //parase Sat data
+    printf("Sat data\n");
     for(int n = 0;n<nSat;n++){
         satsData[n]->df397 = double(NetToHost32(b,i,8));
         b++;
@@ -232,6 +231,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
         i+=2;
     }
     //parase sig data
+    printf("Sig data\n");
     for(int n = 0; n< nCell; n++){
         if(i>=8){
             i-=8;
@@ -283,7 +283,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
 //        MSM4data *dataTemp = GetRtkRecord(m,0,type);
 //        printf("m=%d,rough p = %f\n",m,dataTemp->prRough);
 //    }
-    printf("1 rough = %f\n",gnss->svsManager.svBeiDous[7].rtkData[0]->prRough);
+//    printf("1 rough = %f\n",gnss->svsManager.svBeiDous[7].rtkData[0]->prRough);
 }
 
 
@@ -365,6 +365,7 @@ int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
 
 int NtripRTK::AddRtkRecord(MSM4data *data, SV::SvType type, int id) {
     //maximum:5
+//    printf("ADD record\n");
     int maxNumber = 50;
     vector<MSM4data*> *temp;
     switch (type){
@@ -378,14 +379,6 @@ int NtripRTK::AddRtkRecord(MSM4data *data, SV::SvType type, int id) {
             break;
     }
     temp->insert(temp->begin(),data);
-    if(temp->size()>maxNumber){
-        for(int i =0;i<maxNumber;i++){
-            double prTemp = (*temp)[i]->sigData[1].df400+(*temp)[i]->prRough;
-            prTemp = prTemp*1e-3*Light_speed;
-            (*temp)[i]->sigData[1].prMes = prTemp;
-//            printf("time,prmes = ,%f,%f\n",(*temp)[i]->rtktime,(*temp)[i]->sigData[1].prMes);
-        }
-    }
     if(temp->size()>maxNumber){
         MSM4data* endp = temp->back();
         temp->pop_back();
