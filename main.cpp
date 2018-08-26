@@ -89,7 +89,7 @@ int main()
 
 //    gnss->useGPS = false;
 //    gnss->useBeiDou = false;
-//    gnss->useQianXun = false;
+    gnss->useQianXun = false;
 
     gnss->StartGNSS("null",115200);
 

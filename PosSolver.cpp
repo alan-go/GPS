@@ -59,7 +59,7 @@ int PosSolver::PositionRtk() {
 
     for(int i = 0,k=-1; i<svs0.size();i++){
         SV* sv = svs0[i];
-        double time = rcvtow;
+        double time = rcvtow - tu/Light_speed;
         if(sv->type==SV::BeiDou)time-=14;
         double pr = sv->InterpRtkData(time,sigInd);
         printf("--sv:%d,%d-pr time= %f, interp = %f\n",
@@ -140,6 +140,10 @@ int PosSolver::PositionRtk() {
     gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
     printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
 
+    double pc = (svCectre->position - xyz).norm();
+    tu = svCectre->prMes+svCectre->tsDelta*Light_speed-svCectre->I-svCectre->T-pc;
+    gnss->tu = tu;
+    printf("tu= %f\n", tu);
     delete (this);
 }
 
@@ -228,6 +232,7 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
     gnss->isPositioned = true;
     gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
     gnss->tu = tu;
+    printf("tu= %f\n", tu);
     cout<<"++++++++++++xyz\n"<<xyz<<endl;
     printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
 //    cout<<"++++++++++++LLA\n"<<LLA*180/GPS_PI<<endl;
