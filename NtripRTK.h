@@ -74,7 +74,7 @@ private:
 
 private:
     int AddRtkRecord(MSM4data* data,SV::SvType type, int id);
-    inline uint32_t NetToHost32(char *begin,int head,int length);
+    inline uint32_t NetToHost32(char *begin,int head,int length,bool isInt = 0);
     int ParaseRtk32_1005(char * buffer);
 };
 

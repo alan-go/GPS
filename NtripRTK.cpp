@@ -195,8 +195,8 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
     }
     //cell
 //    printf("cell\n");
-    for(int isig = 0;isig<nSig;isig++){
-        for(int isat = 0;isat<nSat;isat++){
+    for(int isat = 0;isat<nSat;isat++){
+        for(int isig = 0;isig<nSig;isig++){
             if(8==headi){
                 headi=0;
                 byteInd++;
@@ -241,7 +241,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             headi-=8;
             byteInd++;
         }
-        cells[n].second->df400= double(NetToHost32(byteInd,headi,15))*pow(2,-24);
+        cells[n].second->df400= double(int32_t(NetToHost32(byteInd,headi,15,1)))*pow(2,-24);
         cells[n].second->prMes = (cells[n].first->prRough + cells[n].second->df400)*Light_speed*1e-3;
         byteInd++;
         headi+=7;
@@ -251,7 +251,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             headi-=8;
             byteInd++;
         }
-        cells[n].second->df401 = double(NetToHost32(byteInd,headi,22))*pow(2,-29);
+        cells[n].second->df401 = double(int32_t(NetToHost32(byteInd,headi,22,1)))*pow(2,-29);
         cells[n].second->cpMes = (cells[n].first->prRough + cells[n].second->df401)*Light_speed*1e-3;
         byteInd+=2;
         headi+=6;
@@ -292,13 +292,19 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
 
 
 
-uint32_t NtripRTK::NetToHost32(char *begin, int head, int length) {
+uint32_t NtripRTK::NetToHost32(char *begin, int head, int length,bool isInt) {
     char data[4];
     data[0] = begin[3];
     data[1] = begin[2];
     data[2] = begin[1];
     data[3] = begin[0];
-    return  *(uint32_t*)data<<head>>(32-length);
+    uint32_t dataUint = *(uint32_t *) data;
+    int32_t dataInt = *(uint32_t *) data;
+    if (isInt) {
+        return uint32_t(dataInt << head >> (32 - length));
+    } else{
+        return  dataUint<<head>>(32-length);
+    }
 }
 
 int NtripRTK::ParaseRtk32_1005(char *buffer) {
