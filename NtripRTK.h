@@ -28,11 +28,12 @@ public:
 class MSM4data{//每个星有一个MSM4data
 public:
     double rtktime;
+    uint32_t refID;
     double df397, df398, prRough;
     vector<int>sigs;
     MSM4Cell sigData[32];
     bool isOk;
-    MSM4data():rtktime(0),df397(0),df398(0),prRough(0),isOk(0){}
+    MSM4data():rtktime(0),refID(0),df397(0),df398(0),prRough(0),isOk(0){}
 };
 
 class NtripRTK{

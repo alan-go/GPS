@@ -129,20 +129,23 @@ void NtripRTK::UpdateGGA() {}
 
 int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
     //first Parase MSM message Header:
-    uint32_t RefID = NetToHost32(bufferRTK,12,12);//DF003
-    double rtkTime = NetToHost32(bufferRTK+3,0,30)*1e-3;//bdsTime = GPSTime -14s
-    uint8_t multiMsg = *(uint8_t*)(bufferRTK+6)<<6>>7;//DF393
+    uint32_t refID = NetToHost32(bufferRTK,12,12);//DF003
+    double rtkTime = double(NetToHost32(bufferRTK+3,0,30))*1e-3;//bdsTime = GPSTime -14s
+//    uint8_t multiMsg = *(uint8_t*)(bufferRTK+6)<<6>>7;//DF393
+    uint8_t multiMsg = NetToHost32(bufferRTK+6,6,1);//DF393
     uint32_t IODS = NetToHost32(bufferRTK+6,7,3);//DF409
-    uint8_t clockCorrect = *(uint8_t*)(bufferRTK+8)<<1>>6;//DF411
-    uint8_t clockExtern = *(uint8_t*)(bufferRTK+8)<<3>>6;//DF412
-    uint8_t smoothType = *(uint8_t*)(bufferRTK+8)<<5>>7;//DF417
+//    uint8_t clockCorrect = *(uint8_t*)(bufferRTK+8)<<1>>6;//DF411
+    uint8_t clockCorrect = NetToHost32(bufferRTK+8,1,2);//DF411
+//    uint8_t clockExtern = *(uint8_t*)(bufferRTK+8)<<3>>6;//DF412
+    uint8_t clockExtern = NetToHost32(bufferRTK+8,3,2);//DF412
+//    uint8_t smoothType = *(uint8_t*)(bufferRTK+8)<<5>>7;//DF417
+    uint8_t smoothType = NetToHost32(bufferRTK+8,5,1);//DF417
     uint32_t smoothRange = NetToHost32(bufferRTK+8,6,3);//DF418
 
-    printf("df003=%d,df393=%d,df409=%d,df411=%d,412=%d,417=%d,df418=%d\n",RefID,multiMsg,
-            IODS,clockCorrect,clockExtern,smoothType,smoothType);
+    printf("rtktime = %f, df003=%d,df393=%d,df409=%d,df411=%d,412=%d,417=%d,df418=%d\n",
+            rtkTime,refID,multiMsg,IODS,clockCorrect,clockExtern,smoothType,smoothRange);
 
     vector<MSM4data*> satsData;
-//    pair<double,double>a;
 
     typedef pair<MSM4data*,MSM4Cell*> pairCell;
     vector<pairCell> cells;
@@ -155,35 +158,36 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
 
 
     //sat
-    char *b = bufferRTK+9;
-    int i = 1;
-    u_char temp = (u_char)b[0];
+    char *byteInd = bufferRTK+9;
+    int headi = 1;
+    u_char temp = (u_char)byteInd[0];
     //卫星掩膜
-    for(int id=0;id<64;id++,i++){
-        if(8==i){
-            i=0;
-            b++;
-            temp = (u_char)b[0];
+    for(int id=0;id<64;id++,headi++){
+        if(8==headi){
+            headi=0;
+            byteInd++;
+            temp = (u_char)byteInd[0];
         }
-        if(temp&(128>>i)){
+        if(temp&(128>>headi)){
             sats.push_back(id);
             nSat++;
 //            printf("time = %f,,",rtkTime);
 //            printf("Sat:%d\n",id+1);
             MSM4data *tempData = new MSM4data;
             tempData->rtktime = rtkTime;
+            tempData->refID = refID;
             satsData.push_back(tempData);
             AddRtkRecord(tempData,type,id);
         }
     }
     //signal信号掩膜
-    for(int id=0;id<32;id++,i++){
-        if(8==i){
-            i=0;
-            b++;
-            temp = (u_char)b[0];
+    for(int id=0;id<32;id++,headi++){
+        if(8==headi){
+            headi=0;
+            byteInd++;
+            temp = (u_char)byteInd[0];
         }
-        if(temp&(128>>i)){
+        if(temp&(128>>headi)){
             sigs.push_back(id);
             nSig++;
             printf("Sig:%d\n",id+1);
@@ -193,12 +197,12 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
 //    printf("cell\n");
     for(int isig = 0;isig<nSig;isig++){
         for(int isat = 0;isat<nSat;isat++){
-            if(8==i){
-                i=0;
-                b++;
-                temp = (u_char)b[0];
+            if(8==headi){
+                headi=0;
+                byteInd++;
+                temp = (u_char)byteInd[0];
             }
-            if(temp&(128>>i)){
+            if(temp&(128>>headi)){
                 //todo
                 nCell++;
                 int m = sats[isat];
@@ -209,72 +213,72 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
                 cells.push_back(pairCell(dataTemp,&(dataTemp->sigData[n])));
                 dataTemp->sigs.push_back(n);
             }
-            i++;
+            headi++;
         }
     }
 
     //parase Sat data
 //    printf("Sat data\n");
     for(int n = 0;n<nSat;n++){
-        satsData[n]->df397 = double(NetToHost32(b,i,8));
-        b++;
+        satsData[n]->df397 = double(NetToHost32(byteInd,headi,8));
+        byteInd++;
     }
     for(int n = 0;n<nSat;n++){
-        if(i>=8){
-            i-=8;
-            b++;
+        if(headi>=8){
+            headi-=8;
+            byteInd++;
         }
-        satsData[n]->df398 = double(NetToHost32(b,i,10))*pow(2,-10);
+        satsData[n]->df398 = double(NetToHost32(byteInd,headi,10))*pow(2,-10);
         satsData[n]->prRough = satsData[n]->df397 + satsData[n]->df398;
 //        printf("prRough = %.2f\n",satsData[n]->prRough);
-        b++;
-        i+=2;
+        byteInd++;
+        headi+=2;
     }
     //parase sig data
 //    printf("Sig data\n");
     for(int n = 0; n< nCell; n++){
-        if(i>=8){
-            i-=8;
-            b++;
+        if(headi>=8){
+            headi-=8;
+            byteInd++;
         }
-        cells[n].second->df400= double(NetToHost32(b,i,15))*pow(2,-24);
+        cells[n].second->df400= double(NetToHost32(byteInd,headi,15))*pow(2,-24);
         cells[n].second->prMes = (cells[n].first->prRough + cells[n].second->df400)*Light_speed*1e-3;
-        b++;
-        i+=7;
+        byteInd++;
+        headi+=7;
     }
     for(int n = 0; n< nCell; n++){
-        if(i>=8){
-            i-=8;
-            b++;
+        if(headi>=8){
+            headi-=8;
+            byteInd++;
         }
-        cells[n].second->df401 = double(NetToHost32(b,i,22))*pow(2,-29);
+        cells[n].second->df401 = double(NetToHost32(byteInd,headi,22))*pow(2,-29);
         cells[n].second->cpMes = (cells[n].first->prRough + cells[n].second->df401)*Light_speed*1e-3;
-        b+=2;
-        i+=6;
+        byteInd+=2;
+        headi+=6;
     }
     for(int n = 0; n< nCell; n++){
-        if(i>=8){
-            i-=8;
-            b++;
+        if(headi>=8){
+            headi-=8;
+            byteInd++;
         }
-        cells[n].second->df402 = NetToHost32(b,i,4);
-        i+=4;
+        cells[n].second->df402 = NetToHost32(byteInd,headi,4);
+        headi+=4;
     }
     for(int n = 0; n< nCell; n++){
-        if(i>=8){
-            i-=8;
-            b++;
+        if(headi>=8){
+            headi-=8;
+            byteInd++;
         }
-        cells[n].second->df420 = NetToHost32(b,i,1);
-        i++;
+        cells[n].second->df420 = NetToHost32(byteInd,headi,1);
+        headi++;
     }
     for(int n = 0; n< nCell; n++){
-        if(i>=8){
-            i-=8;
-            b++;
+        if(headi>=8){
+            headi-=8;
+            byteInd++;
         }
-        cells[n].second->df403 = NetToHost32(b,i,6);
-        i+=6;
+        cells[n].second->df403 = NetToHost32(byteInd,headi,6);
+        headi+=6;
     }
 
 //    for(int n = 0; n< nSat; n++){
@@ -365,7 +369,7 @@ int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
 
 int NtripRTK::AddRtkRecord(MSM4data *data, SV::SvType type, int id) {
     //maximum:5
-//    printf("ADD record\n");
+    printf("ADD record\n");
     int maxNumber = 50;
     vector<MSM4data*> *temp;
     switch (type){
@@ -384,7 +388,17 @@ int NtripRTK::AddRtkRecord(MSM4data *data, SV::SvType type, int id) {
         temp->pop_back();
         delete(endp);
     }
-     return 0;
+
+    if (temp->size() == maxNumber) {
+        for (int i = 0; i < temp->size(); ++i) {
+            double pr = (*temp)[i]->sigData[1].prMes;
+            double cp = (*temp)[i]->sigData[1].cpMes;
+            printf("time = %f, pr =  %f, cp = %f\n", (*temp)[i]->rtktime, pr, cp);
+        }
+    }
+
+    return 0;
+
 }
 
 MSM4data* NtripRTK::GetRtkRecord(int satInd, int timeInd, SV::SvType type) {
