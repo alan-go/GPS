@@ -500,39 +500,6 @@ int SV::CalcuelEvationAzimuth(Vector3d receiverPosition, Vector3d LLA) {
 }
 
 int SV::CalcuInoshphere(double elev, double azim,Vector3d LLA,double time) {
-//    double F,t,Psi,Phi_i,Phi_m,Lambda,Tiono,PER,AMP,x;
-//
-//    x = (0.53-elev/GPS_PI);
-//    F = 1.0 + 16.0*x*x*x;//方向因子
-//    Tiono = 5.0e-9*F;
-//
-//    Psi = 0.0137/(elev/GPS_PI+0.11)-0.022;
-//    Phi_i = LLA(1)/GPS_PI + Psi*cos(azim);
-//    if(Phi_i>0.416)
-//        Phi_i = 0.416;
-//    else
-//        Phi_i = -0.416;
-//    Lambda = LLA(1)/GPS_PI + Psi*sin(azim)/cos(Phi_i*GPS_PI);
-//    Phi_m = Phi_i + 0.416*cos((Lambda-1.617)*GPS_PI);
-//    t = 4.32e4*Lambda + time;//接收机时间不准也没问题
-//    while (t>86400)t-=86400;
-//    if(t<0)
-//        t+=86400.0;
-//    PER = ino.b0 + Phi_m * (ino.b1 + Phi_m * ( ino.b2 + Phi_m * ino.b3));
-//    if(PER<72000.0)
-//        PER = 72000.0;
-//    t = 2.0*GPS_PI*(t-50400.0)/PER;
-//    AMP = ino.a0 + Phi_m * (ino.a1 + Phi_m * ( ino.a2 + Phi_m * ino.a3));
-//    if(AMP<0.0)
-//        AMP = 0.0;
-//    if(t>-1.57 && t<1.57)
-//        Tiono += F*AMP*(1-t*t*(0.5-t*t/24.0));
-//    if(Tiono>30.0/Light_speed)
-//        Tiono = 30.0/Light_speed;
-//    else
-//        Tiono = 0;
-//    I = Tiono*Light_speed;
-
     double temp = Earth_a/(Earth_a+375000);
     double phy = GPS_PI/2 - elev - asin(temp*cos(elev));
     double phyM = asin(sin(LLA(1))*cos(phy) + cos(LLA(0))*sin(phy)*cos(azim));
@@ -605,8 +572,6 @@ bool SV::MeasureGood() {
 
 double SV::InterpRtkData(double time, int sigInd) {
     int InterpLength = 5;
-//    printf("TTTTTTTTTTTTTTTtime = %f\n",time);
-//    printf("rtk data num = %d,sat num = %d\n",rtkData.size(),svId);
     if(rtkData.size()<InterpLength)
     {
         printf("rtk data num = %d, not enough\n",rtkData.size());
@@ -614,19 +579,14 @@ double SV::InterpRtkData(double time, int sigInd) {
     }
 
     vector<double> timeline, pr_df400, pr_df401;
-    for(vector<MSM4data*>::iterator it = rtkData.begin();it<rtkData.begin()+InterpLength;it++){
-//    for(int i=0;i<InterpLength;i++){
-//        MSM4data* data = rtkData[i];
-        MSM4data* data = *it;
+    for(int i=0;i<InterpLength;i++){
+        MSM4data* data = rtkData[i];
         MSM4Cell* cell = &data->sigData[sigInd];
-//        printf("\n\nrtktime = %f, df397=%f,df398=%f\n",data->rtktime,data->df397,data->df398);
-//        printf("rough pr = %f\n",data->prRough);
-//        printf("prmes=%f,cpmes=%f\n",cell->prMes,cell->cpMes);
         if(cell->cpMes!=0){
             timeline.push_back(data->rtktime);
             pr_df400.push_back(cell->prMes);
             pr_df401.push_back(cell->cpMes);
-            printf("t=%f,pr=%f\n",data->rtktime,cell->prMes);
+//            printf("t=%f,pr=%f\n",data->rtktime,cell->prMes);
         }
 
     }
@@ -637,7 +597,6 @@ double SV::InterpRtkData(double time, int sigInd) {
     }
     prInterp[sigInd] = InterpLine(time,timeline,pr_df400);
     cpInterp[sigInd] = InterpLine(time,timeline,pr_df401);
-    printf("Interp t=%f,pr=%f\n",time,prInterp[sigInd]);
     return prInterp[sigInd];
 }
 

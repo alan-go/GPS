@@ -375,7 +375,7 @@ int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
 
 int NtripRTK::AddRtkRecord(MSM4data *data, SV::SvType type, int id) {
     //maximum:5
-    printf("ADD record\n");
+//    printf("ADD record\n");
     int maxNumber = 50;
     vector<MSM4data*> *temp;
     switch (type){
@@ -395,13 +395,13 @@ int NtripRTK::AddRtkRecord(MSM4data *data, SV::SvType type, int id) {
         delete(endp);
     }
 
-    if (temp->size() == maxNumber) {
-        for (int i = 0; i < temp->size(); ++i) {
-            double pr = (*temp)[i]->sigData[1].prMes;
-            double cp = (*temp)[i]->sigData[1].cpMes;
-            printf("time = %f, pr =  %f, cp = %f\n", (*temp)[i]->rtktime, pr, cp);
-        }
-    }
+//    if (temp->size() == maxNumber) {
+//        for (int i = 0; i < temp->size(); ++i) {
+//            double pr = (*temp)[i]->sigData[1].prMes;
+//            double cp = (*temp)[i]->sigData[1].cpMes;
+//            printf("time = %f, pr =  %f, cp = %f\n", (*temp)[i]->rtktime, pr, cp);
+//        }
+//    }
 
     return 0;
 
