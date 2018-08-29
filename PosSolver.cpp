@@ -15,6 +15,25 @@ PosSolver::~PosSolver(){}
 
 int PosSolver::PrepareSVsData(vector<SV*> &svsForCalcu) {
     ReadVisibalSvsRaw(svs, visibleSvs, raw);
+
+////////////
+//    ReadVisibalSvsRaw(gnss->svsManager, visibleSvs, raw);
+//
+//    if (visibleSvs[0]->measureRecord.size() > 20) {
+//        for (int i = 0; i < visibleSvs.size(); i++) {
+//            SV* sv = visibleSvs[i];
+//            fprintf(gnss->log,"SV ID =  %d,%d\n", sv->type, sv->svId);
+//            for (int j = 0; j < sv->measureRecord.size(); j++) {
+//                SV::Measure* meas = &(sv->measureRecord[j]);
+//                fprintf(gnss->log,"time,pr,cp =  %.5f, %.10f,%.10f,%.10f\n", meas->tow,meas->prMes,meas->cpMes,meas->doMes);
+//            }
+//            sv->measureRecord.clear();
+//        }
+//        fprintf(gnss->log,"\n\n\n\n\n\n\n\n\n\n");
+//    }
+
+//////////////
+
     numGPSUsed = 0;numBDSUsed = 0;
     SelectSvsFromVisible(visibleSvs,svsForCalcu);
 
@@ -45,11 +64,11 @@ int PosSolver::PositionRtk() {
     vector<SV*> svs0, svs1;
     PrepareSVsData(svs0);
     printf("rcvtow = %lf\n",rcvtow);
-//    //暂时单模计算
-//    if(numGPSUsed*numBDSUsed){
-//        printf("-------------------count 0\n");
-//        return -1;
-//    }
+    //暂时单模计算
+    if(numGPSUsed*numBDSUsed){
+        printf("NOT one sys mode ------------count 0\n");
+        return -1;
+    }
     SV* svCectre;
     int svCentreInd = -2;
     double elevMax = -5;
@@ -235,6 +254,10 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
     printf("tu= %f\n", tu);
     cout<<"++++++++++++xyz\n"<<xyz<<endl;
     printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
+
+    fprintf(gnss->log,"xyz:time = %.5f, pos = %.5f, %.5f, %.5f, PDOP=%.2f\n",rcvtow,xyz(0),xyz(1),xyz(2),PDOP);
+    fprintf(gnss->log,"LLA:time = %.5f, pos = %.5f, %.5f, %.5f\n",rcvtow,LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
+
 //    cout<<"++++++++++++LLA\n"<<LLA*180/GPS_PI<<endl;
 
     printf("rcvtow = %lf\n",rcvtow);
@@ -325,6 +348,9 @@ int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
     double PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
     printf("PDOP = %lf\n",PDOP);
 
+    fprintf(gnss->log,"xyz:time = %.5f, pos = %.5f, %.5f, %.5f, PDOP=%.2f\n",rcvtow,xyz(0),xyz(1),xyz(2),PDOP);
+    fprintf(gnss->log,"LLA:time = %.5f, pos = %.5f, %.5f, %.5f\n",rcvtow,LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
+
     printf("rcvtow = %lf\n",rcvtow);
     for(int i=0;i<N;i++)
     {
@@ -400,6 +426,8 @@ int PosSolver::ReadVisibalSvsRaw(SVs &svs,vector<SV*> &svVisable, char *raw) {
         svTemp->prMes = *(double*)(playload+16+n32);
         svTemp->cpMes = *(double*)(playload+24+n32);
         svTemp->doMes = *(float *)(playload+32+n32);
+
+        svTemp->measureRecord.push_back(SV::Measure(rcvtow,svTemp->prMes,svTemp->cpMes,svTemp->doMes));
 
     }
     return 0;

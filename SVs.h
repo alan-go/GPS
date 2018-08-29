@@ -29,6 +29,14 @@ public:
         GPS = 0,
         BeiDou = 3
     };
+    struct Measure{
+        double tow = 0;
+        double prMes = 0;
+        double cpMes = 0;
+        double doMes = 0;
+        Measure(){}
+        Measure(double tow, double prMes, double cpMes, double doMes):tow(tow),prMes(prMes),cpMes(cpMes),doMes(doMes){}
+    };
     struct Orbit{
         uint32_t AODE;//BeiDou
         uint32_t IODE;//GPS
@@ -75,6 +83,7 @@ public:
     double TGD1,TGD2;
     Orbit orbit;
     double prMes, cpMes, doMes;
+    vector<Measure> measureRecord;
     double I,T;
 
     Vector3d position,sLLA;
@@ -82,7 +91,6 @@ public:
 
     double elevationAngle,azimuthAngle;
     //for RTK:
-    double df397,df398;
     //vector<MSM4data*>里面是不同时刻的数据，0是最近的记录
     vector<MSM4data*> rtkData;
     double prInterp[32], cpInterp[32];

@@ -42,26 +42,10 @@ void *LogData(void *fileName){
 
 int main()
 {
-    vector<int >va,vb;
-    va.push_back(0);
-    va.push_back(1);
-    va.push_back(3);
-    vb = va;
-
-    vb.push_back(44);
-    va.push_back(6);
-
-    vb.erase(vb.begin()+2);
-    for(int i = 0;i<va.size();i++){
-        printf("va(%d) = %d\n",i,va[i]);
-    }
-    for(int i = 0;i<vb.size();i++){
-        printf("vb(%d) = %d\n",i,vb[i]);
-    }
-
-
 
     GNSS *gnss = new GNSS();
+    gnss->log = fopen("../log/log0829-1.txt","w");
+
 
     Vector3d pc[5],LLA[5];
     pc[0]<<-32353.678517,  27026.346058,  -1095.094873 ;
@@ -87,15 +71,15 @@ int main()
 
 
 
-//    gnss->useGPS = false;
+    gnss->useGPS = false;
 //    gnss->useBeiDou = false;
     gnss->useQianXun = false;
 
-    gnss->StartGNSS("null",115200);
+//    gnss->StartGNSS("null",115200);
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-    char command = getchar();
-//    char command = 'd';
+//    char command = getchar();
+    char command = 'd';
     if('l'==command){
         printf("\nfile name : ");
         char name[64];
@@ -118,10 +102,10 @@ int main()
         ifstream inF;
         char name[128],dat[128];
         printf("open file name:");
-//        string ss = "../data/0802-1";
-        string ss = "../data/0708-2";
+        string ss = "../data/0802-1";
+//        string ss = "../data/0708-2";
 //        string ss = "../data/0823";
-//        string ss = "../data/0815-2";
+//        string ss = "../data/0815-2";//soho novatal
 //        scanf("%s",name);
         inF.open(ss, std::ifstream::binary);
         while (!inF.eof()){
@@ -140,6 +124,7 @@ int main()
         }
     }
 
+    fclose(gnss->log);
     sleep(2);
     cout<<"Quit?"<<endl;
     getchar();

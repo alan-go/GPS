@@ -37,6 +37,8 @@ public:
     bool useBeiDou,useGPS,useQianXun;
     bool isPositioned;
 
+//    char logFile[64];
+    std::FILE *log;
 
 public:
     GNSS();
