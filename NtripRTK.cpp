@@ -172,7 +172,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
             sats.push_back(id);
             nSat++;
 //            printf("time = %f,,",rtkTime);
-//            printf("Sat:%d\n",id+1);
+            printf("Sat:%d\n",id+1);
             MSM4data *tempData = new MSM4data;
             tempData->rtktime = rtkTime;
             tempData->refID = refID;
