@@ -14,11 +14,12 @@ SerialData::~SerialData() {
 
 }
 
-void SerialData::StartCapture(const std::string serialPort, unsigned int baudRate) {
+void SerialData::StartCapture(const std::string serialPort, unsigned int baudRate, char *saveName) {
+    std::ofstream outF;
+    outF.open(saveName,std::ofstream::binary);
     try {
         boost::asio::io_service ios;
         sp_ = new boost::asio::serial_port(ios, serialPort);
-
         sp_->set_option ( boost::asio::serial_port::baud_rate ( baudRate ) );
         printf ( "successfully opened port %s\n", serialPort.c_str() );
 
@@ -31,9 +32,11 @@ void SerialData::StartCapture(const std::string serialPort, unsigned int baudRat
                 continue;
             }
 //                printf ( "transferred = %d , flag = %d\n",transferred, flag );
+            outF.write(tmp,transferred);
             ScanSerialData(tmp,transferred);
         }
         sp_->close();
+        outF.close();
     } catch ( ... ) {
         printf ( "failed to open serial port\n" );
         return;

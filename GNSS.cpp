@@ -9,6 +9,9 @@ GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),is
     rtkManager.port_ = 8002;
     xyzDefault<<-2.17166e+06, 4.38439e+06, 4.07802e+06;
     llaDefault<<40.0*GPS_PI/180.0, 116.345*GPS_PI/180.0, 59.07;
+
+    time_t timeNow = time(NULL);
+    utcTime=gmtime(&timeNow);
 }
 
 GNSS::~GNSS() {
@@ -20,6 +23,8 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
     serialDataManager.serialPort_ = serial_port;
     serialDataManager.baudRate = baudRate;
     serialDataManager.stopCapture = false;
+    sprintf(serialDataManager.saveNameDefault,"../data/%02d%02d_%02d_%02d.data",
+            utcTime->tm_mon,utcTime->tm_mday,utcTime->tm_hour,utcTime->tm_min);
 
     if(useQianXun){
         if(!rtkManager.NtripLogin(rtk_protocol_)) {
@@ -87,7 +92,7 @@ int GNSS::ParseRawData(char *message, int len) {
 
 void* GNSS::ThreadAdapterGNSS(void *__sData) {
     auto _sData= ( SerialData* ) __sData;
-    _sData->StartCapture(_sData->serialPort_,_sData->baudRate);
+    _sData->StartCapture(_sData->serialPort_,_sData->baudRate,_sData->saveNameDefault);
     return nullptr;
 }
 

@@ -10,6 +10,7 @@
 #include <chrono>
 #include <unistd.h>
 #include <stdio.h>
+#include <time.h>
 
 
 
@@ -39,6 +40,7 @@ public:
 
 //    char logFile[64];
     std::FILE *log;
+    struct tm *utcTime;
 
 public:
     GNSS();

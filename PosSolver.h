@@ -17,6 +17,7 @@ public:
     double tu, tuBeiDou, tuGps;
     int numMeas;
 public:
+    PosSolver();
     PosSolver(SVs svs, NtripRTK *rtk, GNSS *gnss);
     ~PosSolver();
     int PositionSingle();

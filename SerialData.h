@@ -20,12 +20,13 @@ public:
     unsigned int baudRate;
     bool stopCapture;
     bool showData;
+    char saveNameDefault[64];
     GNSS* gnss;
 
 public:
     SerialData();
     ~SerialData();
-    void StartCapture(const std::string serialPort, unsigned int baudRate);
+    void StartCapture(const std::string serialPort, unsigned int baudRate, char *saveName);
 
     void ScanSerialData(char *tmp,int transferred);
 

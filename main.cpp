@@ -7,9 +7,9 @@ using namespace Eigen;
 string serialPort = "/dev/ttyUSB0";
 std::ofstream outF;
 bool stopLog = 0;
+char saveDataName[64];
 
 void *LogData(void *fileName){
-
     outF.open((char*)fileName,std::ofstream::binary);
     try {
         boost::asio::io_service ios;
@@ -42,9 +42,9 @@ void *LogData(void *fileName){
 
 int main()
 {
-
     GNSS *gnss = new GNSS();
-    gnss->log = fopen("../log/log0829-1.txt","w");
+    gnss->log = fopen("../log/log.txt","w");
+//    gnss->log = fopen("../log/log0829-b1.txt","w");
 
 
     Vector3d pc[5],LLA[5];
@@ -71,23 +71,19 @@ int main()
 
 
 
-    gnss->useGPS = false;
+//    gnss->useGPS = false;
 //    gnss->useBeiDou = false;
     gnss->useQianXun = false;
 
 //    gnss->StartGNSS("null",115200);
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-//    char command = getchar();
-    char command = 'd';
+    char command = getchar();
+//    char command = 'd';
     if('l'==command){
-        printf("\nfile name : ");
-        char name[64];
-        scanf("%s",name);
-        getchar();
-        printf("start write file %s",name);
+        printf("start write file %s",saveDataName);
         pthread_t logThread = 0;
-        pthread_create(&logThread, nullptr,LogData,name);
+        pthread_create(&logThread, nullptr,LogData,saveDataName);
 
         while (command=getchar()){
             if('x'==command){
@@ -102,10 +98,10 @@ int main()
         ifstream inF;
         char name[128],dat[128];
         printf("open file name:");
-        string ss = "../data/0802-1";
+//        string ss = "../data/0802-1";
 //        string ss = "../data/0708-2";
 //        string ss = "../data/0823";
-//        string ss = "../data/0815-2";//soho novatal
+        string ss = "../data/0815-2";//soho novatal
 //        scanf("%s",name);
         inF.open(ss, std::ifstream::binary);
         while (!inF.eof()){
@@ -127,6 +123,6 @@ int main()
     fclose(gnss->log);
     sleep(2);
     cout<<"Quit?"<<endl;
-    getchar();
+//    getchar();
     return 0;
 }

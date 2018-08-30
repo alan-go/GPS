@@ -67,8 +67,8 @@ public:
         SignalData():df400(0),df401(0),df402(0),df420(0),df403(0){}
     };
 
+    bool temp = 1;
     int8_t bstEphemOK[10];
-
     bool isBeiDouGEO;
     bool open, measureGood, elevGood;
         SvType type;
@@ -107,8 +107,7 @@ public:
     int CalcuInoshphere(double elev,double azim,Vector3d LLA,double time);
     int CorrectIT(Vector3d receiverPosition, Vector3d LLA,double time);
     void PrintInfo(int printType);
-//    virtual int DecodeSubFrame(uint32_t* dwrds) = 0;
-    virtual SignalData* SignalTable(int index) = 0;
+    virtual int DecodeSubFrame(uint32_t* dwrds) = 0;
     double InterpRtkData(double time, int sigInd);
 
     //head 指32bit()中的头bit（范围：1-32）

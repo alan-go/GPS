@@ -1,7 +1,7 @@
 #include "SVs.h"
 #include "NtripRTK.h"
 
-SV::SV():SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0){
+SV::SV():SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsDelta(0){
     memset(bstEphemOK,0,10 * sizeof(int8_t));
 }
 SV::~SV(){}
@@ -25,6 +25,7 @@ SVs::SVs(){
 }
 
 SVs::~SVs(){}
+
 
 bool SV::JudgeUsable(bool useBeiDou, bool useGps) {
 //    printf("type=%d, useGps = %d, useBeidou= %d\n",type,useGps,useBeiDou);
@@ -159,6 +160,7 @@ void SVs::UpdateEphemeris(char *subFrame) {
     uint8_t gnssId = *(uint8_t*)(playload);
     uint8_t svId = *(uint8_t*)(playload + 1);
     uint8_t numWords = *(uint8_t*)(playload+4);
+    SV* sv;
 
 //    printf("Update subframe;;gnssid:%d,svid:%d\n",gnssId,svId);
 
@@ -166,16 +168,23 @@ void SVs::UpdateEphemeris(char *subFrame) {
 
     if(10==numWords){
         uint32_t dwrds[10];
-        for(int i=0;i<10;i++)   dwrds[i] = *(uint32_t*)(tmp+4*i);
+        for(int i=0;i<10;i++) {
+            dwrds[i] = *(uint32_t*)(tmp+4*i);
+        }
         switch (gnssId){
             case 0:
-                svGpss[svId-1].DecodeSubFrame(dwrds);
+                sv = &(svGpss[svId-1]);
+//                svGpss[svId-1].DecodeSubFrame(dwrds);
                 break;
             case 3:
-                svBeiDous[svId-1].DecodeSubFrame(dwrds);
+                sv = &(svBeiDous[svId-1]);
+//                svBeiDous[svId-1].DecodeSubFrame(dwrds);
                 break;
         }
+        sv->DecodeSubFrame(dwrds);
     }
+
+
 }
 
 uint32_t SV::Read1Word(uint32_t word, int length, int head, bool isInt) {
