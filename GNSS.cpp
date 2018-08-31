@@ -24,7 +24,7 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
     serialDataManager.baudRate = baudRate;
     serialDataManager.stopCapture = false;
     sprintf(serialDataManager.saveNameDefault,"../data/%02d%02d_%02d_%02d.data",
-            utcTime->tm_mon,utcTime->tm_mday,utcTime->tm_hour,utcTime->tm_min);
+            utcTime->tm_mon+1,utcTime->tm_mday,utcTime->tm_hour,utcTime->tm_min);
 
     if(useQianXun){
         if(!rtkManager.NtripLogin(rtk_protocol_)) {
