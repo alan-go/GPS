@@ -62,18 +62,18 @@ public:
 
     void UpdateGGA();
     int SentGGA(const char *bufferGGA, int length);
-    int ParaseMSM4(char *bufferRTK, SV::SvType type);
+    int ParaseMSM4(char *bufferRTK, SV::SysType type);
     bool NtripLogin(const std::string &rtk_protocol);
     void RecvThread();
     int TestParase(char *bufferRecv,int recvLength);
-    MSM4data* GetRtkRecord(int satInd,int timeInd, SV::SvType type);
+    MSM4data* GetRtkRecord(int satInd,int timeInd, SV::SysType type);
 
 
 private:
     boost::crc_basic<24> crc24Q;
 
 private:
-    int AddRtkRecord(MSM4data* data,SV::SvType type, int id);
+    int AddRtkRecord(MSM4data* data,SV::SysType type, int id);
     inline uint32_t NetToHost32(char *begin,int head,int length,bool isInt = 0);
     int ParaseRtk32_1005(char * buffer);
 };

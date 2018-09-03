@@ -103,7 +103,7 @@ void SerialData::parse_UBX(char *buffer) {
         }
         if(0x13==(u_char)buffer[3]){
 //            printf("\n----0----ParseBstSubFrame,%d\n",gnss->useBeiDou);
-            gnss->svsManager.UpdateEphemeris(buffer);
+            gnss->svsManager->UpdateEphemeris(buffer);
 //            printf("\n----1----ParseBstSubFrame,%d\n",gnss->useBeiDou);
         }
     }

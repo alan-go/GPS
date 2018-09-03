@@ -71,5 +71,5 @@ def AnaData(path):
     plt.show()
 
 if __name__=="__main__":
-    AnaData("../log/logqxg.txt")
+    AnaData("../log/log.txt")
     Test()

@@ -92,12 +92,12 @@ void NtripRTK::RecvThread() {
                                 ParaseRtk32_1005(buferRTK);
                                 break;
                             case 1074:
-                                ParaseMSM4(buferRTK, SV::GPS);
+                                ParaseMSM4(buferRTK, SV::SYS_GPS);
                                 break;
                             case 1084:
                                 break;
                             case 1124:
-                                ParaseMSM4(buferRTK, SV::BeiDou);
+                                ParaseMSM4(buferRTK, SV::SYS_BDS);
                                 break;
                             default:
                                 break;
@@ -127,7 +127,7 @@ int NtripRTK::SentGGA(const char *bufferGGA, int length) {
 void NtripRTK::UpdateGGA() {}
 
 
-int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SvType type) {
+int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SysType type) {
     //first Parase MSM message Header:
     uint32_t refID = NetToHost32(bufferRTK,12,12);//DF003
     double rtkTime = double(NetToHost32(bufferRTK+3,0,30))*1e-3;//bdsTime = GPSTime -14s
@@ -353,12 +353,12 @@ int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
                         ParaseRtk32_1005(buferRTK);
                         break;
                     case 1074:
-                        ParaseMSM4(buferRTK, SV::GPS);
+                        ParaseMSM4(buferRTK, SV::SYS_GPS);
                         break;
                     case 1084:
                         break;
                     case 1124:
-                        ParaseMSM4(buferRTK, SV::BeiDou);
+                        ParaseMSM4(buferRTK, SV::SYS_BDS);
                         break;
                     default:
                         break;
@@ -373,17 +373,17 @@ int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
 //    ParaseMSM4(bufferRecv);
 }
 
-int NtripRTK::AddRtkRecord(MSM4data *data, SV::SvType type, int id) {
+int NtripRTK::AddRtkRecord(MSM4data *data, SV::SysType type, int id) {
     //maximum:5
 //    printf("ADD record\n");
     int maxNumber = 50;
     vector<MSM4data*> *temp;
     switch (type){
-        case SV::GPS:
-            temp = &(gnss->svsManager.svGpss[id].rtkData);
+        case SV::SYS_GPS:
+            temp = &(gnss->svsManager->svGpss[id].rtkData);
             break;
-        case SV::BeiDou:
-            temp = &(gnss->svsManager.svBeiDous[id].rtkData);
+        case SV::SYS_BDS:
+            temp = &(gnss->svsManager->svBeiDous[id].rtkData);
             break;
         default:
             break;
@@ -407,12 +407,12 @@ int NtripRTK::AddRtkRecord(MSM4data *data, SV::SvType type, int id) {
 
 }
 
-MSM4data* NtripRTK::GetRtkRecord(int satInd, int timeInd, SV::SvType type) {
+MSM4data* NtripRTK::GetRtkRecord(int satInd, int timeInd, SV::SysType type) {
     switch (type){
-        case SV::GPS:
-            return gnss->svsManager.svGpss[satInd].rtkData[timeInd];
-        case SV::BeiDou:
-            return gnss->svsManager.svBeiDous[satInd].rtkData[timeInd];
+        case SV::SYS_GPS:
+            return gnss->svsManager->svGpss[satInd].rtkData[timeInd];
+        case SV::SYS_BDS:
+            return gnss->svsManager->svBeiDous[satInd].rtkData[timeInd];
         default:
             return nullptr;
     }

@@ -8,7 +8,7 @@
 
 class PosSolver{
 public:
-    SVs svs;
+    SVs *svs;
     GNSS* gnss;
     char raw[1024];
     NtripRTK *rtk;
@@ -18,7 +18,7 @@ public:
     int numMeas;
 public:
     PosSolver();
-    PosSolver(SVs svs, NtripRTK *rtk, GNSS *gnss);
+    PosSolver(SVs *svs, NtripRTK *rtk, GNSS *gnss);
     ~PosSolver();
     int PositionSingle();
     int PositionRtk();
@@ -29,7 +29,7 @@ private:
     int numBDSUsed,numGPSUsed;
 private:
     int PrepareSVsData(vector<SV*> &svsForCalcu);
-    int ReadVisibalSvsRaw(SVs &svs, vector<SV*> &svVisable, char *raw);
+    int ReadVisibalSvsRaw(SVs *svs, vector<SV*> &svVisable, char *raw);
     int SelectSvsFromVisible(vector<SV*> &all,vector<SV*> &select);
     int SolvePosition(vector<SV*>svsForCalcu);
     int SolvePositionBeiDouGPS(vector<SV*>svsForCalcu);

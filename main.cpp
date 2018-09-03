@@ -42,6 +42,9 @@ void *LogData(void *fileName){
 
 int main()
 {
+    char a[12] = "1.36e1";
+    printf("a= %f\n", (str2num(a, 6)));
+
     GNSS *gnss = new GNSS();
     gnss->log = fopen("../log/log.txt","w");
 //    gnss->log = fopen("../log/log0829-b1.txt","w");
@@ -62,12 +65,12 @@ int main()
 //    PC06  -6792.119072  30515.529479  28725.661181     89.249118
 //    PC07 -22186.980236  22343.659926 -28133.021383     76.004768
 
-    SVs svs; NtripRTK *rtk;
-    PosSolver svlr(svs,rtk,gnss);
-    for (int i=0;i<5;i++){
-        svlr.XYZ2LLA(pc[i]*1000,LLA[i]);
-        printf("\nBDS_GEO_LLA, %02d\n%lf\n%lf\n%lf\n",i+1,LLA[i](0)*180/GPS_PI,LLA[i](1)*180/GPS_PI,LLA[i](2));
-    }
+//    SVs svs; NtripRTK *rtk;
+//    PosSolver svlr(svs,rtk,gnss);
+//    for (int i=0;i<5;i++){
+//        svlr.XYZ2LLA(pc[i]*1000,LLA[i]);
+//        printf("\nBDS_GEO_LLA, %02d\n%lf\n%lf\n%lf\n",i+1,LLA[i](0)*180/GPS_PI,LLA[i](1)*180/GPS_PI,LLA[i](2));
+//    }
 
 
 
@@ -78,8 +81,8 @@ int main()
 //    gnss->StartGNSS("null",115200);
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-    char command = getchar();
-//    char command = 'd';
+//    char command = getchar();
+    char command = 'd';
     if('l'==command){
         printf("start write file %s",saveDataName);
         pthread_t logThread = 0;
@@ -98,10 +101,10 @@ int main()
         ifstream inF;
         char name[128],dat[128];
         printf("open file name:");
-//        string ss = "../data/0802-1";
+        string ss = "../data/0802-1";
 //        string ss = "../data/0708-2";
 //        string ss = "../data/0823";
-        string ss = "../data/0815-2";//soho novatal
+//        string ss = "../data/0815-2";//soho novatal
 //        scanf("%s",name);
         inF.open(ss, std::ifstream::binary);
         while (!inF.eof()){

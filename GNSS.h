@@ -1,23 +1,12 @@
 #ifndef GNSS_H
 #define GNSS_H
 
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <thread>
-#include <mutex>
-#include <queue>
-#include <chrono>
-#include <unistd.h>
-#include <stdio.h>
-#include <time.h>
-
-
-
+#include "CommonInclude.h"
 #include "SVs.h"
 #include "PosSolver.h"
 #include "NtripRTK.h"
 #include "SerialData.h"
+#include "GnssTime.h"
 
 class GNSS{
 public:
@@ -30,12 +19,13 @@ public:
 //    Eigen::Vector3d LLA, LLAOld;
     vector<PosRcd> records;
     double tu, tuBeiDou, tuGps;
-    SVs svsManager;
+    SVs *svsManager;
     SerialData serialDataManager;
     NtripRTK rtkManager;
     std::string serialPort_, rtk_protocol_;
 
     bool useBeiDou,useGPS,useQianXun;
+    int ephemType;//0:broadcast,1:sp3
     bool isPositioned;
 
 //    char logFile[64];
@@ -46,6 +36,8 @@ public:
     GNSS();
 
     ~GNSS();
+
+    int Init(int ephem,bool qianXun, bool gps, bool bds);
 
     int StartGNSS(const std::string &serial_port, const unsigned int baudRate);
 

@@ -1,7 +1,7 @@
 #include "GNSS.h"
+#include "EphemSp3.h"
 
-GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),isPositioned(false){
-    svsManager.gnss = this;
+GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),isPositioned(false),ephemType(0){
     serialDataManager.gnss = this;
     rtkManager.gnss = this;
 
@@ -14,8 +14,21 @@ GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),is
     utcTime=gmtime(&timeNow);
 }
 
-GNSS::~GNSS() {
+GNSS::~GNSS() {}
 
+int GNSS::Init(int ephem, bool qianXun, bool gps, bool bds) {
+    svsManager = new SVs(bds,gps);
+    svsManager->gnss = this;
+    ephemType = ephem;
+    useQianXun = qianXun;
+    useGPS = gps;
+    useBeiDou = bds;
+    if(1==ephemType){
+        if(0==EphemSp3::ReadSp3File("sd",svsManager))return 0;
+    } else{
+        printf("ReadSp3File Failed. \n");
+        return -1;
+    }
 }
 
 int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate) {
@@ -110,3 +123,4 @@ void* GNSS::PositionThread(void *__pos) {
 int GNSS::AddPosRecord(GNSS::PosRcd record) {
     records.insert(records.begin(),record);
 }
+

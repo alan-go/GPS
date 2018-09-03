@@ -3,7 +3,7 @@
 
 PosSolver::PosSolver(){}
 
-PosSolver::PosSolver(SVs svs, NtripRTK *rtk, GNSS *gnss): svs(svs),rtk(rtk),gnss(gnss),numBDSUsed(0),numGPSUsed(0){
+PosSolver::PosSolver(SVs *svs, NtripRTK *rtk, GNSS *gnss): svs(svs),rtk(rtk),gnss(gnss),numBDSUsed(0),numGPSUsed(0){
     if(gnss->isPositioned){
         xyz = gnss->records[0].xyz;
         LLA = gnss->records[0].lla;
@@ -48,7 +48,7 @@ int PosSolver::PrepareSVsData(vector<SV*> &svsForCalcu) {
 ////            for (double t = rcvtow-360; t < rcvtow+360; t+=100) {
 //            for (double t = 394352; t < 394960; t+=5) {
 //                double timeForECEF = t;
-//                if(SV::BeiDou == svTemp->type)timeForECEF-=14;
+//                if(SV::SYS_BDS == svTemp->type)timeForECEF-=14;
 //                svTemp->CalcuTime(timeForECEF);
 //                svTemp->CalcuECEF(svTemp->tsReal);
 //                fprintf(gnss->log,"svsVis:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",timeForECEF,
@@ -63,11 +63,11 @@ int PosSolver::PrepareSVsData(vector<SV*> &svsForCalcu) {
     for(int i = 0;i< svsForCalcu.size();i++){
         double timeForECEF = rcvtow;
         SV *sv= svsForCalcu[i];
-        if(SV::BeiDou == sv->type)timeForECEF-=14;
+        if(SV::SYS_BDS == sv->type)timeForECEF-=14;
         sv->CalcuTime(timeForECEF);
         sv->CalcuECEF(sv->tsReal);
         if(gnss->isPositioned){
-            sv->CorrectIT(xyz,LLA,timeForECEF);
+//            sv->CorrectIT(xyz,LLA,timeForECEF);
         } else{
             sv->CalcuelEvationAzimuth(gnss->xyzDefault,gnss->llaDefault);
         }
@@ -102,7 +102,7 @@ int PosSolver::PositionRtk() {
     for(int i = 0,k=-1; i<svs0.size();i++){
         SV* sv = svs0[i];
         double time = rcvtow - tu/Light_speed;
-        if(sv->type==SV::BeiDou)time-=14;
+        if(sv->type==SV::SYS_BDS)time-=14;
         double pr = sv->InterpRtkData(time,sigInd);
         printf("--sv:%d,%d-pr time= %f, interp = %f\n",
                 sv->type,sv->svId,time,pr);
@@ -203,7 +203,7 @@ int PosSolver::PositionSingle() {
         printf("\n\n----------calcu:%d,Not enough Svs.\n",N);
         return -1;
     } else if(4==N && numGPSUsed*numBDSUsed){
-        printf("4 SVs with GPS and BeiDou:%d, %d,   Unable to solve.\n",numGPSUsed,numBDSUsed);
+        printf("4 SVs with SYS_GPS and SYS_BDS:%d, %d,   Unable to solve.\n",numGPSUsed,numBDSUsed);
         return -1;
     } else if(0==numBDSUsed*numGPSUsed){
         result = SolvePosition(svsForCalcu);
@@ -317,7 +317,7 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
 
 int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
     int N = svsForCalcu.size();
-    printf("\nSolve Position GPS-BeiDou, N = %d\n",N);
+    printf("\nSolve Position SYS_GPS-SYS_BDS, N = %d\n",N);
     VectorXd dtxyzBG(5);
     Matrix<double, 5,5> H;
     dtxyzBG<<1,1,1,1,1;
@@ -354,8 +354,8 @@ int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
             G(i,0) = (xyz(0)-svPositionEarthRotate(0))/r;  //x
             G(i,1) = (xyz(1)-svPositionEarthRotate(1))/r;  //y
             G(i,2) = (xyz(2)-svPositionEarthRotate(2))/r;  //z
-            G(i,3) = (SV::BeiDou==sv->type)?1:0;
-            G(i,4) = (SV::GPS==sv->type)?1:0;
+            G(i,3) = (SV::SYS_BDS==sv->type)?1:0;
+            G(i,4) = (SV::SYS_GPS==sv->type)?1:0;
 //            b(i) = pc(i)-r-tuBeiDou-tuGps;  //这里的r需要考虑一下
             b(i) = pc(i)-r-tuBeiDou*G(i,3)-tuGps*G(i,4);  //这里的r需要考虑一下
 
@@ -417,16 +417,21 @@ int PosSolver::SolvePositionCalman() {
 
 
 int PosSolver::SelectSvsFromVisible(vector<SV*> &all, vector<SV*> &select) {
-    //first judge ephemeric
+
     for(int i=0;i<numMeas;i++)
     {
         SV *svTemp = all[i];
-
         printf("svs visiable:%d,%02d:%d,%d,%d.health:%d,pr=%lf\n",
                svTemp->type,svTemp->svId,svTemp->bstEphemOK[0],svTemp->bstEphemOK[1],
                svTemp->bstEphemOK[2],svTemp->SatH1,svTemp->prMes);
-        bool useForCalcu = svTemp->JudgeUsable(gnss->useBeiDou,gnss->useGPS);
-        useForCalcu = useForCalcu && svTemp->MeasureGood();
+
+        //1,is used?
+        if(!svTemp->open)continue;
+        //2,judge ephemeric
+        if(!svTemp->IsEphemOK(gnss->ephemType))continue;
+        if(!svTemp->MeasureGood())continue;
+//        bool useForCalcu = svTemp->IsEphemOK(gnss->useBeiDou, gnss->useGPS);
+//        useForCalcu = useForCalcu && svTemp->MeasureGood();
         if(gnss->isPositioned)useForCalcu = useForCalcu && svTemp->ElevGood();
         if(svTemp->AODC>24){
             printf("\n\n\nAAAAAODC = %d\n\n\n",svTemp->AODC);
@@ -434,15 +439,15 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all, vector<SV*> &select) {
         }
         if(useForCalcu){
             select.push_back(svTemp);
-            if(SV::BeiDou == svTemp->type)numBDSUsed++;
-            if(SV::GPS == svTemp->type)numGPSUsed++;
+            if(SV::SYS_BDS == svTemp->type)numBDSUsed++;
+            if(SV::SYS_GPS == svTemp->type)numGPSUsed++;
             printf("svsfor calcu\n");
         }
     }
 }
 
-
-int PosSolver::ReadVisibalSvsRaw(SVs &svs,vector<SV*> &svVisable, char *raw) {
+//todo move to serial data,and new class Measure;
+int PosSolver::ReadVisibalSvsRaw(SVs *svs,vector<SV*> &svVisable, char *raw) {
     char* playload = raw + 6;
 
     char* temp = playload;
@@ -460,10 +465,10 @@ int PosSolver::ReadVisibalSvsRaw(SVs &svs,vector<SV*> &svVisable, char *raw) {
         //watchable SVs
         switch (gnssId){
             case 0:
-                svTemp = &(svs.svGpss[svId-1]);
+                svTemp = &(svs->svGpss[svId-1]);
                 break;
             case 3:
-                svTemp = &(svs.svBeiDous[svId-1]);
+                svTemp = &(svs->svBeiDous[svId-1]);
                 break;
         }
         svVisable.push_back(svTemp);

@@ -1,7 +1,7 @@
 #include "SVs.h"
 #include "NtripRTK.h"
 
-SV::SV():SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsDelta(0){
+SV::SV():SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsDelta(0),ephemSp3(nullptr){
     memset(bstEphemOK,0,10 * sizeof(int8_t));
 }
 SV::~SV(){}
@@ -12,39 +12,40 @@ GpsSV::GpsSV(){}
 GpsSV::~GpsSV(){}
 
 
-SVs::SVs(){
+SVs::SVs(bool bds,bool gps){
     for(int i=0;i<NGPS;i++){
-        svGpss[i].type = SV::GPS;
+        svGpss[i].type = SV::SYS_GPS;
         svGpss[i].svId = i+1;
+        svGpss[i].open = gps;
     }
     for(int i=0;i<NBeiDou;i++){
-        svBeiDous[i].type = SV::BeiDou;
+        svBeiDous[i].type = SV::SYS_BDS;
         svBeiDous[i].svId = i+1;
         svBeiDous[i].isBeiDouGEO = i<5?true: false;
+        svBeiDous[i].open = bds;
     }
 }
 
 SVs::~SVs(){}
 
 
-bool SV::JudgeUsable(bool useBeiDou, bool useGps) {
-//    printf("type=%d, useGps = %d, useBeidou= %d\n",type,useGps,useBeiDou);
-    int ephemeric = bstEphemOK[0]*bstEphemOK[1]*bstEphemOK[2];
-    switch (type){
-        case GPS:
-            if(!useGps)return false;
-            break;
-        case BeiDou:
-            if(!useBeiDou)return false;
+bool SV::IsEphemOK(int ephemType, GnssTime time) {
+    int bstEphem;
+    switch (ephemType){
+        case 0:
+            bstEphem = bstEphemOK[0]*bstEphemOK[1]*bstEphemOK[2];
             if(isBeiDouGEO){
                 for(int i = 3;i<10;i++){
-                    ephemeric*=bstEphemOK[i];
+                    bstEphem*=bstEphemOK[i];
                 }
             }
+            if(!bstEphem)return false;
+            break;
+        case 1:
+            //todo
             break;
     }
-//    if(!(bstEphemOk&&SatH1))return false;
-    if(!ephemeric)return false;
+
     if(SatH1)return false;
     return true;
 }
@@ -219,17 +220,17 @@ uint32_t SV::Read3Word(uint32_t word0, int length0, int head0, uint32_t word1, i
 int GpsSV::DecodeSubFrame(uint32_t *dwrds) {
     int gpsFrameHead = Read1Word(dwrds[0],8,2);
     if(139!=gpsFrameHead){
-        printf("GPS frame Head matching failed. head = %d\n",gpsFrameHead);
+        printf("SYS_GPS frame Head matching failed. head = %d\n",gpsFrameHead);
         return false;
     }
 //    sv->SatH1 = Read1Word(dwrds[1],1,19);
     uint32_t AS = Read1Word(dwrds[1],1,20);
     if(1==AS){
-        printf("This GPS Satellite is working on A-S mode.\n");
+        printf("This SYS_GPS Satellite is working on A-S mode.\n");
     }
     int frame = Read1Word(dwrds[1],3,21);
     bstEphemOK[frame-1] = 1;
-    printf(" Frame GPS  frame:%d",frame);
+    printf(" Frame SYS_GPS  frame:%d",frame);
 
     uint32_t L2,PCodeState;
     switch(frame){
@@ -549,16 +550,14 @@ int SV::CorrectIT(Vector3d receiverPosition, Vector3d LLA,double time) {
     CalcuInoshphere(elevationAngle,azimuthAngle,LLA,time);
 }
 
-SV* SVs::SatTable(SV::SvType type, int ind) {
+SV* SVs::SatTable(SV::SysType type, int ind) {
     switch (type){
-        case SV::GPS:
+        case SV::SYS_GPS:
             return &(svGpss[ind]);
-            break;
-        case SV::BeiDou:
+        case SV::SYS_BDS:
             return &(svBeiDous[ind]);
-            break;
         default:
-            break;
+            return nullptr;
     }
 }
 
