@@ -89,3 +89,33 @@ SV::SysType EphemSp3::code2sys(char code) {
     return SV::SYS_NULL;
 }
 
+Sp3Cell EphemSp3::InterpECEF(vector<Sp3Cell> &list, GnssTime interpTime) {
+    Sp3Cell result;
+    result.time = interpTime;
+    double *time,*x,*y,*z,*ts;
+    time = new double[10];
+    x = new double[10];
+    y = new double[10];
+    z = new double[10];
+    ts = new double[10];
+    int head,N = list.size();
+    for (head = 0; head < N; ++head) {
+        if(interpTime<list[head].time)break;
+    }
+    head -= 5;
+    GnssTime referTime = list[head].time;
+    double tt = interpTime - referTime;
+    for (int i = 0; i < 10; ++i) {
+        time[i] = list[head+i].time-referTime;
+        x[i] = list[head+i].pxyz(0);
+        y[i] = list[head+i].pxyz(1);
+        z[i] = list[head+i].pxyz(2);
+        ts[i] = list[head+i].ts;
+    }
+    for (int j = 0; j < 3; ++j) {
+        result.ts = lagrange(time,ts,tt-result.ts,10);
+    }
+    tt-=result.ts;
+    result.pxyz = Vector3d(lagrange(time,x,tt,10),lagrange(time,y,tt,10),lagrange(time,z,tt,10));
+}
+

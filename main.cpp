@@ -74,9 +74,11 @@ int main()
 
 
 
-//    gnss->useGPS = false;
-//    gnss->useBeiDou = false;
+    //    gnss->useGPS = false;
+    //    gnss->useBeiDou = false;
     gnss->useQianXun = false;
+    gnss->Init(1,0,1,1);
+
 
 //    gnss->StartGNSS("null",115200);
 

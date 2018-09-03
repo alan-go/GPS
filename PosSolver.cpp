@@ -1,5 +1,6 @@
 #include "PosSolver.h"
 #include "GNSS.h"
+#include "EphemSp3.h"
 
 PosSolver::PosSolver(){}
 
@@ -15,7 +16,7 @@ PosSolver::PosSolver(SVs *svs, NtripRTK *rtk, GNSS *gnss): svs(svs),rtk(rtk),gns
 
 PosSolver::~PosSolver(){}
 
-int PosSolver::PrepareSVsData(vector<SV*> &svsForCalcu) {
+int PosSolver::PrepareSVsData(vector<SV*> &svsOut) {
 //    ReadVisibalSvsRaw(svs, visibleSvs, raw);
     ReadVisibalSvsRaw(gnss->svsManager, visibleSvs, raw);
 
@@ -38,11 +39,11 @@ int PosSolver::PrepareSVsData(vector<SV*> &svsForCalcu) {
 //////////////
 
     numGPSUsed = 0;numBDSUsed = 0;
-    SelectSvsFromVisible(visibleSvs,svsForCalcu);
+    SelectSvsFromVisible(visibleSvs,svsOut);
 
 //////////////
-//    for (int j = 0; j < svsForCalcu.size(); ++j) {
-//        SV *svTemp= svsForCalcu[j];
+//    for (int j = 0; j < svsOut.size(); ++j) {
+//        SV *svTemp= svsOut[j];
 //        if (svTemp->temp) {
 //            svTemp->temp=0;
 ////            for (double t = rcvtow-360; t < rcvtow+360; t+=100) {
@@ -59,24 +60,8 @@ int PosSolver::PrepareSVsData(vector<SV*> &svsForCalcu) {
 //    }
 //    return 0;
 //////////////
+    UpdateSvsPosition(svsOut, rTime, gnss->ephemType);
 
-    for(int i = 0;i< svsForCalcu.size();i++){
-        double timeForECEF = rcvtow;
-        SV *sv= svsForCalcu[i];
-        if(SV::SYS_BDS == sv->type)timeForECEF-=14;
-        sv->CalcuTime(timeForECEF);
-        sv->CalcuECEF(sv->tsReal);
-        if(gnss->isPositioned){
-//            sv->CorrectIT(xyz,LLA,timeForECEF);
-        } else{
-            sv->CalcuelEvationAzimuth(gnss->xyzDefault,gnss->llaDefault);
-        }
-
-        XYZ2LLA(sv->position,sv->sLLA);
-//        sv->PrintInfo(2);
-//        sv->PrintInfo(1);
-//        cout<<"norm"<<sv->position.norm()<<endl;
-    }
 }
 
 int PosSolver::PositionRtk() {
@@ -428,21 +413,22 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all, vector<SV*> &select) {
         //1,is used?
         if(!svTemp->open)continue;
         //2,judge ephemeric
-        if(!svTemp->IsEphemOK(gnss->ephemType))continue;
+        if(!svTemp->IsEphemOK(gnss->ephemType,rTime))continue;
+        //3,measure
         if(!svTemp->MeasureGood())continue;
-//        bool useForCalcu = svTemp->IsEphemOK(gnss->useBeiDou, gnss->useGPS);
-//        useForCalcu = useForCalcu && svTemp->MeasureGood();
-        if(gnss->isPositioned)useForCalcu = useForCalcu && svTemp->ElevGood();
-        if(svTemp->AODC>24){
-            printf("\n\n\nAAAAAODC = %d\n\n\n",svTemp->AODC);
-            useForCalcu = 0;
-        }
-        if(useForCalcu){
-            select.push_back(svTemp);
-            if(SV::SYS_BDS == svTemp->type)numBDSUsed++;
-            if(SV::SYS_GPS == svTemp->type)numGPSUsed++;
-            printf("svsfor calcu\n");
-        }
+        //4,elevtion angle
+        if(!svTemp->ElevGood())continue;
+        //AODC?
+
+//        if(svTemp->AODC>24){
+//            printf("\n\n\nAAAAAODC = %d\n\n\n",svTemp->AODC);
+//            useForCalcu = 0;
+//        }
+        //remain svs:
+        select.push_back(svTemp);
+        if(SV::SYS_BDS == svTemp->type)numBDSUsed++;
+        if(SV::SYS_GPS == svTemp->type)numGPSUsed++;
+        printf("svsfor calcu\n");
     }
 }
 
@@ -451,9 +437,10 @@ int PosSolver::ReadVisibalSvsRaw(SVs *svs,vector<SV*> &svVisable, char *raw) {
     char* playload = raw + 6;
 
     char* temp = playload;
-    rcvtow = *(double*)temp;
-    temp = playload + 11;
-    numMeas = *(u_int8_t*)temp;
+    rcvtow = *(double*)playload;
+    int week = *(uint16_t*)(playload+8);
+    numMeas = *(u_int8_t*)(playload+11);
+    rTime = GnssTime(week,rcvtow);
     printf("prepare rawdata , numMesa=%d\n",numMeas);
     if(0==numMeas)return -1;
 
@@ -532,5 +519,42 @@ int PosSolver::XYZ2LLA(Vector3d XYZ, Vector3d &LLA) {
 
     //XYZ向速度，加速度ENU 之后有时间自己实现吧，下面就是一个矩阵乘法然后赋值
     //SS*v_xyz = v_enu   SS*a_xyz = a_enu
+    return 0;
+}
+
+int PosSolver::UpdateSvsPosition(vector<SV *> svs, GnssTime rt, int ephType) {
+    for(int i = 0;i< svs.size();i++){
+        //todo:rcvtow calculated from rt;
+        double timeForECEF = rcvtow;
+        Sp3Cell cell;
+        GnssTime ts0 = rt;
+        SV *sv= svs[i];
+        switch (ephType){
+            case 0:
+                if(SV::SYS_BDS == sv->type)timeForECEF-=14;
+                sv->CalcuTime(timeForECEF);
+                sv->CalcuECEF(sv->tsReal);
+                break;
+            case 1:
+                ts0+=(-sv->prMes/Light_speed);
+                cell = EphemSp3::InterpECEF(sv->ephemSp3->records,ts0);
+                sv->position = cell.pxyz;
+                sv->tsDelta = cell.ts;
+                break;
+            default:
+                return -1;
+        }
+
+        if(gnss->isPositioned){
+            sv->CorrectIT(xyz,LLA,timeForECEF);
+        } else{
+            sv->CalcuelEvationAzimuth(gnss->xyzDefault,gnss->llaDefault);
+        }
+
+        XYZ2LLA(sv->position,sv->sLLA);
+//        sv->PrintInfo(2);
+//        sv->PrintInfo(1);
+//        cout<<"norm"<<sv->position.norm()<<endl;
+    }
     return 0;
 }

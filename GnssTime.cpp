@@ -47,6 +47,15 @@ void GnssTime::epoch2time(const double *ep) {
     sec=ep[5]-sec0;
 }
 
+
+
+void GnssTime::utc2gpst() {
+    for (int i=0;leaps[i][0]>0;i++) {
+        if ((*this-GnssTime(leaps[i]))>=0.0) {
+            *this+=(-leaps[i][6]);
+        }
+    }
+}
 double GnssTime::operator-(const GnssTime &right) {
     return difftime(time,right.time)+sec-right.sec;
 }
@@ -56,13 +65,11 @@ double GnssTime::operator+=(const double secAdd) {
     sec+=secAdd; tt=floor(sec); time+=(int)tt; sec-=tt;
     return double(time)+sec;
 }
-
-void GnssTime::utc2gpst() {
-    for (int i=0;leaps[i][0]>0;i++) {
-        if ((*this-GnssTime(leaps[i]))>=0.0) {
-            *this+=(-leaps[i][6]);
-        }
-    }
+bool GnssTime::operator<(const GnssTime right) {
+    if(*this-right<0)return true;
+    return false;
 }
-
-
+bool GnssTime::operator>(const GnssTime right) {
+    if(*this-right>0)return true;
+    return false;
+}

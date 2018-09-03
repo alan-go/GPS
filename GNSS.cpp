@@ -24,7 +24,7 @@ int GNSS::Init(int ephem, bool qianXun, bool gps, bool bds) {
     useGPS = gps;
     useBeiDou = bds;
     if(1==ephemType){
-        if(0==EphemSp3::ReadSp3File("sd",svsManager))return 0;
+        if(0==EphemSp3::ReadSp3File("/home/alan/Desktop/hour20124_10.sp3",svsManager))return 0;
     } else{
         printf("ReadSp3File Failed. \n");
         return -1;

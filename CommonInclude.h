@@ -27,4 +27,6 @@ namespace TOOL{
 
 extern double str2num(char *head, int len);
 
+extern double lagrange(double *x,double *y,double xx,int n);     /*拉格朗日插值算法*/
+
 #endif //GPS_COMMONINCLUDE_H

@@ -27,6 +27,7 @@ public:
     EphemSp3();
     static int ReadSp3File(string fileName, SVs *svs);
     static SV::SysType code2sys(char code);
+    static Sp3Cell InterpECEF(vector<Sp3Cell> &list, GnssTime interpTime);
 };
 
 

@@ -47,6 +47,8 @@ public:
     void utc2gpst();
     double operator-(const GnssTime &right);
     double operator+=(const double right);
+    bool operator<(const GnssTime right);
+    bool operator>(const GnssTime right);
 };
 
 #endif //GPS_GNSSTIME_H

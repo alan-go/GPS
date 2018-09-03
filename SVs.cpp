@@ -1,5 +1,6 @@
 #include "SVs.h"
 #include "NtripRTK.h"
+#include "EphemSp3.h"
 
 SV::SV():SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsDelta(0),ephemSp3(nullptr){
     memset(bstEphemOK,0,10 * sizeof(int8_t));
@@ -43,6 +44,7 @@ bool SV::IsEphemOK(int ephemType, GnssTime time) {
             break;
         case 1:
             //todo
+            if(time<ephemSp3->timeHead||time>ephemSp3->timeEnd)return false;
             break;
     }
 
