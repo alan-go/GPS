@@ -27,6 +27,7 @@ public:
     ~PosSolver();
     int PositionSingle();
     int PositionRtk();
+    int PositionRtk2();
     static int XYZ2LLA(Vector3d XYZ,Vector3d &LLA);
 
 private:

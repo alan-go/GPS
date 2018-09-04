@@ -76,15 +76,15 @@ int main()
 
     //    gnss->useGPS = false;
     //    gnss->useBeiDou = false;
-    gnss->useQianXun = false;
-    gnss->Init(1,0,1,1);
+//    gnss->useQianXun = false;
+    gnss->Init(0,0,1,1);
 
 
 //    gnss->StartGNSS("null",115200);
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-//    char command = getchar();
-    char command = 'd';
+    char command = getchar();
+//    char command = 'd';
     if('l'==command){
         printf("start write file %s",saveDataName);
         pthread_t logThread = 0;
@@ -128,6 +128,6 @@ int main()
     fclose(gnss->log);
     sleep(2);
     cout<<"Quit?"<<endl;
-//    getchar();
+    getchar();
     return 0;
 }

@@ -9,7 +9,8 @@ def Plt2(data,indx,indy,figNme):
         x.append(each[indx])
         y.append(each[indy])
     plt.figure(figNme)
-    plt.scatter(x,y)
+    # plt.scatter(x,y)
+    plt.plot(x,y)
 
 def Plt3(data,indx,indy,indz,ax):
     x,y,z = [],[],[]
@@ -42,17 +43,19 @@ def AnaData(path):
         if 'LLA' in each:
             tlla0 = each.split(',')
             tlla.append([float(tlla0[1]),float(tlla0[3]),float(tlla0[4]),float(tlla0[5])])
-        if 'svs' in each:
-            sv = each.split(',')
-            data = [float(sv[1]),float(sv[4]),float(sv[6]),
-                    float(sv[8]),float(sv[9]),float(sv[10]),float(sv[11])]   # time,pr,prres,norm,x,y,z
 
-            if not sv[2] in svNames:
-                svNames.append(sv[2])
-                svDatas.append([])
-                print("add sv",sv[2],"time =", sv[1])
-            ind = svNames.index(sv[2])
-            svDatas[ind].append(data)
+
+        # if 'svs' in each:
+        #     sv = each.split(',')
+        #     data = [float(sv[1]),float(sv[4]),float(sv[6]), float(sv[8]),float(sv[9]),float(sv[10]),float(sv[11])]   # time,pr,prres,norm,x,y,z
+        #
+        #     if not sv[2] in svNames:
+        #         svNames.append(sv[2])
+        #         svDatas.append([])
+        #         print("add sv",sv[2],"time =", sv[1])
+        #
+        #     ind = svNames.index(sv[2])
+        #     svDatas[ind].append(data)
 
 
     Plt2(txyz,0,1,'pos')
@@ -71,5 +74,5 @@ def AnaData(path):
     plt.show()
 
 if __name__=="__main__":
-    AnaData("../log/log.txt")
+    AnaData("../log/logqx.txt")
     Test()

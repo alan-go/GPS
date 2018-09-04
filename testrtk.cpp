@@ -8,19 +8,15 @@ using namespace std;
 using namespace Eigen;
 
 
-
 int main(){
     printf("\nin testing\n");
     GNSS gnss;
-    gnss.log = fopen("../log/logqxg.txt","w");
+    gnss.log = fopen("../log/logqx.txt","w");
 
 //    gnss.useGPS = false;
     gnss.useBeiDou = false;
 //    gnss.useQianXun = false;
-
-
-
-
+    gnss.Init(0,1,1,1);
 
 
 
