@@ -41,10 +41,12 @@ public:
 public:
     GnssTime();
     GnssTime(const double *ep);
-    GnssTime(char *buffer, int len);
+    GnssTime(char *buffer, int len, bool utc2gps = 0);
     GnssTime(int week, double tow);
     void epoch2time(const double *ep);
+    void time2epoch(double *ep);
     void utc2gpst();
+    void gpst2utc();
     double operator-(const GnssTime &right);
     double operator+=(const double right);
     bool operator<(const GnssTime right);

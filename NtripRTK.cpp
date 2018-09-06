@@ -4,7 +4,7 @@
 NtripRTK::NtripRTK():crc24Q( 0x864cfb, 0, 0, false, false ) ,refStationId(0),isPhysicalStation(0), stopRTK(0) ,
 singleReceiver(0),ITRFyear(0),supportBeiDou(0),supportGalileo(0),supportGLONASS(0),supportGPS(0),quaterCycle(0){
     ECEF_XYZ<<0,0,0;
-    sprintf(ggaDefault,"$GNGGA,133409.00,3958.76249,N,11620.33816,E,1,08,0.80,57.0,M,-8.7,M,,*6C\r\n");
+    sprintf(ggaDefault,"$GPGGA,100236150.00,3958.7565643,N,11620.3448181,E,1,06,1.0,52.911,M,0.000,M,0.0,*79\r\n");
 }
 
 NtripRTK::~NtripRTK() {
@@ -172,7 +172,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SysType type) {
             sats.push_back(id);
             nSat++;
 //            printf("time = %f,,",rtkTime);
-            printf("Sat:%d\n",id+1);
+            printf("Sat:%d, ",id+1);
             MSM4data *tempData = new MSM4data;
             tempData->rtktime = rtkTime;
             tempData->refID = refID;
@@ -190,7 +190,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SV::SysType type) {
         if(temp&(128>>headi)){
             sigs.push_back(id);
             nSig++;
-            printf("Sig:%d\n",id+1);
+            printf("  [Sig:%d] ",id+1);
         }
     }
     //cell

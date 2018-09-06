@@ -28,7 +28,7 @@ public:
     int PositionSingle();
     int PositionRtk();
     int PositionRtk2();
-    static int XYZ2LLA(Vector3d XYZ,Vector3d &LLA);
+    int MakeGGA(char *gga,Vector3d lla,GnssTime gpsTime);
 
 private:
     vector<SV*>visibleSvs;

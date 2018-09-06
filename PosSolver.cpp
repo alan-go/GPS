@@ -226,7 +226,7 @@ int PosSolver::PositionRtk() {
     svs1.erase(svs1.begin()+svCentreInd);
 
     int N = svs1.size();
-    printf("---------calcu N2 = %d\n",N);
+    printf("---------calcu N1-1 = %d\n",N);
     if(N<3){
 //        gnss->rtkManager.mtxData.unlock();
         return -1;
@@ -288,6 +288,9 @@ int PosSolver::PositionRtk() {
     tu = svCectre->prMes+svCectre->tsDelta*Light_speed-svCectre->I-svCectre->T-pc;
     gnss->tu = tu;
     printf("tu= %f\n", tu);
+    char gga[128];
+    MakeGGA(gga,LLA,rTime);
+    rtk->SentGGA(gga,strlen(gga));
     delete (this);
 }
 
@@ -295,7 +298,20 @@ int PosSolver::PositionSingle() {
     int result = 0;
     vector<SV*> svsForCalcu;
     PrepareSVsData(svsForCalcu);
-//    return 0;
+    for (int i = 0; i < svsForCalcu.size(); ++i) {
+        SV *svTemp = svsForCalcu[i];
+//        svTemp->CalcuelEvationAzimuth(xyz,LLA);
+        printf("svsVis:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,%f\n",rcvtow,
+               svTemp->type,svTemp->svId,svTemp->prMes,0,svTemp->elevationAngle);
+        fprintf(gnss->log,"svsVisSp3:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
+                svTemp->type,svTemp->svId,svTemp->prMes,0,
+                svTemp->position.norm(),svTemp->position(0),svTemp->position(1),svTemp->position(2));
+        svTemp->CalcuECEF(svTemp->tsReal);
+        fprintf(gnss->log,"svsVisSp3Brt:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
+                svTemp->type,svTemp->svId,svTemp->prMes,0,
+                svTemp->position.norm(),svTemp->position(0),svTemp->position(1),svTemp->position(2));
+    }
+    return 0;
     printf("rcvtow = %.4f\n",rcvtow);
     int N = svsForCalcu.size();
     if(N<4){
@@ -316,8 +332,8 @@ int PosSolver::PositionSingle() {
 //        }
 
     } else{
-//        result = SolvePositionBeiDouGPS(svsForCalcu);
-        result = SolvePosition(svsForCalcu);
+        result = SolvePositionBeiDouGPS(svsForCalcu);
+//        result = SolvePosition(svsForCalcu);
     }
 
 //    if(result)
@@ -353,17 +369,10 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
             MatrixXd earthRotate(3,3);
             earthRotate<<cos(omegat),sin(omegat),0,-sin(omegat),cos(omegat),0,0,0,1;
             Vector3d svPositionEarthRotate = earthRotate*sv->position;
-//            sv->position = svPositionEarthRotate;
-//            cout<<"positon = \n"<<sv->position<<endl;
-//            cout<<"earthRotate = \n"<<earthRotate<<endl;
-//            cout<<"positionRotate = \n"<<svPositionEarthRotate<<endl;
-            r = (svPositionEarthRotate-xyz).norm();
-//            printf("r=%.10f\n",r);
-//            r = (sv->position-rxyz).norm()+(sv->position(0)*rxyz(1)-sv->position(1)*rxyz(0))*Omega_e/Light_speed;
-//            printf("r=%.10f\n",r);
-//            printf("r=%.10f\n",(sv->position-rxyz).norm());
 
-            b(i) = pc(i)-r-tu;  //这里的r需要考虑一下
+            r = (svPositionEarthRotate-xyz).norm();
+
+            b(i) = pc(i)-r-tu;
             G(i,0) = (xyz(0)-svPositionEarthRotate(0))/r;  //x
             G(i,1) = (xyz(1)-svPositionEarthRotate(1))/r;  //y
             G(i,2) = (xyz(2)-svPositionEarthRotate(2))/r;  //z
@@ -391,10 +400,11 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
     gnss->tu = tu;
     printf("tu= %f\n", tu);
     cout<<"++++++++++++xyz\n"<<xyz<<endl;
-    printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
+    printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(0)*180/GPS_PI,LLA(1)*180/GPS_PI,LLA(2));
 
     fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f, PDOP=%.2f\n",rcvtow,xyz(0),xyz(1),xyz(2),PDOP);
-    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
+    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(0)*180/GPS_PI,LLA(1)*180/GPS_PI,LLA(2));
+    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(0),LLA(1),LLA(2));
 
 //    cout<<"++++++++++++LLA\n"<<LLA*180/GPS_PI<<endl;
 
@@ -482,12 +492,12 @@ int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
     gnss->tuGps = tuGps;
     gnss->tuBeiDou = tuBeiDou;
     cout<<"++++++++++++rxyzt\n"<<xyz<<endl;
-    printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
+    printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(0)*180/GPS_PI,LLA(1)*180/GPS_PI,LLA(2));
     double PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
     printf("PDOP = %lf\n",PDOP);
 
     fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f, PDOP=%.2f\n",rcvtow,xyz(0),xyz(1),xyz(2),PDOP);
-    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
+    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(0)*180/GPS_PI,LLA(1)*180/GPS_PI,LLA(2));
 
     printf("rcvtow = %lf\n",rcvtow);
     for(int i=0;i<N;i++)
@@ -509,39 +519,6 @@ int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
 
 int PosSolver::SolvePositionCalman() {
 
-}
-
-
-
-int PosSolver::SelectSvsFromVisible(vector<SV*> &all, vector<SV*> &select) {
-
-    for(int i=0;i<numMeas;i++)
-    {
-        SV *svTemp = all[i];
-        printf("svs visiable:%d,%02d:%d,%d,%d.health:%d,pr=%.4f,elev=%.4f\n",
-               svTemp->type,svTemp->svId,svTemp->bstEphemOK[0],svTemp->bstEphemOK[1],
-               svTemp->bstEphemOK[2],svTemp->SatH1,svTemp->prMes,svTemp->elevationAngle);
-
-        //1,is used?
-        if(!svTemp->open)continue;
-        //2,judge ephemeric
-        if(!svTemp->IsEphemOK(gnss->ephemType,rTime))continue;
-        //3,measure
-        if(!svTemp->MeasureGood())continue;
-        //4,elevtion angle
-        if(!svTemp->ElevGood())continue;
-        //AODC?
-
-//        if(svTemp->AODC>24){
-//            printf("\n\n\nAAAAAODC = %d\n\n\n",svTemp->AODC);
-//            useForCalcu = 0;
-//        }
-        //remain svs:
-        select.push_back(svTemp);
-        if(SV::SYS_BDS == svTemp->type)numBDSUsed++;
-        if(SV::SYS_GPS == svTemp->type)numGPSUsed++;
-        printf("svsfor calcu\n");
-    }
 }
 
 //todo move to serial data,and new class Measure;
@@ -581,80 +558,68 @@ int PosSolver::ReadVisibalSvsRaw(SVs *svs,vector<SV*> &svVisable, char *raw) {
     return 0;
 }
 
-int PosSolver::XYZ2LLA(Vector3d XYZ, Vector3d &LLA) {
-    double x,y,z,r,sinA,cosA,sinB,cosB,N,h,lati;
-    int i;
-    double v_xyz[3],v_enu[3],a_xyz[3],a_enu[3];
-    double lati_f,long_f;   // N_geoi表中的经纬度，以角度记，均加到正值处以10
-    double lati_w,long_w;   //权重
-    int lati_index,long_index,long_index_n;  //用于N_geoid中的下标
-    //input
-    x = XYZ(0);
-    y = XYZ(1);
-    z = XYZ(2);
-    v_xyz[0] = v_xyz[0];
-    v_xyz[1] = v_xyz[1];
-    v_xyz[2] = v_xyz[2];
-    a_xyz[0] = a_xyz[0];
-    a_xyz[1] = a_xyz[1];
-    a_xyz[2] = a_xyz[2];
-    //起始迭代点
-    r = sqrt(x*x+y*y);
-    h = 0;
-    lati = 0;
-    for (i=0;i<5;i++){
-        sinA = sin(lati);
-        cosA = cos(lati);
-        N = Earth_a / sqrt(1-sinA*sinA*Earth_ee);
-        h = r/cosA - N;
-        lati = atan(z/(r*(1-Earth_ee*N/(N+h))));
-//        printf("lati = %lf\n",lati);
+int PosSolver::SelectSvsFromVisible(vector<SV*> &all, vector<SV*> &select) {
+
+    for(int i=0;i<numMeas;i++)
+    {
+        SV *svTemp = all[i];
+        printf("svs visiable:%d,%02d:%d,%d,%d.health:%d,pr=%lf\n",
+               svTemp->type,svTemp->svId,svTemp->bstEphemOK[0],svTemp->bstEphemOK[1],
+               svTemp->bstEphemOK[2],svTemp->SatH1,svTemp->prMes);
+
+        //1,is used?
+        if(!svTemp->open)continue;
+        //2,judge ephemeric
+        if(!svTemp->IsEphemOK(0,rTime))continue;
+        if(!svTemp->IsEphemOK(gnss->ephemType,rTime))continue;
+        //3,measure
+        if(!svTemp->MeasureGood())continue;
+        //4,elevtion angle
+//        if(!svTemp->ElevGood())continue;
+        //AODC?
+
+//        if(svTemp->AODC>24){
+//            printf("\n\n\nAAAAAODC = %d\n\n\n",svTemp->AODC);
+//            useForCalcu = 0;
+//        }
+        //remain svs:
+        select.push_back(svTemp);
+        numBDSUsed+=(SV::SYS_BDS == svTemp->type);
+        numGPSUsed+=(SV::SYS_GPS == svTemp->type);
+//        if(SV::SYS_BDS == svTemp->type)numBDSUsed++;
+//        if(SV::SYS_GPS == svTemp->type)numGPSUsed++;
+        printf("svsfor calcu\n");
     }
-    //output Longtitude Latitude High  SS[8] 转换矩阵
-    LLA(0) = atan2(y,x);
-    LLA(1) = lati;
-    LLA(2) = h;
-
-    //给转换矩阵赋值
-    sinB = y/r;
-    cosB = x/r;
-    double SS[8];
-    SS[0] = -sinB;
-    SS[1] = cosB;
-    SS[2] = 0;
-    SS[3] = -sinA*cosB;
-    SS[4] = -sinA*sinB;
-    SS[5] = cosA;
-    SS[6] = cosA*cosB;
-    SS[7] = cosA*sinB;
-    SS[8] = sinA;
-
-    //XYZ向速度，加速度ENU 之后有时间自己实现吧，下面就是一个矩阵乘法然后赋值
-    //SS*v_xyz = v_enu   SS*a_xyz = a_enu
-    return 0;
 }
 
 int PosSolver::UpdateSvsPosition(vector<SV *> svs, GnssTime rt, int ephType) {
+    printf("NNN== %d\n", svs.size());
     for(int i = 0;i< svs.size();i++){
+        SV *sv= svs[i];
+
         //todo:rcvtow calculated from rt;
         double timeForECEF = rcvtow;
+        if(SV::SYS_BDS == sv->type)timeForECEF-=14;
+        sv->CalcuTime(timeForECEF);
+//        sv->PrintInfo(1);
+
         Sp3Cell cell;
         GnssTime ts0 = rt;
-        SV *sv= svs[i];
         switch (ephType){
-            case 0:
-                if(SV::SYS_BDS == sv->type)timeForECEF-=14;
-                sv->CalcuTime(timeForECEF);
-                sv->CalcuECEF(sv->tsReal);
-                break;
             case 1:
-                ts0+=(-sv->prMes/Light_speed);
+                ts0+=(-sv->prMes/Light_speed-sv->tsDelta);
                 cell = EphemSp3::InterpECEF(sv->ephemSp3->records,ts0);
                 sv->position = cell.pxyz;
-                sv->tsDelta = cell.ts;
+//                sv->tsDelta = cell.ts;
+//                sv->PrintInfo(1);
+                break;
+            case 0:
+                if(!sv->IsEphemOK(0,rt))return -1;
+                sv->CalcuECEF(sv->tsReal);
+//                sv->PrintInfo(1);
                 break;
             default:
-                return -1;
+                continue;
         }
 
         if(gnss->isPositioned){
@@ -673,3 +638,25 @@ int PosSolver::UpdateSvsPosition(vector<SV *> svs, GnssTime rt, int ephType) {
     }
     return 0;
 }
+
+int PosSolver::MakeGGA(char *gga, Vector3d lla, GnssTime gpsTime) {
+    GnssTime ggaTime = gpsTime;
+    double h=0,ep[6],dms1[3],dms2[3],dop=1.0;
+    int solq = 1;
+    char *p=gga,*q,sum;
+
+    ggaTime.gpst2utc();
+    if (ggaTime.sec>=0.995) {ggaTime.time++; ggaTime.sec=0.0;}
+    ggaTime.time2epoch(ep);
+
+    deg2dms(fabs(lla(0))*180.0/GPS_PI,dms1);
+    deg2dms(fabs(lla(1))*180.0/GPS_PI,dms2);
+    p+=sprintf(p,"$GPGGA,%02.0f%02.0f%05.2f,%02.0f%010.7f,%s,%03.0f%010.7f,%s,%d,%02d,%.1f,%.3f,M,%.3f,M,%.1f,",
+               ep[3],ep[4],ep[5],dms1[0],dms1[1]+dms1[2]/60.0,lla(0)>=0?"N":"S",
+               dms2[0],dms2[1]+dms2[2]/60.0,lla(1)>=0?"E":"W",solq,
+               6,dop,lla(2),h,1);
+    for (q=(char *)gga+1,sum=0;*q;q++) sum^=*q; /* check-sum */
+    p+=sprintf(p,"*%02X%c%c",sum,0x0D,0x0A);
+    return p-(char *)gga;
+}
+

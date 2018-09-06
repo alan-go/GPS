@@ -23,6 +23,7 @@ class EphemSp3 {
 public:
     vector<Sp3Cell> records;
     GnssTime timeHead, timeEnd;
+    double dt = 15;
 public:
     EphemSp3();
     static int ReadSp3File(string fileName, SVs *svs);

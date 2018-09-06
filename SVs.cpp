@@ -32,6 +32,7 @@ SVs::~SVs(){}
 
 bool SV::IsEphemOK(int ephemType, GnssTime time) {
     int bstEphem;
+    double timeperiod;
     switch (ephemType){
         case 0:
             bstEphem = bstEphemOK[0]*bstEphemOK[1]*bstEphemOK[2];
@@ -41,14 +42,22 @@ bool SV::IsEphemOK(int ephemType, GnssTime time) {
                 }
             }
             if(!bstEphem)return false;
+            if(SatH1)return false;
             break;
         case 1:
             //todo
-            if(time<ephemSp3->timeHead||time>ephemSp3->timeEnd)return false;
+            if(ephemSp3== nullptr){
+                printf("_____no sp3 record \n");
+                return false;
+            }
+            timeperiod = ephemSp3->dt * 5;
+            if((time-ephemSp3->timeHead<timeperiod)||(ephemSp3->timeEnd-time<timeperiod)){
+                printf("sp3 time  period not ok\n");
+                return false;
+            }
             break;
     }
 
-    if(SatH1)return false;
     return true;
 }
 
@@ -93,7 +102,6 @@ void SV::PrintInfo(int printType) {
 }
 
 bool SV::CalcuECEF(double tow) {
-
     double A = orbit.sqrtA*orbit.sqrtA;
     double n0 = sqrt(M_miu/(A*A*A));
     double tk = tow - orbit.toe;

@@ -18,7 +18,7 @@ GnssTime::GnssTime(int week, double tow) {
     sec=tow-(int)tow;
 }
 
-GnssTime::GnssTime(char *head, int len):GnssTime() {
+GnssTime::GnssTime(char *head, int len, bool utc2gps):GnssTime() {
     double ep[6];
     char str[256],*p=str;
 
@@ -32,6 +32,7 @@ GnssTime::GnssTime(char *head, int len):GnssTime() {
     }
     if (ep[0]<100.0) ep[0]+=ep[0]<80.0?2000.0:1900.0;
     epoch2time(ep);
+    if(utc2gps)utc2gpst();
 }
 
 void GnssTime::epoch2time(const double *ep) {
@@ -53,9 +54,19 @@ void GnssTime::utc2gpst() {
     for (int i=0;leaps[i][0]>0;i++) {
         if ((*this-GnssTime(leaps[i]))>=0.0) {
             *this+=(-leaps[i][6]);
+            return;
         }
     }
 }
+void GnssTime::gpst2utc() {
+    for (int i=0;leaps[i][0]>0;i++) {
+        if ((*this-GnssTime(leaps[i]))>=0.0) {
+            *this+=(leaps[i][6]);
+            return;
+        }
+    }
+}
+
 double GnssTime::operator-(const GnssTime &right) {
     return difftime(time,right.time)+sec-right.sec;
 }
@@ -72,4 +83,21 @@ bool GnssTime::operator<(const GnssTime right) {
 bool GnssTime::operator>(const GnssTime right) {
     if(*this-right>0)return true;
     return false;
+}
+
+void GnssTime::time2epoch(double *ep) {
+    const int mday[]={ /* # of days in a month */
+            31,28,31,30,31,30,31,31,30,31,30,31,31,28,31,30,31,30,31,31,30,31,30,31,
+            31,29,31,30,31,30,31,31,30,31,30,31,31,28,31,30,31,30,31,31,30,31,30,31
+    };
+    int days,sec,mon,day;
+
+    /* leap year if year%4==0 in 1901-2099 */
+    days=(int)(time/86400);
+    sec=(int)(time-(time_t)days*86400);
+    for (day=days%1461,mon=0;mon<48;mon++) {
+        if (day>=mday[mon]) day-=mday[mon]; else break;
+    }
+    ep[0]=1970+days/1461*4+mon/12; ep[1]=mon%12+1; ep[2]=day+1;
+    ep[3]=sec/3600; ep[4]=sec%3600/60; ep[5]=sec%60+sec;
 }

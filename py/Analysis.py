@@ -27,5 +27,6 @@ def Analysis(path):
 if __name__=="__main__":
     path = "../log/log.txt"
     Analysis(path)
+    # Analysis("../log/logbg.txt")
 
 

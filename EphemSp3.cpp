@@ -23,7 +23,7 @@ int EphemSp3::ReadSp3File(string fileName, SVs *svs) {
 
         if (i==0) {
             sp3Type=buff[2];
-            sp3Time = GnssTime(buff+3,28);
+            sp3Time = GnssTime(buff+3,28,0);
             neph = str2num(buff+32,7);
         } else if (1==i) {
             epht = str2num(buff+24,14);
@@ -46,12 +46,11 @@ int EphemSp3::ReadSp3File(string fileName, SVs *svs) {
         if (!strncmp(buff,"EOF",3)) break;
 
         if (buff[0]=='*'){
-            ephTime = GnssTime(buff+3,28);
+            ephTime = GnssTime(buff+3,28,0);
             if (ephTime.time == -1) {
                 printf("sp3 invalid epoch %31.31s\n",buff);
                 return -1;
             }
-            ephTime.utc2gpst();
         } else{
             char dataType = buff[0];
             SV::SysType tempSys =code2sys(buff[1]);
@@ -62,17 +61,18 @@ int EphemSp3::ReadSp3File(string fileName, SVs *svs) {
                 sv->ephemSp3 = new EphemSp3;
                 sv->ephemSp3->timeHead = sv->ephemSp3->timeEnd = sp3Time;
                 sv->ephemSp3->timeEnd+=timeAll;
+                sv->ephemSp3->dt = epht;
             }
             Vector3d data(str2num(buff+4,14),str2num(buff+18,14),str2num(buff+32,14));
             Sp3Cell cell;
             cell.time = ephTime;
             if ('P'==dataType) {
-                cell.pxyz = data;
-                cell.ts = str2num(buff+46,14);
+                cell.pxyz = data*1000;
+                cell.ts = str2num(buff+46,14)*1e-6;
             }
             if ('V'==dataType) {
-                cell.vxyz = data;
-                cell.tsDrift = str2num(buff+46,14);
+                cell.vxyz = data*1000;
+                cell.tsDrift = str2num(buff+46,14)*1e-10;
             }
             sv->ephemSp3->records.push_back(cell);
         }
@@ -90,14 +90,10 @@ SV::SysType EphemSp3::code2sys(char code) {
 }
 
 Sp3Cell EphemSp3::InterpECEF(vector<Sp3Cell> &list, GnssTime interpTime) {
+//    printf("interpTime= %d\n", interpTime.time);
     Sp3Cell result;
     result.time = interpTime;
-    double *time,*x,*y,*z,*ts;
-    time = new double[10];
-    x = new double[10];
-    y = new double[10];
-    z = new double[10];
-    ts = new double[10];
+    double time[10],x[10],y[10],z[10],ts[10];
     int head,N = list.size();
     for (head = 0; head < N; ++head) {
         if(interpTime<list[head].time)break;
@@ -112,10 +108,11 @@ Sp3Cell EphemSp3::InterpECEF(vector<Sp3Cell> &list, GnssTime interpTime) {
         z[i] = list[head+i].pxyz(2);
         ts[i] = list[head+i].ts;
     }
-    for (int j = 0; j < 3; ++j) {
-        result.ts = lagrange(time,ts,tt-result.ts,10);
-    }
-    tt-=result.ts;
+//    for (int j = 0; j < 3; ++j) {
+//        result.ts = lagrange(time,ts,tt-result.ts,10);
+//    }
+//    tt-=result.ts;
     result.pxyz = Vector3d(lagrange(time,x,tt,10),lagrange(time,y,tt,10),lagrange(time,z,tt,10));
+    return result;
 }
 

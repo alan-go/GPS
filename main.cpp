@@ -9,6 +9,27 @@ std::ofstream outF;
 bool stopLog = 0;
 char saveDataName[64];
 
+int MakeGGA(char *gga, Vector3d lla, GnssTime gpsTime) {
+    GnssTime ggaTime = gpsTime;
+    double h=0,ep[6],dms1[3],dms2[3],dop=1.0;
+    int solq = 1;
+    char *p=gga,*q,sum;
+
+    ggaTime.gpst2utc();
+    if (ggaTime.sec>=0.995) {ggaTime.time++; ggaTime.sec=0.0;}
+    ggaTime.time2epoch(ep);
+
+    deg2dms(fabs(lla(0))*180.0/GPS_PI,dms1);
+    deg2dms(fabs(lla(1))*180.0/GPS_PI,dms2);
+    p+=sprintf(p,"$GPGGA,%02.0f%02.0f%05.2f,%02.0f%010.7f,%s,%03.0f%010.7f,%s,%d,%02d,%.1f,%.3f,M,%.3f,M,%.1f,",
+               ep[3],ep[4],ep[5],dms1[0],dms1[1]+dms1[2]/60.0,lla(0)>=0?"N":"S",
+               dms2[0],dms2[1]+dms2[2]/60.0,lla(1)>=0?"E":"W",solq,
+               6,dop,lla(2),h,1);
+    for (q=(char *)gga+1,sum=0;*q;q++) sum^=*q; /* check-sum */
+    p+=sprintf(p,"*%02X%c%c",sum,0x0D,0x0A);
+    return p-(char *)gga;
+}
+
 void *LogData(void *fileName){
     outF.open((char*)fileName,std::ofstream::binary);
     try {
@@ -42,11 +63,16 @@ void *LogData(void *fileName){
 
 int main()
 {
+    GnssTime timeg(2018,208953.253);
+    char gganow[128];
+    MakeGGA(gganow,Eigen::Vector3d(0.69777,2.03050,52.91082),timeg);
+    printf("%s\n",gganow);
+
     char a[12] = "1.36e1";
     printf("a= %f\n", (str2num(a, 6)));
 
     GNSS *gnss = new GNSS();
-    gnss->log = fopen("../log/log.txt","w");
+    gnss->log = fopen("../log/logbg.txt","w");
 //    gnss->log = fopen("../log/log0829-b1.txt","w");
 
 
@@ -76,15 +102,15 @@ int main()
 
     //    gnss->useGPS = false;
     //    gnss->useBeiDou = false;
-//    gnss->useQianXun = false;
-    gnss->Init(0,0,1,1);
+    gnss->useQianXun = false;
+    gnss->Init(1,0,1,1);
 
 
 //    gnss->StartGNSS("null",115200);
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-    char command = getchar();
-//    char command = 'd';
+//    char command = getchar();
+    char command = 'd';
     if('l'==command){
         printf("start write file %s",saveDataName);
         pthread_t logThread = 0;
