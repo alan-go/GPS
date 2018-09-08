@@ -25,7 +25,7 @@ def Analysis(path):
     plt.show()
 
 if __name__=="__main__":
-    path = "../log/log.txt"
+    path = "../log/logqx-cutend.txt"
     Analysis(path)
     # Analysis("../log/logbg.txt")
 

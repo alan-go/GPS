@@ -11,7 +11,7 @@ using namespace Eigen;
 int main(){
     printf("\nin testing\n");
     GNSS gnss;
-    gnss.log = fopen("../log/logqx.txt","w");
+    gnss.log = fopen("../log/logqx-outlog.txt","w");
 
 //    gnss.useGPS = false;
     gnss.useBeiDou = false;

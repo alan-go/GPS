@@ -52,7 +52,7 @@ def AnaData(path):
 
 
         if 'svs' in each:
-            color = 'd'
+            color = 'g'
             if 'Sp3'in each:
                 color = 'b'
             if 'Brt'in each:
@@ -85,5 +85,5 @@ def AnaData(path):
     plt.show()
 
 if __name__=="__main__":
-    AnaData("../log/logbg.txt")
+    AnaData("../log/logqx-cutend.txt")
     Test()
