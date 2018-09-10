@@ -72,7 +72,8 @@ int main()
     printf("a= %f\n", (str2num(a, 6)));
 
     GNSS *gnss = new GNSS();
-    gnss->log = fopen("../log/logbg.txt","w");
+    for (int i = 0; i < 5; ++i) gnss->svMaskBds[i]=0;
+    gnss->log = fopen("../log/log.txt","w");
 //    gnss->log = fopen("../log/log0829-b1.txt","w");
 
 
@@ -103,14 +104,14 @@ int main()
     //    gnss->useGPS = false;
     //    gnss->useBeiDou = false;
     gnss->useQianXun = false;
-    gnss->Init(0,0,1,1);
+    gnss->Init(1,0,1,1);
 
 
 //    gnss->StartGNSS("null",115200);
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-    char command = getchar();
-//    char command = 'd';
+//    char command = getchar();
+    char command = 'd';
     if('l'==command){
         printf("start write file %s",saveDataName);
         pthread_t logThread = 0;
@@ -129,7 +130,8 @@ int main()
         ifstream inF;
         char name[128],dat[128];
         printf("open file name:");
-        string ss = "../data/0802-1";
+        string ss = "../data/0907_01_01.data";
+//        string ss = "../data/0802-1";
 //        string ss = "../data/0708-2";
 //        string ss = "../data/0823";
 //        string ss = "../data/0815-2";//soho novatal

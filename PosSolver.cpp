@@ -298,20 +298,8 @@ int PosSolver::PositionSingle() {
     int result = 0;
     vector<SV*> svsForCalcu;
     PrepareSVsData(svsForCalcu);
-    for (int i = 0; i < svsForCalcu.size(); ++i) {
-        SV *svTemp = svsForCalcu[i];
-//        svTemp->CalcuelEvationAzimuth(xyz,LLA);
-        printf("svsVis:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,%f\n",rcvtow,
-               svTemp->type,svTemp->svId,svTemp->prMes,0,svTemp->elevationAngle);
-        fprintf(gnss->log,"svsVisSp3:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
-                svTemp->type,svTemp->svId,svTemp->prMes,0,
-                svTemp->position.norm(),svTemp->position(0),svTemp->position(1),svTemp->position(2));
-        svTemp->CalcuECEF(svTemp->tsReal);
-        fprintf(gnss->log,"svsVisSp3Brt:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
-                svTemp->type,svTemp->svId,svTemp->prMes,0,
-                svTemp->position.norm(),svTemp->position(0),svTemp->position(1),svTemp->position(2));
-    }
-    return 0;
+
+//    return 0;
     printf("rcvtow = %.4f\n",rcvtow);
     int N = svsForCalcu.size();
     if(N<4){
@@ -332,8 +320,8 @@ int PosSolver::PositionSingle() {
 //        }
 
     } else{
-        result = SolvePositionBeiDouGPS(svsForCalcu);
-//        result = SolvePosition(svsForCalcu);
+//        result = SolvePositionBeiDouGPS(svsForCalcu);
+        result = SolvePosition(svsForCalcu);
     }
 
 //    if(result)
@@ -363,13 +351,8 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
             SV *sv= svsForCalcu[i];
             double r = (sv->position-xyz).norm();
             //todo 自转修正
-            double omegat = r/Light_speed*Omega_e;
-            printf("r=%lf,omegat = %lf\n",r,omegat);
-//            double omegat = 0;
-            MatrixXd earthRotate(3,3);
-            earthRotate<<cos(omegat),sin(omegat),0,-sin(omegat),cos(omegat),0,0,0,1;
-            Vector3d svPositionEarthRotate = earthRotate*sv->position;
-
+            Vector3d svPositionEarthRotate;
+            EarthRotate(sv->position,svPositionEarthRotate,r/Light_speed);
             r = (svPositionEarthRotate-xyz).norm();
 
             b(i) = pc(i)-r-tu;
@@ -523,6 +506,9 @@ int PosSolver::SolvePositionCalman() {
 
 //todo move to serial data,and new class Measure;
 int PosSolver::ReadVisibalSvsRaw(SVs *svs,vector<SV*> &svVisable, char *raw) {
+    int maskGps[NGPS] = {0};
+    int maskBds[NBeiDou] = {0};
+    int tempTrack;
     char* playload = raw + 6;
 
     char* temp = playload;
@@ -542,9 +528,11 @@ int PosSolver::ReadVisibalSvsRaw(SVs *svs,vector<SV*> &svVisable, char *raw) {
         switch (gnssId){
             case 0:
                 svTemp = &(svs->svGpss[svId-1]);
+                maskGps[svId-1] = 1;
                 break;
             case 3:
                 svTemp = &(svs->svBeiDous[svId-1]);
+                maskBds[svId-1] = 1;
                 break;
         }
         svVisable.push_back(svTemp);
@@ -553,7 +541,14 @@ int PosSolver::ReadVisibalSvsRaw(SVs *svs,vector<SV*> &svVisable, char *raw) {
         svTemp->doMes = *(float *)(playload+32+n32);
 
         svTemp->measureRecord.push_back(SV::Measure(rcvtow,svTemp->prMes,svTemp->cpMes,svTemp->doMes));
-
+    }
+    for (int i = 0; i < NGPS; ++i) {
+        tempTrack = svs->svGpss[i].trackingState+1;
+        svs->svGpss[i].trackingState = maskGps[i]?tempTrack:0;
+    }
+    for (int i = 0; i < NBeiDou; ++i) {
+        tempTrack = svs->svBeiDous[i].trackingState+1;
+        svs->svBeiDous[i].trackingState = maskBds[i]?tempTrack:0;
     }
     return 0;
 }
@@ -568,7 +563,10 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all, vector<SV*> &select) {
                svTemp->bstEphemOK[2],svTemp->SatH1,svTemp->prMes);
 
         //1,is used?
-        if(!svTemp->open)continue;
+        if(!svTemp->open){
+            printf("____closed\n");
+            continue;
+        }
         //2,judge ephemeric
         if(!svTemp->IsEphemOK(0,rTime))continue;
         if(!svTemp->IsEphemOK(gnss->ephemType,rTime))continue;
@@ -592,8 +590,11 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all, vector<SV*> &select) {
     }
 }
 
-int PosSolver::UpdateSvsPosition(vector<SV *> svs, GnssTime rt, int ephType) {
+int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
+    vector<SV *> result;
     printf("NNN== %d\n", svs.size());
+    double ep[6];
+    rt.time2epoch(ep);
     for(int i = 0;i< svs.size();i++){
         SV *sv= svs[i];
 
@@ -601,21 +602,38 @@ int PosSolver::UpdateSvsPosition(vector<SV *> svs, GnssTime rt, int ephType) {
         double timeForECEF = rcvtow;
         if(SV::SYS_BDS == sv->type)timeForECEF-=14;
         sv->CalcuTime(timeForECEF);
-//        sv->PrintInfo(1);
+        printf("ep = % 2.0f % 2.0f % 2.0f % 2.0f % 2.0f \n",ep[0],ep[1],ep[2],ep[3],ep[4]);
+        sv->PrintInfo(1);
+        printf("ts0 =  %.3f\n", sv->tsDelta*1e9);
+        sv->CalcuECEF(sv->tsReal);
+        printf("ts1 =  %.3f\n", sv->tsDelta*1e9);
+
+        fprintf(gnss->log,"svsVisBrt:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
+                sv->type,sv->svId,sv->prMes,0.0,
+                sv->position.norm(),sv->position(0),sv->position(1),sv->position(2));
 
         Sp3Cell cell;
         GnssTime ts0 = rt;
         switch (ephType){
             case 1:
                 ts0+=(-sv->prMes/Light_speed-sv->tsDelta);
-                cell = EphemSp3::InterpECEF(sv->ephemSp3->records,ts0);
+                if(EphemSp3::Sp32ECEF(sv->ephemSp3->records, ts0, cell))break;
+                printf("ts2 =  %.3f\n", cell.ts*1e9);
+
                 sv->position = cell.pxyz;
-//                sv->tsDelta = cell.ts;
+
+                fprintf(gnss->log,"svsVisSp3:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
+                        sv->type,sv->svId,sv->prMes,0.0,
+                        sv->position.norm(),sv->position(0),sv->position(1),sv->position(2));
+//                if(cell.ts!=0.0)sv->tsDelta = cell.ts;
+//                sv->tsDelta-=sv->TGD1;
 //                sv->PrintInfo(1);
+                result.push_back(sv);
                 break;
             case 0:
                 if(!sv->IsEphemOK(0,rt))return -1;
                 sv->CalcuECEF(sv->tsReal);
+                result.push_back(sv);
 //                sv->PrintInfo(1);
                 break;
             default:
@@ -636,6 +654,7 @@ int PosSolver::UpdateSvsPosition(vector<SV *> svs, GnssTime rt, int ephType) {
 //        sv->PrintInfo(1);
 //        cout<<"norm"<<sv->position.norm()<<endl;
     }
+    svs = result;
     return 0;
 }
 
@@ -654,7 +673,7 @@ int PosSolver::MakeGGA(char *gga, Vector3d lla, GnssTime gpsTime) {
     p+=sprintf(p,"$GPGGA,%02.0f%02.0f%05.2f,%02.0f%010.7f,%s,%03.0f%010.7f,%s,%d,%02d,%.1f,%.3f,M,%.3f,M,%.1f,",
                ep[3],ep[4],ep[5],dms1[0],dms1[1]+dms1[2]/60.0,lla(0)>=0?"N":"S",
                dms2[0],dms2[1]+dms2[2]/60.0,lla(1)>=0?"E":"W",solq,
-               6,dop,lla(2),h,1);
+               6,dop,lla(2),h,1.0);
     for (q=(char *)gga+1,sum=0;*q;q++) sum^=*q; /* check-sum */
     p+=sprintf(p,"*%02X%c%c",sum,0x0D,0x0A);
     return p-(char *)gga;

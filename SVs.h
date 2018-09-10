@@ -57,6 +57,7 @@ public:
     };
 
     EphemSp3 *ephemSp3;
+    int trackingState;
     bool temp = 1;
     int8_t bstEphemOK[10];
     bool isBeiDouGEO;
@@ -90,6 +91,7 @@ public:
     bool IsEphemOK(int ephemType, GnssTime time);
     bool MeasureGood();
     bool ElevGood();
+    bool IsMaskOn();
     bool CalcuECEF(double tow);
     bool CalcuTime(double tow);
     int CalcuelEvationAzimuth(Vector3d receiverPosition, Vector3d LLA);

@@ -87,3 +87,11 @@ void deg2dms(double deg, double *dms)
     dms[2]=a; dms[0]*=sign;
 }
 
+void EarthRotate(Eigen::Vector3d in, Eigen::Vector3d &out, double dt){
+    double omega = dt*Omega_e;
+    Eigen::Matrix3d earthRotate(3,3);
+    earthRotate<<cos(omega),sin(omega),0,-sin(omega),cos(omega),0,0,0,1;
+    out = earthRotate*in;
+}
+
+

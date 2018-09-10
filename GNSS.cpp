@@ -12,6 +12,8 @@ GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),is
 
     time_t timeNow = time(NULL);
     utcTime=gmtime(&timeNow);
+    memset(svMaskBds,1,NBeiDou * sizeof(int));
+    memset(svMaskGps,1,NGPS * sizeof(int));
 }
 
 GNSS::~GNSS() {}
@@ -24,7 +26,7 @@ int GNSS::Init(int ephem, bool qianXun, bool gps, bool bds) {
     useGPS = gps;
     useBeiDou = bds;
     if(1==ephemType){
-        if(0==EphemSp3::ReadSp3File("/home/alan/Desktop/hour20124_10.sp3",svsManager))return 0;
+        if(0==EphemSp3::ReadSp3File("/home/alan/Desktop/hour20175_19.sp3",svsManager))return 0;
     } else{
         printf("ReadSp3File Failed. \n");
         return -1;

@@ -25,6 +25,7 @@ public:
     std::string serialPort_, rtk_protocol_;
 
     bool useBeiDou,useGPS,useQianXun;
+    int svMaskBds[NBeiDou], svMaskGps[NGPS];
     int ephemType;//0:broadcast,1:sp3
     bool isPositioned;
 

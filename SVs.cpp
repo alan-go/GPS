@@ -2,7 +2,7 @@
 #include "NtripRTK.h"
 #include "EphemSp3.h"
 
-SV::SV():SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsDelta(0),ephemSp3(nullptr){
+SV::SV():SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsDelta(0),ephemSp3(nullptr),trackingState(0){
     memset(bstEphemOK,0,10 * sizeof(int8_t));
 }
 SV::~SV(){}
@@ -41,8 +41,15 @@ bool SV::IsEphemOK(int ephemType, GnssTime time) {
                     bstEphem*=bstEphemOK[i];
                 }
             }
-            if(!bstEphem)return false;
-            if(SatH1)return false;
+            if(!bstEphem){
+                printf("___Frame not enough\n");
+                return false;
+            }
+            if(SatH1){
+                printf("___not Healthy\n");
+
+                return false;
+            }
             break;
         case 1:
             //todo
@@ -83,6 +90,7 @@ void SV::PrintInfo(int printType) {
             printf("\n+++SvPosition:%d,%d === %10f,%10f,%10f\n",type,svId,position(0),position(1),position(2));
             cout<<"norm="<<position.norm()<<endl;
             printf("+++svLLA === %lf, %lf, %lf\n",sLLA(0)*180/GPS_PI,sLLA(1)*180/GPS_PI,sLLA(2));
+            printf("+++TGD === %.3f\n",TGD1*1e9);
 
             cout<<"tsDelta === "<<tsDelta*Light_speed<<" ,a0"<<a0<<endl;
             break;
@@ -580,11 +588,17 @@ bool SV::ElevGood() {
     }
     return elevGood;
 }
+
 bool SV::MeasureGood() {
     measureGood = prMes<45e6&&prMes>15e6;
     if(!measureGood){
         printf("\npr measure bad sv:%d,%02d,angle:%lf\n",type,svId,prMes);
     }
+    if (trackingState<5) {
+        printf("trackingTime %d < 5\n", trackingState);
+        return 0;
+    }
+
     return measureGood;
 }
 
@@ -633,4 +647,11 @@ double SV::InterpLine(double xi, vector<double> &x, vector<double> &y) {
     Vector2d ab = (x2T*x2).inverse()*(x2T*y1);
 //    printf("ab = %f,%f\n",ab(0),ab(1));
     return ab(0) + ab(1)*(xi-x[0]) + y[0];
+}
+
+bool SV::IsMaskOn() {
+    switch (type){
+        case SYS_BDS:
+            break;
+    }
 }

@@ -39,4 +39,6 @@ extern double lagrange(double *x,double *y,double xx,int n);     /*拉格朗日�
 extern int XYZ2LLA(Eigen::Vector3d XYZ, Eigen::Vector3d &LLA);
 
 extern void deg2dms(double deg, double *dms);
+
+extern void EarthRotate(Eigen::Vector3d in, Eigen::Vector3d &out, double dt);
 #endif //GPS_COMMONINCLUDE_H

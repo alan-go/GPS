@@ -64,15 +64,17 @@ int EphemSp3::ReadSp3File(string fileName, SVs *svs) {
                 sv->ephemSp3->dt = epht;
             }
             Vector3d data(str2num(buff+4,14),str2num(buff+18,14),str2num(buff+32,14));
+            double datat = str2num(buff+46,14);
+            if(abs(datat-999999.999999)<1)datat=0;
             Sp3Cell cell;
             cell.time = ephTime;
             if ('P'==dataType) {
                 cell.pxyz = data*1000;
-                cell.ts = str2num(buff+46,14)*1e-6;
+                cell.ts = datat*1e-6;
             }
             if ('V'==dataType) {
                 cell.vxyz = data*1000;
-                cell.tsDrift = str2num(buff+46,14)*1e-10;
+                cell.tsDrift = datat*1e-10;
             }
             sv->ephemSp3->records.push_back(cell);
         }
@@ -89,30 +91,67 @@ SV::SysType EphemSp3::code2sys(char code) {
     return SV::SYS_NULL;
 }
 
-Sp3Cell EphemSp3::InterpECEF(vector<Sp3Cell> &list, GnssTime interpTime) {
+int EphemSp3::Sp32ECEF(vector<Sp3Cell> &list, GnssTime interpTime, Sp3Cell &result) {
 //    printf("interpTime= %d\n", interpTime.time);
-    Sp3Cell result;
+    double dt = 1e-3;
+    Sp3Cell cell0,cell1;
+    GnssTime time0 = interpTime,time1 = interpTime;
+    time1+=dt;
+//    interpECEF(list,time0,result);
+//    return 0;
+
+    if(interpECEF(list,time0,cell0)||interpECEF(list,time1,cell1))return -1;
+
+    //todo:satellite antenna offset correction
+    result.pxyz = cell0.pxyz;
+    result.vxyz = (cell1.pxyz-cell0.pxyz)/dt;
+
+    /* relativistic effect correction */
+    if (cell0.ts!=0.0) {
+        result.ts=cell0.ts-2.0*result.pxyz.dot(result.vxyz)/Light_speed/Light_speed;
+        result.tsDrift = (cell0.ts-cell1.ts)/dt;
+    }
+    return 0;
+}
+
+int EphemSp3::interpECEF(vector<Sp3Cell> &list, GnssTime interpTime, Sp3Cell &result) {
     result.time = interpTime;
     double time[10],x[10],y[10],z[10],ts[10];
-    int head,N = list.size();
-    for (head = 0; head < N; ++head) {
-        if(interpTime<list[head].time)break;
-    }
-    head -= 5;
-    GnssTime referTime = list[head].time;
-    double tt = interpTime - referTime;
-    for (int i = 0; i < 10; ++i) {
-        time[i] = list[head+i].time-referTime;
-        x[i] = list[head+i].pxyz(0);
-        y[i] = list[head+i].pxyz(1);
-        z[i] = list[head+i].pxyz(2);
-        ts[i] = list[head+i].ts;
-    }
-//    for (int j = 0; j < 3; ++j) {
-//        result.ts = lagrange(time,ts,tt-result.ts,10);
+    int head,N = list.size(),index;
+    Vector3d posRotate;
+//    for (head = 0; head < N; ++head) {
+//        if(interpTime<list[head].time)break;
 //    }
-//    tt-=result.ts;
+//    head-=5;
+    /* binary search ->find head*/
+    int i=0,k=0,j;
+    for (i=0,j=N-1;i<j;) {
+        k=(i+j)/2;
+        if (list[k].time<interpTime) i=k+1; else j=k;
+    }
+    index=i<=0?0:i-1;
+    head = index-5;
+    if(head<0||head+10>=N)return -1;
+
+    //calcu position
+    double tt = 0;
+    for (int i = 0; i < 10; ++i) {
+        time[i] = list[head+i].time-interpTime;
+        ts[i] = list[head+i].ts;
+        EarthRotate(list[head+i].pxyz,posRotate,-time[i]);
+        x[i] = posRotate(0);
+        y[i] = posRotate(1);
+        z[i] = posRotate(2);
+    }
     result.pxyz = Vector3d(lagrange(time,x,tt,10),lagrange(time,y,tt,10),lagrange(time,z,tt,10));
-    return result;
+    //calcu ts
+    double t0 =interpTime - list[index].time, t1 = interpTime - list[index+1].time;
+    double ts0 = list[index].ts, ts1 = list[index+1].ts;
+    if(ts0*ts1==0){
+        result.ts = 0;
+    } else{
+        result.ts = (t0*ts1-t1*ts0)/(t0-t1);
+    }
+    return 0;
 }
 
