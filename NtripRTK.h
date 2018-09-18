@@ -54,6 +54,7 @@ public:
     Eigen::Vector3d ECEF_XYZ;
     char ggaDefault[128];
     std::mutex mtxData;
+    char saveName[128];
 
 public:
     NtripRTK();
@@ -65,6 +66,7 @@ public:
     int ParaseMSM4(char *bufferRTK, SV::SysType type);
     bool NtripLogin(const std::string &rtk_protocol);
     void RecvThread();
+    int ParaseRTK(char *buffer, int length);
     int TestParase(char *bufferRecv,int recvLength);
     MSM4data* GetRtkRecord(int satInd,int timeInd, SV::SysType type);
 

@@ -1,7 +1,7 @@
 #include "GNSS.h"
 #include "EphemSp3.h"
 
-GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),isPositioned(false),ephemType(0){
+GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),isPositioned(false),ephemType(0),logOpen(0){
     serialDataManager.gnss = this;
     rtkManager.gnss = this;
 
@@ -38,7 +38,9 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
     serialDataManager.serialPort_ = serial_port;
     serialDataManager.baudRate = baudRate;
     serialDataManager.stopCapture = false;
-    sprintf(serialDataManager.saveNameDefault,"../data/%02d%02d_%02d_%02d.data",
+    sprintf(serialDataManager.saveName,"../data/%02d%02d_%02d_%02d.data",
+            utcTime->tm_mon+1,utcTime->tm_mday,utcTime->tm_hour,utcTime->tm_min);
+    sprintf(rtkManager.saveName,"../data/%02d%02d_%02d_%02d.rtk",
             utcTime->tm_mon+1,utcTime->tm_mday,utcTime->tm_hour,utcTime->tm_min);
 
     if(useQianXun){
@@ -107,7 +109,7 @@ int GNSS::ParseRawData(char *message, int len) {
 
 void* GNSS::ThreadAdapterGNSS(void *__sData) {
     auto _sData= ( SerialData* ) __sData;
-    _sData->StartCapture(_sData->serialPort_,_sData->baudRate,_sData->saveNameDefault);
+    _sData->StartCapture(_sData->serialPort_,_sData->baudRate,_sData->saveName);
     return nullptr;
 }
 

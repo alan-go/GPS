@@ -20,7 +20,7 @@ public:
     unsigned int baudRate;
     bool stopCapture;
     bool showData;
-    char saveNameDefault[64];
+    char saveName[64];
     GNSS* gnss;
 
 public:

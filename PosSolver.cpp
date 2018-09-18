@@ -539,6 +539,7 @@ int PosSolver::ReadVisibalSvsRaw(SVs *svs,vector<SV*> &svVisable, char *raw) {
         svTemp->prMes = *(double*)(playload+16+n32);
         svTemp->cpMes = *(double*)(playload+24+n32);
         svTemp->doMes = *(float *)(playload+32+n32);
+//        printf("Measure______ %.5f,%.5f,%.5f\n", svTemp->prMes,svTemp->cpMes*19/100,svTemp->doMes);
 
         svTemp->measureRecord.push_back(SV::Measure(rcvtow,svTemp->prMes,svTemp->cpMes,svTemp->doMes));
     }

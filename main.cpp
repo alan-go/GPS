@@ -61,8 +61,7 @@ void *LogData(void *fileName){
     }
 }
 
-int main()
-{
+void test(GNSS *gnss){
     GnssTime timeg(2018,208953.253);
     char gganow[128];
     MakeGGA(gganow,Eigen::Vector3d(0.69777,2.03050,52.91082),timeg);
@@ -71,48 +70,74 @@ int main()
     char a[12] = "1.36e1";
     printf("a= %f\n", (str2num(a, 6)));
 
+    MatrixXf D(10,11),R(10,10),temp;
+    D.fill(0);R.fill(0);
+    for (int i = 0; i < 10; ++i) {
+        D(i,i+1) = -1;
+        R(i,i) = i+2;
+    }
+    D.block<10,1>(0,0).fill(1);
+    cout<<R<<endl;
+    cout<<D<<endl;
+    cout<<D.transpose()*R*D<<endl;
+}
+
+int main()
+{
+
     GNSS *gnss = new GNSS();
+    test(gnss);
+    return 0;
     for (int i = 0; i < 5; ++i) gnss->svMaskBds[i]=0;
     gnss->log = fopen("../log/log.txt","w");
 //    gnss->log = fopen("../log/log0829-b1.txt","w");
 
 
-    Vector3d pc[5],LLA[5];
-    pc[0]<<-32353.678517,  27026.346058,  -1095.094873 ;
-    pc[1]<<  4354.572550,  41921.050023,   1042.240678;
-    pc[2]<< -14749.147484,  39509.822234,   -650.340449 ;
-    pc[3]<< -39599.198043,  14448.060190,   -564.747852 ;
-    pc[4]<<  21928.236952,  36015.925416,    895.460497 ;
-
-//    PC01 -32353.678517,  27026.346058,  -1095.094873    312.878333
-//    PC02   4354.572550,  41921.050023,   1042.240678    -16.403391
-//    PC03 -14749.147484,  39509.822234,   -650.340449   -299.578701
-//    PC04 -39599.198043,  14448.060190,   -564.747852   -273.299420
-//    PC05  21928.236952,  36015.925416,    895.460497    315.537101
-//    PC06  -6792.119072  30515.529479  28725.661181     89.249118
-//    PC07 -22186.980236  22343.659926 -28133.021383     76.004768
-
-//    SVs svs; NtripRTK *rtk;
-//    PosSolver svlr(svs,rtk,gnss);
-//    for (int i=0;i<5;i++){
-//        svlr.XYZ2LLA(pc[i]*1000,LLA[i]);
-//        printf("\nBDS_GEO_LLA, %02d\n%lf\n%lf\n%lf\n",i+1,LLA[i](0)*180/GPS_PI,LLA[i](1)*180/GPS_PI,LLA[i](2));
-//    }
-
-
-
     //    gnss->useGPS = false;
     //    gnss->useBeiDou = false;
     gnss->useQianXun = false;
-    gnss->Init(1,0,1,1);
+    gnss->Init(0,0,1,1);
 
 
 //    gnss->StartGNSS("null",115200);
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-//    char command = getchar();
-    char command = 'd';
-    if('l'==command){
+    char command = getchar();
+//    char command = 'd';
+    if('d'==command) {
+        ifstream inF;
+        char name[128],dat[128];
+        printf("open file name:");
+        string ss = "0907_01_01";
+//        string ss = "0802-1";
+//        string ss = "0708-2";
+//        string ss = "0823";
+//        string ss = "0815-2";//soho novatal
+//        scanf("%s",name);
+
+        string ssData = "../data/" + ss + ".data";
+        string ssRTK = "../data/" + ss + ".rtk";
+        inF.open(ssRTK, std::ifstream::binary);
+        while (!inF.eof()){
+            inF.read(dat,128);
+            gnss->rtkManager.ParaseRTK(dat,128);
+        }
+        inF.close();
+        inF.open(ssData, std::ifstream::binary);
+        while (!inF.eof()){
+            inF.read(dat,128);
+            gnss->serialDataManager.ScanSerialData(dat,128);
+        }
+        inF.close();
+
+    } else if('r'==command){
+        gnss->StartGNSS(serialPort,115200);
+        if('x'==getchar()){
+            cout<<"stop capture."<<endl;
+//            gnss.stop;
+//            stopUblox = 1;
+        }
+    }else if('l'==command){
         printf("start write file %s",saveDataName);
         pthread_t logThread = 0;
         pthread_create(&logThread, nullptr,LogData,saveDataName);
@@ -126,33 +151,7 @@ int main()
             }
         }
 
-    } else if('d'==command) {
-        ifstream inF;
-        char name[128],dat[128];
-        printf("open file name:");
-        string ss = "../data/0907_01_01.data";
-//        string ss = "../data/0802-1";
-//        string ss = "../data/0708-2";
-//        string ss = "../data/0823";
-//        string ss = "../data/0815-2";//soho novatal
-//        scanf("%s",name);
-        inF.open(ss, std::ifstream::binary);
-        while (!inF.eof()){
-            inF.read(dat,128);
-//            sleep(1);
-            gnss->serialDataManager.ScanSerialData(dat,128);
-        }
-        inF.close();
-
-    } else if('r'==command){
-        gnss->StartGNSS(serialPort,115200);
-        if('x'==getchar()){
-            cout<<"stop capture."<<endl;
-//            gnss.stop;
-//            stopUblox = 1;
-        }
     }
-
     fclose(gnss->log);
     sleep(2);
     cout<<"Quit?"<<endl;

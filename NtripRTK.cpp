@@ -62,9 +62,9 @@ bool NtripRTK::NtripLogin(const std::string &rtk_protocol) {
 
 void NtripRTK::RecvThread() {
     char bufferRecv[1024];
-    char buferRTK[256];
     printf("in recv thread\n");
-    FILE *fp = fopen("cmr.bin", "wb");
+    FILE *fp;
+    if(gnss->logOpen)fp = fopen(saveName, "wb");
     while(!stopRTK) {
         auto recvLength = recv(sock_, bufferRecv, sizeof(bufferRecv), 0);
         if(recvLength < 0) {
@@ -74,41 +74,8 @@ void NtripRTK::RecvThread() {
             NtripLogin(gnss->rtk_protocol_);
         }
         if(recvLength >= 0) {
-            for(int i = 0;i<recvLength;i++){
-                if(0xd3==(u_char)bufferRecv[i]&&0==(bufferRecv[i+1]>>2)){
-                    printf("get 0xd3,i = %d.\n",i);
-                    uint32_t messageLength = NetToHost32(bufferRecv+i,14,10);
-                    uint32_t checkSumGet = NetToHost32(bufferRecv+i+3+messageLength,0,24);
-                    crc24Q.reset();
-                    crc24Q.process_bytes(bufferRecv+i,messageLength+3);
-                    if(checkSumGet==crc24Q.checksum()){
-                        printf("CheckSum OK.\n");
-                        memcpy(buferRTK,bufferRecv+i+3,messageLength);
-                        uint32_t type = NetToHost32(buferRTK,0,12);
-                        printf("messageLength = %d, type = %d\n",messageLength,type);
-//                        mtxData.lock();
-                        switch (type){
-                            case 1005:
-                                ParaseRtk32_1005(buferRTK);
-                                break;
-                            case 1074:
-                                ParaseMSM4(buferRTK, SV::SYS_GPS);
-                                break;
-                            case 1084:
-                                break;
-                            case 1124:
-                                ParaseMSM4(buferRTK, SV::SYS_BDS);
-                                break;
-                            default:
-                                break;
-                        }
-//                        mtxData.unlock();
-                        i+=messageLength;
-                    } else{
-                        printf("CheckSum failed.%d,%d\n",checkSumGet,crc24Q.checksum());
-                    }
-                }
-            }
+            ParaseRTK(bufferRecv,recvLength);
+            if(gnss->logOpen)fwrite(bufferRecv, recvLength, 1, fp);
         }
     }
     fclose(fp);
@@ -415,6 +382,45 @@ MSM4data* NtripRTK::GetRtkRecord(int satInd, int timeInd, SV::SysType type) {
             return gnss->svsManager->svBeiDous[satInd].rtkData[timeInd];
         default:
             return nullptr;
+    }
+}
+
+int NtripRTK::ParaseRTK(char *buffer, int length) {
+    char buferRTK[256];
+    for(int i = 0;i<length;i++){
+        if(0xd3==(u_char)buffer[i]&&0==(buffer[i+1]>>2)){
+            printf("get 0xd3,i = %d.\n",i);
+            uint32_t messageLength = NetToHost32(buffer+i,14,10);
+            uint32_t checkSumGet = NetToHost32(buffer+i+3+messageLength,0,24);
+            crc24Q.reset();
+            crc24Q.process_bytes(buffer+i,messageLength+3);
+            if(checkSumGet==crc24Q.checksum()){
+                printf("CheckSum OK.\n");
+                memcpy(buferRTK,buffer+i+3,messageLength);
+                uint32_t type = NetToHost32(buferRTK,0,12);
+                printf("messageLength = %d, type = %d\n",messageLength,type);
+//                        mtxData.lock();
+                switch (type){
+                    case 1005:
+                        ParaseRtk32_1005(buferRTK);
+                        break;
+                    case 1074:
+                        ParaseMSM4(buferRTK, SV::SYS_GPS);
+                        break;
+                    case 1084:
+                        break;
+                    case 1124:
+                        ParaseMSM4(buferRTK, SV::SYS_BDS);
+                        break;
+                    default:
+                        break;
+                }
+//                        mtxData.unlock();
+                i+=messageLength;
+            } else{
+                printf("CheckSum failed.%d,%d\n",checkSumGet,crc24Q.checksum());
+            }
+        }
     }
 }
 

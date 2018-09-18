@@ -16,7 +16,7 @@ SerialData::~SerialData() {
 
 void SerialData::StartCapture(const std::string serialPort, unsigned int baudRate, char *saveName) {
     std::ofstream outF;
-    outF.open(saveName,std::ofstream::binary);
+    if(gnss->logOpen)outF.open(saveName,std::ofstream::binary);
     try {
         boost::asio::io_service ios;
         sp_ = new boost::asio::serial_port(ios, serialPort);
@@ -32,7 +32,7 @@ void SerialData::StartCapture(const std::string serialPort, unsigned int baudRat
                 continue;
             }
 //                printf ( "transferred = %d , flag = %d\n",transferred, flag );
-            outF.write(tmp,transferred);
+            if(gnss->logOpen)outF.write(tmp,transferred);
             ScanSerialData(tmp,transferred);
         }
         sp_->close();
