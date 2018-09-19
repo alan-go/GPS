@@ -70,16 +70,22 @@ void test(GNSS *gnss){
     char a[12] = "1.36e1";
     printf("a= %f\n", (str2num(a, 6)));
 
-    MatrixXf D(10,11),R(10,10),temp;
-    D.fill(0);R.fill(0);
+    MatrixXf D(10,11),temp;
+
+    VectorXf R_(11);
+    D.fill(0);
     for (int i = 0; i < 10; ++i) {
         D(i,i+1) = -1;
-        R(i,i) = i+2;
+        R_(i) = i+2;
     }
     D.block<10,1>(0,0).fill(1);
+    MatrixXf R(R_.asDiagonal());
+    R.colwise();
     cout<<R<<endl;
+    cout<<R_<<endl;
+
     cout<<D<<endl;
-    cout<<D.transpose()*R*D<<endl;
+    cout<<D*R*D.transpose()<<endl;
 }
 
 int main()
