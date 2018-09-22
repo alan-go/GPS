@@ -93,7 +93,7 @@ int main()
 
     GNSS *gnss = new GNSS();
     test(gnss);
-    return 0;
+//    return 0;
     for (int i = 0; i < 5; ++i) gnss->svMaskBds[i]=0;
     gnss->log = fopen("../log/log.txt","w");
 //    gnss->log = fopen("../log/log0829-b1.txt","w");
@@ -102,7 +102,7 @@ int main()
     //    gnss->useGPS = false;
     //    gnss->useBeiDou = false;
     gnss->useQianXun = false;
-    gnss->Init(0,0,1,1);
+    gnss->Init(0,1,1,1);
 
 
 //    gnss->StartGNSS("null",115200);
@@ -114,7 +114,7 @@ int main()
         ifstream inF;
         char name[128],dat[128];
         printf("open file name:");
-        string ss = "0907_01_01";
+        string ss = "0921_12_47";
 //        string ss = "0802-1";
 //        string ss = "0708-2";
 //        string ss = "0823";
@@ -125,8 +125,8 @@ int main()
         string ssRTK = "../data/" + ss + ".rtk";
         inF.open(ssRTK, std::ifstream::binary);
         while (!inF.eof()){
-            inF.read(dat,128);
-            gnss->rtkManager.ParaseRTK(dat,128);
+            inF.read(dat,1280);
+            gnss->rtkManager.ParaseRTK(dat,1280);
         }
         inF.close();
         inF.open(ssData, std::ifstream::binary);

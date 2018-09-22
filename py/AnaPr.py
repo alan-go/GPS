@@ -9,8 +9,8 @@ def Plt2(data,indx,indy,figNme):
         x.append(each[indx])
         y.append(each[indy])
     plt.figure(figNme)
-    # plt.scatter(x,y)
-    plt.plot(x,y)
+    plt.scatter(x,y)
+    # plt.plot(x,y)
 
 def Plt3(data,indx,indy,indz,color,ax):
     x0,y0,z0 = [],[],[]
@@ -58,16 +58,17 @@ def AnaData(path):
             if 'Brt'in each:
                 color = 'r'
             sv = each.split(',')
-            data = [float(sv[1]),float(sv[4]),float(sv[6]), float(sv[8]),float(sv[9]),float(sv[10]),float(sv[11]),color]   # time,pr,prres,norm,x,y,z
+            if(len(sv)==12):
+                data = [float(sv[1]), float(sv[4]), float(sv[6]), float(sv[8]), float(sv[9]), float(sv[10]),
+                        float(sv[11]), color]  # time,pr,prres,norm,x,y,z
 
-            if not sv[2] in svNames:
-                svNames.append(sv[2])
-                svDatas.append([])
-                print("add sv",sv[2],"time =", sv[1])
+                if not sv[2] in svNames:
+                    svNames.append(sv[2])
+                    svDatas.append([])
+                    print("add sv", sv[2], "time =", sv[1])
 
-            ind = svNames.index(sv[2])
-            svDatas[ind].append(data)
-
+                ind = svNames.index(sv[2])
+                svDatas[ind].append(data)
 
     Plt2(txyz,0,1,'pos')
     Plt2(tlla,0,3,'height')
@@ -85,5 +86,5 @@ def AnaData(path):
     plt.show()
 
 if __name__=="__main__":
-    AnaData("../log/log.txt")
+    AnaData("../log/logqx0921.txt")
     Test()

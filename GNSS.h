@@ -12,12 +12,14 @@ class GNSS{
 public:
     struct PosRcd{
         double rcvtow;
-        Eigen::Vector3d xyz,lla;
+        Eigen::Vector3d xyz, vxyz, lla;
         PosRcd(double tow,Vector3d xyz, Vector3d lla):rcvtow(tow),xyz(xyz),lla(lla){}
     };
     Eigen::Vector3d xyzDefault, llaDefault;
 //    Eigen::Vector3d LLA, LLAOld;
     vector<PosRcd> records;
+    Matrix<double,NBeiDou,1> cycleBDS,sigmaBDS;
+    Matrix<double,NGPS,1> cycleGPS,sigmaGPS;
     double tu, tuBeiDou, tuGps;
     SVs *svsManager;
     SerialData serialDataManager;

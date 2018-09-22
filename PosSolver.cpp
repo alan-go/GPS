@@ -691,6 +691,19 @@ int PosSolver::PositionRtkKalman() {
     vector<SV*> svsForCalcu[3];
     PrepareSVsData(svsForCalcu);
     SelectRtkData(svsForCalcu);
+    numBDSUsed = svsForCalcu[1].size();
+    numGPSUsed = svsForCalcu[2].size();
+    if(numBDSUsed<2)numBDSUsed = 0;
+    if(numGPSUsed<2)numGPSUsed = 0;
+    int N = numBDSUsed + numGPSUsed;
+    if(N<6){
+        printf("svs not enough %d\n", N);
+        return -1;
+    }
+
+    for (int sys = 1; sys < 3; ++sys) {
+
+    }
 }
 
 int PosSolver::SelectRtkData(vector<SV *> *select) {

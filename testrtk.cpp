@@ -16,6 +16,7 @@ int main(){
 //    gnss.useGPS = false;
     gnss.useBeiDou = false;
 //    gnss.useQianXun = false;
+gnss.logOpen = 1;
     gnss.Init(0,1,1,1);
 
 

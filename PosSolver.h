@@ -18,7 +18,7 @@ public:
     NtripRTK *rtk;
     double rcvtow;
     GnssTime rTime;
-    Vector3d xyz, LLA;
+    Vector3d xyz, LLA, vxyz;
     double tu, tuBeiDou, tuGps;
     int numMeas;
 public:
