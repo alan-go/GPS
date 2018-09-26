@@ -4,10 +4,11 @@
 
 PosSolver::PosSolver(){}
 
-PosSolver::PosSolver(SVs *svs, NtripRTK *rtk, GNSS *gnss): svs(svs),rtk(rtk),gnss(gnss),numBDSUsed(0),numGPSUsed(0){
+PosSolver::PosSolver(SVs *svs, NtripRTK *rtk, GNSS *gnss): svs(svs),rtk(rtk),gnss(gnss){
+    memset(numOfSys,0,Nsys* sizeof(int));
     if(gnss->isPositioned){
-        xyz = gnss->records[0].xyz;
-        LLA = gnss->records[0].lla;
+        xyz = gnss->records.back().xyz;
+        LLA = gnss->records.back().lla;
     }
     tu = gnss->tu;
     tuBeiDou = gnss->tuBeiDou;
@@ -38,7 +39,6 @@ int PosSolver::PrepareSVsData(vector<SV*> *svsOut) {
 
 //////////////
 
-    numGPSUsed = 0;numBDSUsed = 0;
     SelectSvsFromVisible(visibleSvs,svsOut);
 
 //////////////
@@ -60,7 +60,7 @@ int PosSolver::PrepareSVsData(vector<SV*> *svsOut) {
 //    }
 //    return 0;
 //////////////
-    UpdateSvsPosition(svsOut[0], rTime, gnss->ephemType);
+    UpdateSvsPosition(svsOut[7], rTime, gnss->ephemType);
 
 }
 
@@ -69,11 +69,11 @@ int PosSolver::PositionRtk2() {
     //插值
     int result = 0;
 
-    vector<SV*> svs0[3], svs1;
+    vector<SV*> svs0[Nsys], svs1;
     PrepareSVsData(svs0);
     printf("rcvtow = %lf\n",rcvtow);
     //暂时单模计算
-    if(numGPSUsed*numBDSUsed){
+    if(numOfSys[SYS_BDS]*numOfSys[SYS_GPS]){
         printf("NOT one sys mode ------------count 0\n");
 //        return -1;
     }
@@ -82,12 +82,12 @@ int PosSolver::PositionRtk2() {
     double elevMax = -5;
 //    gnss->rtkManager.mtxData.lock();
     printf(" positon rtk lock 0\n");
-    printf("---------calcu N0 = %d\n",svs0[0].size());
+    printf("---------calcu N0 = %d\n",svs0[7].size());
 
-    for(int i = 0,k=-1; i<svs0[0].size();i++){
-        SV* sv = svs0[0][i];
+    for(int i = 0,k=-1; i<svs0[7].size();i++){
+        SV* sv = svs0[7][i];
         double time = rcvtow - tu/Light_speed;
-        if(sv->type==SV::SYS_BDS)time-=14;
+        if(sv->type==SYS_BDS)time-=14;
         double pr = sv->InterpRtkData(time,sigInd);
         printf("--sv:%d,%d-pr time= %f, interp = %f\n",
                sv->type,sv->svId,time,pr);
@@ -143,7 +143,7 @@ int PosSolver::PositionRtk2() {
         Gur(i,0) = Ir_0i(0);
         Gur(i,1) = Ir_0i(1);
         Gur(i,2) = Ir_0i(2);
-        Gur(i,3) = double(sv->type==SV::SYS_BDS);
+        Gur(i,3) = double(sv->type==SYS_BDS);
     }
 //    printf(" positon rtk unlock 0\n");
 //    gnss->rtkManager.mtxData.unlock();
@@ -183,11 +183,11 @@ int PosSolver::PositionRtk() {
     //插值
     int result = 0;
 
-    vector<SV*> svs0[3], svs1;
+    vector<SV*> svs0[Nsys], svs1;
     PrepareSVsData(svs0);
     printf("rcvtow = %lf\n",rcvtow);
     //暂时单模计算
-    if(numGPSUsed*numBDSUsed){
+    if(numOfSys[SYS_BDS]*numOfSys[SYS_GPS]){
         printf("NOT one sys mode ------------count 0\n");
 //        return -1;
     }
@@ -196,12 +196,12 @@ int PosSolver::PositionRtk() {
     double elevMax = -5;
 //    gnss->rtkManager.mtxData.lock();
     printf(" positon rtk lock 0\n");
-    printf("---------calcu N0 = %d\n",svs0[0].size());
+    printf("---------calcu N0 = %d\n",svs0[7].size());
 
-    for(int i = 0,k=-1; i<svs0[0].size();i++){
-        SV* sv = svs0[0][i];
+    for(int i = 0,k=-1; i<svs0[7].size();i++){
+        SV* sv = svs0[7][i];
         double time = rcvtow - tu/Light_speed;
-        if(sv->type==SV::SYS_BDS)time-=14;
+        if(sv->type==SYS_BDS)time-=14;
         double pr = sv->InterpRtkData(time,sigInd);
         printf("--sv:%d,%d-pr time= %f, interp = %f\n",
                 sv->type,sv->svId,time,pr);
@@ -296,20 +296,20 @@ int PosSolver::PositionRtk() {
 
 int PosSolver::PositionSingle() {
     int result = 0;
-    vector<SV*> svsForCalcu[3];
+    vector<SV*> svsForCalcu[Nsys];
     PrepareSVsData(svsForCalcu);
 
 //    return 0;
     printf("rcvtow = %.4f\n",rcvtow);
-    int N = svsForCalcu[0].size();
+    int N = svsForCalcu[7].size();
     if(N<4){
         printf("\n\n----------calcu:%d,Not enough Svs.\n",N);
         return -1;
-    } else if(4==N && numGPSUsed*numBDSUsed){
-        printf("4 SVs with SYS_GPS and SYS_BDS:%d, %d,   Unable to solve.\n",numGPSUsed,numBDSUsed);
+    } else if(4==N && numOfSys[SYS_BDS]*numOfSys[SYS_GPS]){
+        printf("4 SVs with SYS_bds and SYS_gps:%d, %d,   Unable to solve.\n",numOfSys[SYS_BDS],numOfSys[SYS_GPS]);
         return -1;
-    } else if(0==numBDSUsed*numGPSUsed){
-        result = SolvePosition(svsForCalcu[0]);
+    } else if(0==numOfSys[SYS_BDS]*numOfSys[SYS_GPS]){
+        result = SolvePosition(svsForCalcu[7]);
 
 //        if(N>4){
 //            for (int i = 0; i < N; ++i) {
@@ -321,7 +321,7 @@ int PosSolver::PositionSingle() {
 
     } else{
 //        result = SolvePositionBeiDouGPS(svsForCalcu);
-        result = SolvePosition(svsForCalcu[0]);
+        result = SolvePosition(svsForCalcu[7]);
     }
 
 //    if(result)
@@ -447,8 +447,8 @@ int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
             G(i,0) = (xyz(0)-svPositionEarthRotate(0))/r;  //x
             G(i,1) = (xyz(1)-svPositionEarthRotate(1))/r;  //y
             G(i,2) = (xyz(2)-svPositionEarthRotate(2))/r;  //z
-            G(i,3) = (SV::SYS_BDS==sv->type)?1:0;
-            G(i,4) = (SV::SYS_GPS==sv->type)?1:0;
+            G(i,3) = (SYS_BDS==sv->type)?1:0;
+            G(i,4) = (SYS_GPS==sv->type)?1:0;
 //            b(i) = pc(i)-r-tuBeiDou-tuGps;  //这里的r需要考虑一下
             b(i) = pc(i)-r-tuBeiDou*G(i,3)-tuGps*G(i,4);  //这里的r需要考虑一下
 
@@ -506,8 +506,8 @@ int PosSolver::SolvePositionCalman() {
 
 //todo move to serial data,and new class Measure;
 int PosSolver::ReadVisibalSvsRaw(SVs *svs,vector<SV*> &svVisable, char *raw) {
-    int maskGps[NGPS] = {0};
-    int maskBds[NBeiDou] = {0};
+    int maskGps[Ngps] = {0};
+    int maskBds[Nbds] = {0};
     int tempTrack;
     char* playload = raw + 6;
 
@@ -543,11 +543,11 @@ int PosSolver::ReadVisibalSvsRaw(SVs *svs,vector<SV*> &svVisable, char *raw) {
 
         svTemp->measureRecord.push_back(SV::Measure(rcvtow,svTemp->prMes,svTemp->cpMes,svTemp->doMes));
     }
-    for (int i = 0; i < NGPS; ++i) {
+    for (int i = 0; i < Ngps; ++i) {
         tempTrack = svs->svGpss[i].trackingState+1;
         svs->svGpss[i].trackingState = maskGps[i]?tempTrack:0;
     }
-    for (int i = 0; i < NBeiDou; ++i) {
+    for (int i = 0; i < Nbds; ++i) {
         tempTrack = svs->svBeiDous[i].trackingState+1;
         svs->svBeiDous[i].trackingState = maskBds[i]?tempTrack:0;
     }
@@ -582,17 +582,17 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all, vector<SV*> *select) {
 //            useForCalcu = 0;
 //        }
         //remain svs:
-        select[0].push_back(svTemp);
-//        numBDSUsed+=(SV::SYS_BDS == svTemp->type);
-//        numGPSUsed+=(SV::SYS_GPS == svTemp->type);
-        if(SV::SYS_BDS == svTemp->type){
-            numBDSUsed++;
-            select[1].push_back(svTemp);
-        }
-        if(SV::SYS_GPS == svTemp->type){
-            numGPSUsed++;
-            select[2].push_back(svTemp);
-        }
+        select[7].push_back(svTemp);
+        select[svTemp->type].push_back(svTemp);
+        numOfSys[svTemp->type]++;
+//        if(SV::SYS_BDS == svTemp->type){
+//            numBDSUsed++;
+//            select[1].push_back(svTemp);
+//        }
+//        if(SV::SYS_GPS == svTemp->type){
+//            numGPSUsed++;
+//            select[2].push_back(svTemp);
+//        }
         printf("svsfor calcu\n");
     }
 }
@@ -607,10 +607,10 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
 
         //todo:rcvtow calculated from rt;
         double timeForECEF = rcvtow;
-        if(SV::SYS_BDS == sv->type)timeForECEF-=14;
+        if(SYS_BDS == sv->type)timeForECEF-=14;
         sv->CalcuTime(timeForECEF);
         printf("ep = % 2.0f % 2.0f % 2.0f % 2.0f % 2.0f \n",ep[0],ep[1],ep[2],ep[3],ep[4]);
-        sv->PrintInfo(1);
+//        sv->PrintInfo(1);
         printf("ts0 =  %.3f\n", sv->tsDelta*1e9);
         sv->CalcuECEF(sv->tsReal);
         printf("ts1 =  %.3f\n", sv->tsDelta*1e9);
@@ -650,7 +650,7 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
         if(gnss->isPositioned){
             printf("elevation newed.\n");
             sv->CorrectIT(xyz,LLA,timeForECEF);
-            sv->CalcuelEvationAzimuth(gnss->records[0].xyz,gnss->records[0].lla);
+            sv->CalcuelEvationAzimuth(gnss->records.back().xyz,gnss->records.back().lla);
         } else{
             printf("elevation default.\n");
             sv->CalcuelEvationAzimuth(gnss->xyzDefault,gnss->llaDefault);
@@ -687,30 +687,47 @@ int PosSolver::MakeGGA(char *gga, Vector3d lla, GnssTime gpsTime) {
 }
 
 int PosSolver::PositionRtkKalman() {
+    int sigInd = 1;
     int result = 0;
-    vector<SV*> svsForCalcu[3];
+    vector<SV*> svsForCalcu[Nsys];
     PrepareSVsData(svsForCalcu);
-    SelectRtkData(svsForCalcu);
-    numBDSUsed = svsForCalcu[1].size();
-    numGPSUsed = svsForCalcu[2].size();
-    if(numBDSUsed<2)numBDSUsed = 0;
-    if(numGPSUsed<2)numGPSUsed = 0;
-    int N = numBDSUsed + numGPSUsed;
-    if(N<6){
+    ProcessRtkData(svsForCalcu);
+
+    int N = 0,n,xi=0,yi=0;
+
+    for (int sys = 0; sys < Nsys-1; ++sys)N+=numOfSys[sys];
+    if(N-nsysUsed<4){
         printf("svs not enough %d\n", N);
         return -1;
     }
-
-    for (int sys = 1; sys < 3; ++sys) {
-
+    MatrixXd x(N+6,1),y(2*(N-nsysUsed),1);
+    double cp0,pr0;
+    for (int sys = 0; sys < Nsys-1; ++sys) {
+        n = numOfSys[sys];
+        if(0==n)continue;
+        N+=n;
+        for (int i = 0; i < n; ++i) {
+            //todo:
+            SV *sv = svsForCalcu[sys][i];
+            x(6+xi++) = gnss->cycle[i](sv->svId);
+            if(i==0){
+                cp0 = sv->cpMes-sv->cpInterp[sigInd];
+                pr0 = sv->prMes-sv->prInterp[sigInd];
+                continue;
+            }
+            y(yi) = (sv->cpMes-sv->cpInterp[sigInd]) - cp0;
+            y(n+yi++) = (sv->prMes-sv->prInterp[sigInd])-pr0;
+        }
     }
 }
 
-int PosSolver::SelectRtkData(vector<SV *> *select) {
+int PosSolver::ProcessRtkData(vector<SV *> *select) {
     int sigInd = 1;
+    nsysUsed = 0;
     SV* svCectre;
-
-    for(int sys = 1;sys<3;sys++){
+    select[7].clear();
+    for(int sys = 0;sys<Nsys-1;sys++){
+        if(select[sys].empty())continue;
         double elevMax = -5;
         int svCentreInd = -2;
         int nsys = select[sys].size();
@@ -719,7 +736,7 @@ int PosSolver::SelectRtkData(vector<SV *> *select) {
         for (int i = 0; i < nsys; ++i) {
             SV *sv = select[sys][i];
             double time = rcvtow - tu/Light_speed;
-            if(sv->type==SV::SYS_BDS)time-=14;
+            if(sv->type==SYS_BDS)time-=14;
             double pr = sv->InterpRtkData(time,sigInd);
             if(pr){
                 k++;
@@ -736,6 +753,11 @@ int PosSolver::SelectRtkData(vector<SV *> *select) {
             svsTemp.insert(svsTemp.begin(),svCectre);
         }
         select[sys].swap(svsTemp);
+        int n = select[sys].size();
+        if(n>1){
+            numOfSys[sys] = n;
+            nsys++;
+        }
     }
-    select[0].clear();
+
 }

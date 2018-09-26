@@ -17,9 +17,10 @@ public:
     };
     Eigen::Vector3d xyzDefault, llaDefault;
 //    Eigen::Vector3d LLA, LLAOld;
-    vector<PosRcd> records;
-    Matrix<double,NBeiDou,1> cycleBDS,sigmaBDS;
-    Matrix<double,NGPS,1> cycleGPS,sigmaGPS;
+//    vector<PosRcd> records;
+    queue<PosRcd> records;
+    Matrix<double,Nxxs,1> cycle[Nsys-1],sigmaCy[Nsys-1],sigmaPr[Nsys-1];
+//    Matrix<double,Ngps,1> cycleGPS,sigmaGPSCy,sigmaGPSPr;
     double tu, tuBeiDou, tuGps;
     SVs *svsManager;
     SerialData serialDataManager;
@@ -27,7 +28,7 @@ public:
     std::string serialPort_, rtk_protocol_;
 
     bool useBeiDou,useGPS,useQianXun;
-    int svMaskBds[NBeiDou], svMaskGps[NGPS];
+    int svMaskBds[Nbds], svMaskGps[Ngps];
     int ephemType;//0:broadcast,1:sp3
     bool isPositioned;
 

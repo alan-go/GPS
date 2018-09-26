@@ -94,4 +94,26 @@ void EarthRotate(Eigen::Vector3d in, Eigen::Vector3d &out, double dt){
     out = earthRotate*in;
 }
 
+double GetFreq(SysType type, int sigInd, bool lambda){
+    int i = sigInd+1;
+    double result = -1;
+    switch(type){
+        case SYS_BDS:
+            if(i>=2&&i<=4)result = 1561.098;//B1
+            if(i>=8&&i<=10)result = 1268.52;//B3
+            if(i>=14&&i<=16)result = 1207.14;//B2
+            break;
+        case SYS_GPS:
+            if((i>=2&&i<=4)||(i>=30&&i<=32))result = 1575.42;//L1
+            if((i>=8&&i<=10)||(i>=15&&i<=17))result = 1227.6;//L2
+            if(i>=22&&i<=24)result = 1176.45;//L5
+            break;
+        default:
+            return -1;
+    }
+    result*=1e6;
+    result = lambda?(Light_speed/result):result;
+    return result;
+}
+
 

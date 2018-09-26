@@ -13,11 +13,7 @@ class MSM4data;
 class EphemSp3;
 class SV{
 public:
-    enum SysType{
-        SYS_GPS = 0,
-        SYS_BDS = 3,
-        SYS_NULL = -1
-    };
+
     struct Measure{
         double tow = 0;
         double prMes = 0;
@@ -143,8 +139,8 @@ public:
 
 class SVs{
 public:
-    GpsSV svGpss[NGPS];
-    BeiDouSV svBeiDous[NBeiDou];
+    GpsSV svGpss[Ngps];
+    BeiDouSV svBeiDous[Nbds];
     GNSS* gnss;
 
 
@@ -153,7 +149,7 @@ public:
 //    SVs(GNSS* gnss);
     ~SVs();
     void UpdateEphemeris(char * subFrame);
-    SV* SatTable(SV::SysType type,int ind);
+    SV* SatTable(SysType type,int ind);
 private:
 };
 

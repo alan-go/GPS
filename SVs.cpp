@@ -14,13 +14,13 @@ GpsSV::~GpsSV(){}
 
 
 SVs::SVs(bool bds,bool gps){
-    for(int i=0;i<NGPS;i++){
-        svGpss[i].type = SV::SYS_GPS;
+    for(int i=0;i<Ngps;i++){
+        svGpss[i].type = SYS_GPS;
         svGpss[i].svId = i+1;
         svGpss[i].open = gps;
     }
-    for(int i=0;i<NBeiDou;i++){
-        svBeiDous[i].type = SV::SYS_BDS;
+    for(int i=0;i<Nbds;i++){
+        svBeiDous[i].type = SYS_BDS;
         svBeiDous[i].svId = i+1;
         svBeiDous[i].isBeiDouGEO = i<5?true: false;
         svBeiDous[i].open = bds;
@@ -568,11 +568,11 @@ int SV::CorrectIT(Vector3d receiverPosition, Vector3d LLA,double time) {
     CalcuInoshphere(elevationAngle,azimuthAngle,LLA,time);
 }
 
-SV* SVs::SatTable(SV::SysType type, int ind) {
+SV* SVs::SatTable(SysType type, int ind) {
     switch (type){
-        case SV::SYS_GPS:
+        case SYS_GPS:
             return &(svGpss[ind]);
-        case SV::SYS_BDS:
+        case SYS_BDS:
             return &(svBeiDous[ind]);
         default:
             return nullptr;

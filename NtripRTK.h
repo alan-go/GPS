@@ -44,7 +44,7 @@ public:
     unsigned short port_;
     int sock_;
     //vector<MSM4data*>里面是不同时刻的数据，0是最近的记录
-//    vector<MSM4data*> rtkDataGps[NGPS],rtkDataBeiDou[NBeiDou];
+//    vector<MSM4data*> rtkDataGps[Ngps],rtkDataBeiDou[Nbds];
     uint32_t refStationId;
     bool isPhysicalStation;
     bool singleReceiver;
@@ -63,19 +63,19 @@ public:
 
     void UpdateGGA();
     int SentGGA(const char *bufferGGA, int length);
-    int ParaseMSM4(char *bufferRTK, SV::SysType type);
+    int ParaseMSM4(char *bufferRTK, SysType type);
     bool NtripLogin(const std::string &rtk_protocol);
     void RecvThread();
     int ParaseRTK(char *buffer, int length);
     int TestParase(char *bufferRecv,int recvLength);
-    MSM4data* GetRtkRecord(int satInd,int timeInd, SV::SysType type);
+    MSM4data* GetRtkRecord(int satInd,int timeInd, SysType type);
 
 
 private:
     boost::crc_basic<24> crc24Q;
 
 private:
-    int AddRtkRecord(MSM4data* data,SV::SysType type, int id);
+    int AddRtkRecord(MSM4data* data,SysType type, int id);
     inline uint32_t NetToHost32(char *begin,int head,int length,bool isInt = 0);
     int ParaseRtk32_1005(char * buffer);
 };

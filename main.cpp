@@ -102,19 +102,18 @@ int main()
     //    gnss->useGPS = false;
     //    gnss->useBeiDou = false;
     gnss->useQianXun = false;
-    gnss->Init(0,1,1,1);
+    gnss->Init(0,0,1,1);
 
 
 //    gnss->StartGNSS("null",115200);
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-    char command = getchar();
-//    char command = 'd';
+//    char command = getchar();
+    char command = 'd';
     if('d'==command) {
-        ifstream inF;
-        char name[128],dat[128];
-        printf("open file name:");
-        string ss = "0921_12_47";
+        FILE *fp;
+        char name[128],dat[512],temp[256],tempc;
+        string ss = "0921_13_02";
 //        string ss = "0802-1";
 //        string ss = "0708-2";
 //        string ss = "0823";
@@ -123,18 +122,27 @@ int main()
 
         string ssData = "../data/" + ss + ".data";
         string ssRTK = "../data/" + ss + ".rtk";
-        inF.open(ssRTK, std::ifstream::binary);
-        while (!inF.eof()){
-            inF.read(dat,1280);
-            gnss->rtkManager.ParaseRTK(dat,1280);
+        printf("open file name:%s\n",ssRTK.data());
+        fp = fopen(ssRTK.data(),"rb");
+        int k = 0;
+
+        while (!feof(fp)){
+            dat[k++] = fgetc(fp);
+            if(0xd3==(u_char)dat[k-2]&&0==(dat[k-1]>>2)){
+                gnss->rtkManager.ParaseRTK(dat,k);
+                k=2;
+                dat[0] = dat[k-2];
+                dat[1] = dat[k-1];
+                memset(dat+2,0,510);
+            }
         }
-        inF.close();
-        inF.open(ssData, std::ifstream::binary);
-        while (!inF.eof()){
-            inF.read(dat,128);
+        fclose(fp);
+        fp = fopen(ssData.data(),"rb");
+        while (128==fread(dat,1,128,fp)){
             gnss->serialDataManager.ScanSerialData(dat,128);
         }
-        inF.close();
+        fclose(fp);
+
 
     } else if('r'==command){
         gnss->StartGNSS(serialPort,115200);
@@ -161,6 +169,7 @@ int main()
     fclose(gnss->log);
     sleep(2);
     cout<<"Quit?"<<endl;
-    getchar();
+    sleep(3);
+//    getchar();
     return 0;
 }

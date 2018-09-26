@@ -33,12 +33,12 @@ public:
 
 private:
     vector<SV*>visibleSvs;
-    int numBDSUsed,numGPSUsed;
+    int numOfSys[Nsys],nsysUsed;
 private:
     int PrepareSVsData(vector<SV*> *svsOut);
     int ReadVisibalSvsRaw(SVs *svs, vector<SV*> &svVisable, char *raw);
     int SelectSvsFromVisible(vector<SV*> &all,vector<SV*> *select);
-    int SelectRtkData(vector<SV*> *select);
+    int ProcessRtkData(vector<SV *> *select);
     int UpdateSvsPosition(vector<SV*> &svs, GnssTime rt, int ephType);
     int SolvePosition(vector<SV*>svsForCalcu);
     int SolvePositionBeiDouGPS(vector<SV*>svsForCalcu);

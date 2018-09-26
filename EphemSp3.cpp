@@ -33,7 +33,7 @@ int EphemSp3::ReadSp3File(string fileName, SVs *svs) {
                 nsats=(int)str2num(buff+4,2);
             }
             for (int j=0,k=0;j<17&&k<nsats;j++) {
-                SV::SysType sys =code2sys(buff[9+3*j]);
+                SysType sys =code2sys(buff[9+3*j]);
                 int prn=(int)str2num(buff+10+3*j,2);
             }
         }
@@ -53,7 +53,7 @@ int EphemSp3::ReadSp3File(string fileName, SVs *svs) {
             }
         } else{
             char dataType = buff[0];
-            SV::SysType tempSys =code2sys(buff[1]);
+            SysType tempSys =code2sys(buff[1]);
             int prn=(int)str2num(buff+2,2);
             sv = svs->SatTable(tempSys,prn-1);
             if(sv == nullptr)continue;
@@ -81,14 +81,14 @@ int EphemSp3::ReadSp3File(string fileName, SVs *svs) {
     }
 }
 
-SV::SysType EphemSp3::code2sys(char code) {
-    if (code=='G'||code==' ') return SV::SYS_GPS;
-    if (code=='C') return SV::SYS_BDS; /* extension to sp3-c */
+SysType EphemSp3::code2sys(char code) {
+    if (code=='G'||code==' ') return SYS_GPS;
+    if (code=='C') return SYS_BDS; /* extension to sp3-c */
 //    if (code=='R') return SYS_GLO;
 //    if (code=='E') return SYS_GAL; /* extension to sp3-c */
 //    if (code=='J') return SYS_QZS; /* extension to sp3-c */
 //    if (code=='L') return SYS_LEO; /* extension to sp3-c */
-    return SV::SYS_NULL;
+    return SYS_NULL;
 }
 
 int EphemSp3::Sp32ECEF(vector<Sp3Cell> &list, GnssTime interpTime, Sp3Cell &result) {

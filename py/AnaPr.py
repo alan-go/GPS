@@ -9,8 +9,8 @@ def Plt2(data,indx,indy,figNme):
         x.append(each[indx])
         y.append(each[indy])
     plt.figure(figNme)
-    plt.scatter(x,y)
-    # plt.plot(x,y)
+    # plt.scatter(x,y)
+    plt.plot(x,y)
 
 def Plt3(data,indx,indy,indz,color,ax):
     x0,y0,z0 = [],[],[]
@@ -38,7 +38,11 @@ def AnaData(path):
     file  = open(path)
     txyz, tlla = [],[]
     svDatas, svNames = [],[]
+
+    k=0
     for each in file.readlines():
+        k+=1
+        if(k<300):continue
         if 'xyz' in each:
             txyz0 = each.split(',')
             time = float(txyz0[1])
@@ -86,5 +90,5 @@ def AnaData(path):
     plt.show()
 
 if __name__=="__main__":
-    AnaData("../log/logqx0921.txt")
+    AnaData("../log/log.txt")
     Test()

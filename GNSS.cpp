@@ -12,8 +12,8 @@ GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),is
 
     time_t timeNow = time(NULL);
     utcTime=gmtime(&timeNow);
-    memset(svMaskBds,1,NBeiDou * sizeof(int));
-    memset(svMaskGps,1,NGPS * sizeof(int));
+    memset(svMaskBds,1,Nbds * sizeof(int));
+    memset(svMaskGps,1,Ngps * sizeof(int));
 }
 
 GNSS::~GNSS() {}
@@ -30,6 +30,12 @@ int GNSS::Init(int ephem, bool qianXun, bool gps, bool bds) {
     } else{
         printf("ReadSp3File Failed. \n");
         return -1;
+    }
+
+    for (int i = 0; i < Nsys - 1; ++i) {
+        cycle[i].fill(40.0);
+        sigmaCy[i].fill(0.01);
+        sigmaPr[i].fill(1.0);
     }
 }
 
@@ -125,6 +131,7 @@ void* GNSS::PositionThread(void *__pos) {
 }
 
 int GNSS::AddPosRecord(GNSS::PosRcd record) {
-    records.insert(records.begin(),record);
+    records.push(record);
+    if(records.size()>10240)records.pop();
 }
 
