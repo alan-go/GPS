@@ -79,7 +79,7 @@ public:
     double elevationAngle,azimuthAngle;
     //for RTK:
     //vector<MSM4data*>里面是不同时刻的数据，0是最近的记录
-    vector<MSM4data*> rtkData;
+    deque<MSM4data*> rtkData;
     double prInterp[32], cpInterp[32];
 public:
     SV();

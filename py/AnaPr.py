@@ -33,11 +33,22 @@ def Plt3(data,indx,indy,indz,color,ax):
 def Test():
     a=0
 
+svDatas, svNames = [],[]
+
+def plotSvs():
+    #####################
+    # fig = plt.figure('svs')
+    # ax = plt.subplot(111, projection='3d')
+    for i,eachsv in enumerate(svDatas):
+        fig = plt.figure(svNames[i])
+        ax = fig.add_subplot(111, projection='3d')
+        Plt3(eachsv,4,5,6,7,ax)
+        # Plt2(eachsv,0,1,svNames[i])
+    #####################
 
 def AnaData(path):
     file  = open(path)
     txyz, tlla = [],[]
-    svDatas, svNames = [],[]
 
     k=0
     for each in file.readlines():
@@ -77,15 +88,7 @@ def AnaData(path):
     Plt2(txyz,0,1,'pos')
     Plt2(tlla,0,3,'height')
 
-    #####################
-    # fig = plt.figure('svs')
-    # ax = plt.subplot(111, projection='3d')
-    for i,eachsv in enumerate(svDatas):
-        fig = plt.figure(svNames[i])
-        ax = fig.add_subplot(111, projection='3d')
-        Plt3(eachsv,4,5,6,7,ax)
-        # Plt2(eachsv,0,1,svNames[i])
-    #####################
+
 
     plt.show()
 

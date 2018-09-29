@@ -340,12 +340,12 @@ int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
 //    ParaseMSM4(bufferRecv);
 }
 
-int NtripRTK::AddRtkRecord(MSM4data *data, SysType type, int id) {
+int NtripRTK::AddRtkRecord(MSM4data *data, SysType sys, int id) {
     //maximum:5
 //    printf("ADD record\n");
-    int maxNumber = 50;
-    vector<MSM4data*> *temp;
-    switch (type){
+    int maxNumber = 102400;
+    deque<MSM4data*> *temp;
+    switch (sys){
         case SYS_GPS:
             temp = &(gnss->svsManager->svGpss[id].rtkData);
             break;
@@ -355,7 +355,7 @@ int NtripRTK::AddRtkRecord(MSM4data *data, SysType type, int id) {
         default:
             break;
     }
-    temp->insert(temp->begin(),data);
+    temp->push_front(data);
     if(temp->size()>maxNumber){
         MSM4data* endp = temp->back();
         temp->pop_back();

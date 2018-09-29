@@ -13,13 +13,14 @@ public:
     struct PosRcd{
         double rcvtow;
         Eigen::Vector3d xyz, vxyz, lla;
-        PosRcd(double tow,Vector3d xyz, Vector3d lla):rcvtow(tow),xyz(xyz),lla(lla){}
+        PosRcd(double tow,Vector3d xyz,Vector3d vxyz, Vector3d lla):rcvtow(tow),xyz(xyz),vxyz(vxyz),lla(lla){}
     };
     Eigen::Vector3d xyzDefault, llaDefault;
 //    Eigen::Vector3d LLA, LLAOld;
 //    vector<PosRcd> records;
-    queue<PosRcd> records;
-    Matrix<double,Nxxs,1> cycle[Nsys-1],sigmaCy[Nsys-1],sigmaPr[Nsys-1];
+    deque<PosRcd,Eigen::aligned_allocator<Eigen::Vector3d>> records;
+    double cycle[Nsys-1][Nxxs],PB[Nsys-1][Nxxs],sigmaCy[Nsys-1][Nxxs],sigmaPr[Nsys-1][Nxxs];
+    Matrix<double,6,6> Pxv;
 //    Matrix<double,Ngps,1> cycleGPS,sigmaGPSCy,sigmaGPSPr;
     double tu, tuBeiDou, tuGps;
     SVs *svsManager;
@@ -31,7 +32,7 @@ public:
     int svMaskBds[Nbds], svMaskGps[Ngps];
     int ephemType;//0:broadcast,1:sp3
     bool isPositioned;
-
+    int count{0};
 //    char logFile[64];
     bool logOpen;
     std::FILE *log,*logRTK;
@@ -42,7 +43,7 @@ public:
 
     ~GNSS();
 
-    int Init(int ephem,bool qianXun, bool gps, bool bds);
+    int Init(int ephem,bool qianXun, bool bds, bool gps);
 
     int StartGNSS(const std::string &serial_port, const unsigned int baudRate);
 

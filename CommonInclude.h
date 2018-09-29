@@ -52,6 +52,7 @@ extern double str2num(char *head, int len);
 extern double GetFreq(SysType type, int sigInd, bool lambda = 0);
 
 extern double lagrange(double *x,double *y,double xx,int n);     /*拉格朗日插值算法*/
+extern double lineIntp(double *x,double *y,double xx,int n);
 
 extern int XYZ2LLA(Eigen::Vector3d XYZ, Eigen::Vector3d &LLA);
 

@@ -18,7 +18,7 @@ GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),is
 
 GNSS::~GNSS() {}
 
-int GNSS::Init(int ephem, bool qianXun, bool gps, bool bds) {
+int GNSS::Init(int ephem, bool qianXun, bool bds, bool gps) {
     svsManager = new SVs(bds,gps);
     svsManager->gnss = this;
     ephemType = ephem;
@@ -29,14 +29,18 @@ int GNSS::Init(int ephem, bool qianXun, bool gps, bool bds) {
         if(0==EphemSp3::ReadSp3File("/home/alan/Desktop/hour20175_19.sp3",svsManager))return 0;
     } else{
         printf("ReadSp3File Failed. \n");
-        return -1;
+//        return -1;
     }
 
     for (int i = 0; i < Nsys - 1; ++i) {
-        cycle[i].fill(40.0);
-        sigmaCy[i].fill(0.01);
-        sigmaPr[i].fill(1.0);
+        for (int j = 0; j < Nxxs; ++j) {
+            cycle[i][j]=40.0;
+            sigmaCy[i][j]=0.01;
+            sigmaPr[i][j]=1.0;
+            PB[i][j]=10;
+        }
     }
+    Pxv = 10*MatrixXd::Identity(6,6);
 }
 
 int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate) {
@@ -99,11 +103,15 @@ int GNSS::StopGNSS() {
 }
 
 int GNSS::ParseRawData(char *message, int len) {
+    printf("coutnt %d\n", count);
+    if(++count<30)
+        return -1;
     PosSolver *solver = new PosSolver(svsManager, &rtkManager, this);
     memcpy(solver->raw, message, len);
     if(useQianXun){
 //    if(useQianXun&&isPositioned){
-        solver->PositionRtk();
+//        solver->PositionRtk();
+        solver->PositionRtkKalman();
     } else{
         solver->PositionSingle();
     }
@@ -131,7 +139,7 @@ void* GNSS::PositionThread(void *__pos) {
 }
 
 int GNSS::AddPosRecord(GNSS::PosRcd record) {
-    records.push(record);
-    if(records.size()>10240)records.pop();
+    records.push_front(record);
+    if(records.size()>10240)records.pop_back();
 }
 

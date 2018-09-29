@@ -86,6 +86,18 @@ void test(GNSS *gnss){
 
     cout<<D<<endl;
     cout<<D*R*D.transpose()<<endl;
+    MatrixXd B(4,3);
+    Vector3d Bb{3,2.3,8};
+    VectorXd B6(6);
+    B6.head(6)<<Bb,Bb;
+    cout<<"B6\n"<<B6<<endl;
+
+    int foo[5]{1,2,3,4,5};
+    int* pfoo = &foo[3];
+    cout<<foo <<"pfoo"<<pfoo<<endl;
+    *pfoo = 464;
+    printf("f3 %d\n", foo[3]);
+
 }
 
 int main()
@@ -102,7 +114,7 @@ int main()
     //    gnss->useGPS = false;
     //    gnss->useBeiDou = false;
     gnss->useQianXun = false;
-    gnss->Init(0,0,1,1);
+    gnss->Init(0,1,1,1);
 
 
 //    gnss->StartGNSS("null",115200);
@@ -124,8 +136,8 @@ int main()
         string ssRTK = "../data/" + ss + ".rtk";
         printf("open file name:%s\n",ssRTK.data());
         fp = fopen(ssRTK.data(),"rb");
-        int k = 0;
 
+        int k = 0;
         while (!feof(fp)){
             dat[k++] = fgetc(fp);
             if(0xd3==(u_char)dat[k-2]&&0==(dat[k-1]>>2)){

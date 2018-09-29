@@ -23,7 +23,9 @@ double lagrange(double *x,double *y,double xx,int n){
     free(a);
     return yy;
 }
+double lineIntp(double *x,double *y,double xx,int n){
 
+}
 
 int XYZ2LLA(Eigen::Vector3d XYZ, Eigen::Vector3d &LLA) {
     double x,y,z,r,sinA,cosA,sinB,cosB,N,h,lati;

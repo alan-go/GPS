@@ -604,31 +604,42 @@ bool SV::MeasureGood() {
 
 double SV::InterpRtkData(double time, int sigInd) {
     int InterpLength = 5;
-    if(rtkData.size()<InterpLength)
+
+    auto ite = rtkData.begin();
+    double distanse =100;
+    for (; ite<rtkData.end()-5 ; ite++) {
+        int temp = abs((*ite)->rtktime-time);
+        if(distanse>temp){
+            distanse = temp;
+        }
+        if(distanse<0.5)break;
+    }
+    if(distanse>=0.5)
     {
-        printf("rtk data num = %d, not enough\n",rtkData.size());
+        printf("rtk data num = %d, not enough,distanse=%lf\n",rtkData.size(),distanse);
         return 0;
     }
+    printf("time: %lf,%lf\n", time,(*ite)->rtktime);
 
-    vector<double> timeline, pr_df400, pr_df401;
+    vector<double> times, pr_df400, pr_df401;
     for(int i=0;i<InterpLength;i++){
-        MSM4data* data = rtkData[i];
+        MSM4data* data = *ite+i;
         MSM4Cell* cell = &data->sigData[sigInd];
         if(cell->cpMes!=0){
-            timeline.push_back(data->rtktime);
+            times.push_back(data->rtktime);
             pr_df400.push_back(cell->prMes);
             pr_df401.push_back(cell->cpMes);
 //            printf("t=%f,pr=%f\n",data->rtktime,cell->prMes);
         }
 
     }
-    if(timeline.size()<InterpLength-2)
+    if(times.size()<InterpLength-2)
     {
-        printf("interp time line size = %d, not ok\n",timeline.size());
+        printf("interp time line size = %d, not ok\n",times.size());
         return 0;
     }
-    prInterp[sigInd] = InterpLine(time,timeline,pr_df400);
-    cpInterp[sigInd] = InterpLine(time,timeline,pr_df401);
+    prInterp[sigInd] = InterpLine(time,times,pr_df400);
+    cpInterp[sigInd] = InterpLine(time,times,pr_df401);
     return prInterp[sigInd];
 }
 

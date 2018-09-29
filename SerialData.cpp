@@ -68,9 +68,8 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
             lengthUBX++;
         }
         if(('\n'==tmp[i]||'\r'==tmp[i])&&1==flag){
-            printf("Got a NMEA,l = %d.:",lengthNMEA);
-//            if (showData)
-            if (1)
+//            printf("Got a NMEA,l = %d.:",lengthNMEA);
+            if (showData)
                 for(int k = 0;k<lengthNMEA;k++){
                     printf("%c",bufferNMEA[k]);
                 }

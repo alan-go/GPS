@@ -9,6 +9,9 @@ PosSolver::PosSolver(SVs *svs, NtripRTK *rtk, GNSS *gnss): svs(svs),rtk(rtk),gns
     if(gnss->isPositioned){
         xyz = gnss->records.back().xyz;
         LLA = gnss->records.back().lla;
+    } else{
+        xyz = gnss->xyzDefault;
+        LLA = gnss->llaDefault;
     }
     tu = gnss->tu;
     tuBeiDou = gnss->tuBeiDou;
@@ -165,7 +168,7 @@ int PosSolver::PositionRtk2() {
 
     XYZ2LLA(xyz,LLA);
     gnss->isPositioned = true;
-    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
+    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,vxyz,xyz,LLA));
     printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
 
     fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,xyz(0),xyz(1),xyz(2));
@@ -278,7 +281,7 @@ int PosSolver::PositionRtk() {
 
     XYZ2LLA(xyz,LLA);
     gnss->isPositioned = true;
-    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
+    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,vxyz,LLA));
     printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
 
     fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,xyz(0),xyz(1),xyz(2));
@@ -379,7 +382,7 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
     double PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
     XYZ2LLA(xyz,LLA);
     gnss->isPositioned = true;
-    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
+    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,vxyz,LLA));
     gnss->tu = tu;
     printf("tu= %f\n", tu);
     cout<<"++++++++++++xyz\n"<<xyz<<endl;
@@ -471,7 +474,7 @@ int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
     }
     XYZ2LLA(xyz,LLA);
     gnss->isPositioned = true;
-    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,LLA));
+    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,vxyz,LLA));
     gnss->tuGps = tuGps;
     gnss->tuBeiDou = tuBeiDou;
     cout<<"++++++++++++rxyzt\n"<<xyz<<endl;
@@ -559,9 +562,8 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all, vector<SV*> *select) {
     for(int i=0;i<numMeas;i++)
     {
         SV *svTemp = all[i];
-        printf("svs visiable:%d,%02d:%d,%d,%d.health:%d,pr=%lf\n",
-               svTemp->type,svTemp->svId,svTemp->bstEphemOK[0],svTemp->bstEphemOK[1],
-               svTemp->bstEphemOK[2],svTemp->SatH1,svTemp->prMes);
+        printf("getsv:%d,%02d:h:%d,pr=%lf,cp=%lf\t\t",svTemp->type,svTemp->svId,svTemp->SatH1,
+                svTemp->prMes,svTemp->cpMes);
 
         //1,is used?
         if(!svTemp->open){
@@ -593,7 +595,7 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all, vector<SV*> *select) {
 //            numGPSUsed++;
 //            select[2].push_back(svTemp);
 //        }
-        printf("svsfor calcu\n");
+        printf("used this\n");
     }
 }
 
@@ -609,11 +611,11 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
         double timeForECEF = rcvtow;
         if(SYS_BDS == sv->type)timeForECEF-=14;
         sv->CalcuTime(timeForECEF);
-        printf("ep = % 2.0f % 2.0f % 2.0f % 2.0f % 2.0f \n",ep[0],ep[1],ep[2],ep[3],ep[4]);
+//        printf("ep = % 2.0f % 2.0f % 2.0f % 2.0f % 2.0f \n",ep[0],ep[1],ep[2],ep[3],ep[4]);
 //        sv->PrintInfo(1);
-        printf("ts0 =  %.3f\n", sv->tsDelta*1e9);
-        sv->CalcuECEF(sv->tsReal);
-        printf("ts1 =  %.3f\n", sv->tsDelta*1e9);
+//        printf("ts0 =  %.3f\n", sv->tsDelta*1e9);
+//        sv->CalcuECEF(sv->tsReal);
+//        printf("ts1 =  %.3f\n", sv->tsDelta*1e9);
 
         fprintf(gnss->log,"svsVisBrt:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
                 sv->type,sv->svId,sv->prMes,0.0,
@@ -648,11 +650,11 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
         }
 
         if(gnss->isPositioned){
-            printf("elevation newed.\n");
+//            printf("elevation newed.\n");
             sv->CorrectIT(xyz,LLA,timeForECEF);
             sv->CalcuelEvationAzimuth(gnss->records.back().xyz,gnss->records.back().lla);
         } else{
-            printf("elevation default.\n");
+//            printf("elevation default.\n");
             sv->CalcuelEvationAzimuth(gnss->xyzDefault,gnss->llaDefault);
         }
 
@@ -687,38 +689,119 @@ int PosSolver::MakeGGA(char *gga, Vector3d lla, GnssTime gpsTime) {
 }
 
 int PosSolver::PositionRtkKalman() {
+
+
     int sigInd = 1;
     int result = 0;
+    Vector3d base = gnss->rtkManager.ECEF_XYZ;
     vector<SV*> svsForCalcu[Nsys];
     PrepareSVsData(svsForCalcu);
     ProcessRtkData(svsForCalcu);
 
-    int N = 0,n,xi=0,yi=0;
-
+    int N = 0,n,xi=6,yi=0;
     for (int sys = 0; sys < Nsys-1; ++sys)N+=numOfSys[sys];
-    if(N-nsysUsed<4){
-        printf("svs not enough %d\n", N);
+    printf("N= %d,nsys=%d\n", N,nsysUsed);
+    if(N-nsysUsed<5){
+        printf("svs not enough %d,nsys %d\n", N,nsysUsed);
         return -1;
     }
-    MatrixXd x(N+6,1),y(2*(N-nsysUsed),1);
-    double cp0,pr0;
+    VectorXd x(N+6),y(2*(N-nsysUsed)),hx(2*(N-nsysUsed));
+    MatrixXd P(N+6,N+6),Ppred(N+6,N+6);
+    MatrixXd Hx(2*(N-nsysUsed),N+6),R(2*(N-nsysUsed),2*(N-nsysUsed));
+    double cp_rb0,pr_rb0,r_rb0,B_rb0;
+    vector<double*>pB,pPB,pRc,pRp;
+
+    x.fill(0);y.fill(0);hx.fill(0);P.fill(0);Hx.fill(0);R.fill(0);
+    x.head(6)<<xyz,vxyz;
+    P.block<6,6>(0,0)<<gnss->Pxv;
+
+    //各系统
     for (int sys = 0; sys < Nsys-1; ++sys) {
         n = numOfSys[sys];
+        cout <<"sys="<< sys <<"n="<<n<<endl;
         if(0==n)continue;
-        N+=n;
+        int yhead=0;
+        double lambdai = GetFreq((SysType)sys, sigInd, true);
+        MatrixXd E(n,3),D(n-1,n),Rci(n,n),Rpi(n,n);
+        D.fill(0);Rci.fill(0);Rpi.fill(0);
+        //各卫星
         for (int i = 0; i < n; ++i) {
-            //todo:
             SV *sv = svsForCalcu[sys][i];
-            x(6+xi++) = gnss->cycle[i](sv->svId);
+            printf("n,i,xi,yi %d,%d,%d,%d,\n", n,i,xi,yi);
+            printf("rtksv:%d,%02d:h:%d,pr=%lf---%lf,.,cp=%lf---%lf\telev=%lf\n",sv->type,sv->svId,sv->SatH1,
+                   sv->prMes,sv->prInterp[sigInd],sv->cpMes*lambdai,sv->cpInterp[sigInd],sv->elevationAngle);
+            //单差部分
+
+            double *tempBi=&(gnss->cycle[sys][sv->svId]);     pB.push_back(tempBi);
+            double *tempPB=&(gnss->PB[sys][sv->svId]);        pPB.push_back(tempPB);
+            double *tempRci=&(gnss->sigmaCy[sys][sv->svId]);  pRc.push_back(tempRci);
+            double *tempRpi=&(gnss->sigmaPr[sys][sv->svId]);  pRp.push_back(tempRpi);
+            x(xi) = *tempBi-0;
+            P(xi,xi) = *tempPB;
+            Rci(i,i) = 2*pow(*tempRci,2);
+            Rpi(i,i) = 2*pow(*tempRpi,2);
+
+            Vector3d e_sr = sv->position - xyz, e_sb = sv->position -base;
+            E.block<1,3>(i,0)<<(e_sr/e_sr.norm()).transpose();
+
+            xi++;
+
+            //双差部分
             if(i==0){
-                cp0 = sv->cpMes-sv->cpInterp[sigInd];
-                pr0 = sv->prMes-sv->prInterp[sigInd];
+                cp_rb0 = sv->cpMes*lambdai-sv->cpInterp[sigInd];
+                pr_rb0 = sv->prMes-sv->prInterp[sigInd];
+
+                B_rb0 = *tempBi;
+                r_rb0 = e_sr.norm()-e_sb.norm();
+
+                yhead = 2*yi;
                 continue;
             }
-            y(yi) = (sv->cpMes-sv->cpInterp[sigInd]) - cp0;
-            y(n+yi++) = (sv->prMes-sv->prInterp[sigInd])-pr0;
+            D(i-1,0)=1;D(i-1,i)=-1;
+            y(yi) = cp_rb0 - (sv->cpMes*lambdai-sv->cpInterp[sigInd]);
+            y(n-1+yi) =pr_rb0-(sv->prMes-sv->prInterp[sigInd]);
+
+            hx(yi) = hx(n-1+yi) = r_rb0-(e_sr.norm()-e_sb.norm());
+            hx(yi)+= lambdai*(B_rb0 - *tempBi);
+            yi++;
         }
+
+        cout<<D<<E<<endl;
+        Hx.block(yhead,0,n-1,3)<<-D*E;
+        Hx.block(yhead+n-1,0,n-1,3)<<-D*E;
+        Hx.block(yhead,xi-n,n-1,n)<<lambdai*D;
+        R.block(yhead,yhead,n-1,n-1)<<D*Rci*D.transpose();
+        R.block(yhead+n-1,yhead+n-1,n-1,n-1)<<D*Rpi*D.transpose();
     }
+    MatrixXd Ht = Hx.transpose();
+    MatrixXd Kk = P*Ht*(Hx*P*Ht+R).inverse();
+    Ppred = (MatrixXd::Identity(N+6,N+6)-Kk*Hx)*P;
+    VectorXd xyzPred = x + Kk*(y-hx);
+    cout <<"\nx\n"<<x.transpose() <<"\ny\n"<<y.transpose()<<"\nhx\n"<<hx.transpose()<<endl;
+//    cout<<"\nP\n"<<P <<"\nHx\n"<<Hx<<"\npPred\n"<<Ppred<<endl;
+//    cout <<"\nR\n"<<R<<endl;
+    cout<<"\nxyzPred\n"<<xyzPred.transpose() <<endl;
+    //更新
+    xyz = xyzPred.head(3);
+    vxyz = xyzPred.segment(3,3);
+    for (int i = 0; i < pB.size(); ++i) {
+        *pB[i] = xyzPred(6+i);
+        *pPB[i] = Ppred(6+i,6+i);
+    }
+    gnss->Pxv = Ppred.block<6,6>(0,0);
+
+
+    //显示
+    XYZ2LLA(xyz,LLA);
+    gnss->isPositioned = true;
+    gnss->AddPosRecord(GNSS::PosRcd(rcvtow,xyz,vxyz,LLA));
+    cout<<"++++++++++++xyz\n"<<xyz<<endl;
+    printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
+
+    fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,xyz(0),xyz(1),xyz(2));
+    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
+
+
 }
 
 int PosSolver::ProcessRtkData(vector<SV *> *select) {
@@ -730,21 +813,21 @@ int PosSolver::ProcessRtkData(vector<SV *> *select) {
         if(select[sys].empty())continue;
         double elevMax = -5;
         int svCentreInd = -2;
-        int nsys = select[sys].size();
+        int nAll = select[sys].size();
         vector<SV*>svsTemp;
-        int k = -1;
-        for (int i = 0; i < nsys; ++i) {
+        int nRtk = 0;
+        for (int i = 0; i < nAll; ++i) {
             SV *sv = select[sys][i];
             double time = rcvtow - tu/Light_speed;
             if(sv->type==SYS_BDS)time-=14;
             double pr = sv->InterpRtkData(time,sigInd);
             if(pr){
-                k++;
+                nRtk++;
                 svsTemp.push_back(sv);
                 if(sv->elevationAngle>elevMax){
                     elevMax = sv->elevationAngle;
                     svCectre = sv;
-                    svCentreInd = k;
+                    svCentreInd = nRtk-1;
                 }
             }
         }
@@ -753,10 +836,10 @@ int PosSolver::ProcessRtkData(vector<SV *> *select) {
             svsTemp.insert(svsTemp.begin(),svCectre);
         }
         select[sys].swap(svsTemp);
-        int n = select[sys].size();
-        if(n>1){
-            numOfSys[sys] = n;
-            nsys++;
+        numOfSys[sys]=0;
+        if(nRtk>1){
+            numOfSys[sys] = nRtk;
+            nsysUsed++;
         }
     }
 

@@ -75,7 +75,7 @@ private:
     boost::crc_basic<24> crc24Q;
 
 private:
-    int AddRtkRecord(MSM4data* data,SysType type, int id);
+    int AddRtkRecord(MSM4data* data,SysType sys, int id);
     inline uint32_t NetToHost32(char *begin,int head,int length,bool isInt = 0);
     int ParaseRtk32_1005(char * buffer);
 };

@@ -19,7 +19,7 @@ public:
     boost::asio::serial_port *sp_;
     unsigned int baudRate;
     bool stopCapture;
-    bool showData;
+    bool showData{0};
     char saveName[64];
     GNSS* gnss;
 
