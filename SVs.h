@@ -81,6 +81,7 @@ public:
     //vector<MSM4data*>里面是不同时刻的数据，0是最近的记录
     deque<MSM4data*> rtkData;
     double prInterp[32], cpInterp[32];
+    bool KalmanFirst{1};
 public:
     SV();
     ~SV();

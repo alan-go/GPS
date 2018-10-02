@@ -35,7 +35,7 @@ public:
     int count{0};
 //    char logFile[64];
     bool logOpen;
-    std::FILE *log,*logRTK;
+    std::FILE *log,*logRTK,*logDebug;
     struct tm *utcTime;
 
 public:

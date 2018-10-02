@@ -254,7 +254,10 @@ int PosSolver::PositionRtk() {
         pur(i) = (sv->prMes-sv->prInterp[sigInd])-pur0;
         printf("sv in N2:%d,%d,%f\n",sv->type,sv->svId,pur(i));
 
-        Vector3d Iri = sv->position - referBase;
+        Vector3d svPositionEarthRotate;
+        EarthRotate(sv->position,svPositionEarthRotate,(sv->position - xyz).norm()/Light_speed);
+
+        Vector3d Iri = svPositionEarthRotate - referBase;
         Iri = Iri/Iri.norm();
         Vector3d Ir_0i = Ir0 - Iri;
         Gur(i,0) = Ir_0i(0);
@@ -690,7 +693,6 @@ int PosSolver::MakeGGA(char *gga, Vector3d lla, GnssTime gpsTime) {
 
 int PosSolver::PositionRtkKalman() {
 
-
     int sigInd = 1;
     int result = 0;
     Vector3d base = gnss->rtkManager.ECEF_XYZ;
@@ -698,7 +700,7 @@ int PosSolver::PositionRtkKalman() {
     PrepareSVsData(svsForCalcu);
     ProcessRtkData(svsForCalcu);
 
-    int N = 0,n,xi=6,yi=0;
+    int N = 0,xi=6,yi=0;
     for (int sys = 0; sys < Nsys-1; ++sys)N+=numOfSys[sys];
     printf("N= %d,nsys=%d\n", N,nsysUsed);
     if(N-nsysUsed<5){
@@ -706,80 +708,117 @@ int PosSolver::PositionRtkKalman() {
         return -1;
     }
     VectorXd x(N+6),y(2*(N-nsysUsed)),hx(2*(N-nsysUsed));
-    MatrixXd P(N+6,N+6),Ppred(N+6,N+6);
+    MatrixXd P(N+6,N+6),Q(N+6,N+6),Ppred(N+6,N+6);
     MatrixXd Hx(2*(N-nsysUsed),N+6),R(2*(N-nsysUsed),2*(N-nsysUsed));
-    double cp_rb0,pr_rb0,r_rb0,B_rb0;
+    double cp_rb[2],pr_rb[2],r_rb[2],B_rb[2];
     vector<double*>pB,pPB,pRc,pRp;
 
-    x.fill(0);y.fill(0);hx.fill(0);P.fill(0);Hx.fill(0);R.fill(0);
+    x.fill(0);y.fill(0);hx.fill(0);P.fill(0);Q.fill(0);Hx.fill(0);R.fill(0);
     x.head(6)<<xyz,vxyz;
     P.block<6,6>(0,0)<<gnss->Pxv;
+    Q.block<3,3>(0,0) = 1e5*Matrix3d::Identity();
 
     //各系统
-    for (int sys = 0; sys < Nsys-1; ++sys) {
+    for (int sys = 0,yHead,n,n_; sys < Nsys-1; ++sys) {
         n = numOfSys[sys];
-        cout <<"sys="<< sys <<"n="<<n<<endl;
+        n_=n-1;
         if(0==n)continue;
-        int yhead=0;
+        cout <<"sys="<< sys <<", n="<<n<<endl;
+
         double lambdai = GetFreq((SysType)sys, sigInd, true);
+        printf("lambdai %f\n", lambdai);
         MatrixXd E(n,3),D(n-1,n),Rci(n,n),Rpi(n,n);
         D.fill(0);Rci.fill(0);Rpi.fill(0);
         //各卫星
-        for (int i = 0; i < n; ++i) {
-            SV *sv = svsForCalcu[sys][i];
-            printf("n,i,xi,yi %d,%d,%d,%d,\n", n,i,xi,yi);
-            printf("rtksv:%d,%02d:h:%d,pr=%lf---%lf,.,cp=%lf---%lf\telev=%lf\n",sv->type,sv->svId,sv->SatH1,
-                   sv->prMes,sv->prInterp[sigInd],sv->cpMes*lambdai,sv->cpInterp[sigInd],sv->elevationAngle);
-            //单差部分
+        VectorXd yp(n-1);
 
+        for (int i = 0,i_; i < n; ++i) {
+            SV *sv = svsForCalcu[sys][i];
+            Vector3d svPositionEarthRotate;
+            EarthRotate(sv->position,svPositionEarthRotate,(sv->position - xyz).norm()/Light_speed);
+            Vector3d e_sr = svPositionEarthRotate - xyz, e_sb = svPositionEarthRotate -base;
+            E.block<1,3>(i,0)<<(e_sr/e_sr.norm()).transpose();
+
+            printf("xi,yi %d,%d,\t", xi,yi);
+            printf("rtksv:%d,%02d:h:%d,pr=%lf---%lf,.,cp=%lf,%.1f---%lf,%.1f [%.2f]\telev=%lf\n",sv->type,sv->svId,sv->SatH1,
+                   sv->prMes,sv->prInterp[sigInd],sv->cpMes*lambdai,sv->cpMes-sv->prMes/lambdai,sv->cpInterp[sigInd],
+                   (sv->cpInterp[sigInd]-sv->prInterp[sigInd])/lambdai,sv->cpMes-sv->cpInterp[sigInd]/lambdai,sv->elevationAngle);
+            //单差部分
             double *tempBi=&(gnss->cycle[sys][sv->svId]);     pB.push_back(tempBi);
             double *tempPB=&(gnss->PB[sys][sv->svId]);        pPB.push_back(tempPB);
             double *tempRci=&(gnss->sigmaCy[sys][sv->svId]);  pRc.push_back(tempRci);
             double *tempRpi=&(gnss->sigmaPr[sys][sv->svId]);  pRp.push_back(tempRpi);
-            x(xi) = *tempBi-0;
+
+//            if(sv->KalmanFirst){
+//                *tempBi = ((sv->cpMes*lambdai-sv->cpInterp[sigInd]) - (e_sr.norm()-e_sb.norm()) - tu)/lambdai;
+//                sv->KalmanFirst = 0;
+//            }
+            x(xi) = *tempBi;
             P(xi,xi) = *tempPB;
             Rci(i,i) = 2*pow(*tempRci,2);
             Rpi(i,i) = 2*pow(*tempRpi,2);
 
-            Vector3d e_sr = sv->position - xyz, e_sb = sv->position -base;
-            E.block<1,3>(i,0)<<(e_sr/e_sr.norm()).transpose();
-
             xi++;
+            cp_rb[1] = sv->cpMes*lambdai-sv->cpInterp[sigInd];
+            pr_rb[1] = sv->prMes-sv->prInterp[sigInd];
+            B_rb[1] = *tempBi;
+            r_rb[1] = e_sr.norm()-e_sb.norm();
 
             //双差部分
-            if(i==0){
-                cp_rb0 = sv->cpMes*lambdai-sv->cpInterp[sigInd];
-                pr_rb0 = sv->prMes-sv->prInterp[sigInd];
+            if(0==i){
+                cp_rb[0] = cp_rb[1];    pr_rb[0] = pr_rb[1];
+                B_rb[0] = B_rb[1];      r_rb[0] = r_rb[1];
 
-                B_rb0 = *tempBi;
-                r_rb0 = e_sr.norm()-e_sb.norm();
-
-                yhead = 2*yi;
+                yHead = 2*yi;
                 continue;
             }
-            D(i-1,0)=1;D(i-1,i)=-1;
-            y(yi) = cp_rb0 - (sv->cpMes*lambdai-sv->cpInterp[sigInd]);
-            y(n-1+yi) =pr_rb0-(sv->prMes-sv->prInterp[sigInd]);
+            i_ = i-1;
+            D(i_,0)=1;D(i_,i)=-1;
+            y(yHead+i_)     = cp_rb[0] - cp_rb[1];
+            y(yHead+n_+i_)  = pr_rb[0] - pr_rb[1];
+            yp(i_) = y(yHead+n_+i_);
 
-            hx(yi) = hx(n-1+yi) = r_rb0-(e_sr.norm()-e_sb.norm());
-            hx(yi)+= lambdai*(B_rb0 - *tempBi);
+            hx(yHead+i_)    = r_rb[0]-r_rb[1] + lambdai*(B_rb[0] - B_rb[1]);
+            hx(yHead+n_+i_) = r_rb[0]-r_rb[1];
+
+            printf("yi comp [%.2f,%.2f]\n", y(yHead+i_), y(yHead+n_+i_));
+            printf("hxi comp [%.2f,%.2f]\n", hx(yHead+i_), hx(yHead+n_+i_));
+            printf("B0,bi %f --- %f\n", B_rb[0],*tempBi);
             yi++;
-        }
 
-        cout<<D<<E<<endl;
-        Hx.block(yhead,0,n-1,3)<<-D*E;
-        Hx.block(yhead+n-1,0,n-1,3)<<-D*E;
-        Hx.block(yhead,xi-n,n-1,n)<<lambdai*D;
-        R.block(yhead,yhead,n-1,n-1)<<D*Rci*D.transpose();
-        R.block(yhead+n-1,yhead+n-1,n-1,n-1)<<D*Rpi*D.transpose();
+            if(sv->svId==10){
+                double temp1 = sv->prMes-sv->cpMes*lambdai;
+                double temp0 = sv->prInterp[sigInd]-sv->cpInterp[sigInd];
+                fprintf(gnss->logDebug,"%.6f, %.6f\n",temp1,temp0);
+            }
+
+        }
+        Vector3d bx = (-D*E).colPivHouseholderQr().solve(yp),bxlla,xbegin;
+//        x.head(3) = xbegin = bx+base;
+        XYZ2LLA(xbegin,bxlla);
+        cout<<"++++++++++++xyz000\n"<<bx+base<<endl;
+        printf("++++++++++++LLA000 === %lf,%lf,%lf\n",bxlla(1)*180/GPS_PI,bxlla(0)*180/GPS_PI,bxlla(2));
+
+//        cout<<D<<E<<endl;
+        MatrixXd Dt = D.transpose();
+        Hx.block(yHead,0,n-1,3)<<-D*E;
+        Hx.block(yHead+n-1,0,n-1,3)<<-D*E;
+        Hx.block(yHead,xi-n,n-1,n)<<lambdai*D;
+        R.block(yHead,yHead,n-1,n-1)<<D*Rci*Dt;
+        R.block(yHead+n-1,yHead+n-1,n-1,n-1)<<D*Rpi*Dt;
     }
+    P = 0.008*MatrixXd::Identity(N+6,N+6)+P;
+    P.block<3,3>(0,0) = P.block<3,3>(0,0)+0.1*Matrix3d::Identity();
+
     MatrixXd Ht = Hx.transpose();
-    MatrixXd Kk = P*Ht*(Hx*P*Ht+R).inverse();
+    MatrixXd Kk = P*Ht*((Hx*P*Ht+R).inverse());
     Ppred = (MatrixXd::Identity(N+6,N+6)-Kk*Hx)*P;
     VectorXd xyzPred = x + Kk*(y-hx);
-    cout <<"\nx\n"<<x.transpose() <<"\ny\n"<<y.transpose()<<"\nhx\n"<<hx.transpose()<<endl;
-//    cout<<"\nP\n"<<P <<"\nHx\n"<<Hx<<"\npPred\n"<<Ppred<<endl;
-//    cout <<"\nR\n"<<R<<endl;
+    cout <<"\nx\n"<<x.transpose() <<"\ny\n"<<y.transpose()<<"\nhx\n"<<hx.transpose()<<"\ny-hx\n"<<(y-hx).transpose()<<endl;
+    cout<<"\nP\n"<<P <<"\nHx\n"<<Hx<<"\npPred\n"<<Ppred<<endl;
+//    cout <<"\nKk\n"<<Kk<<endl;
+//    cout <<"\nR\n"<<R<<endl<<;
+    cout<<"\nxyzAdd\n"<<(Kk*(y-hx)).transpose() <<endl;
     cout<<"\nxyzPred\n"<<xyzPred.transpose() <<endl;
     //更新
     xyz = xyzPred.head(3);
@@ -788,8 +827,10 @@ int PosSolver::PositionRtkKalman() {
         *pB[i] = xyzPred(6+i);
         *pPB[i] = Ppred(6+i,6+i);
     }
-    gnss->Pxv = Ppred.block<6,6>(0,0);
-
+//    gnss->Pxv = Ppred.block<6,6>(0,0);
+    gnss->Pxv(0,0) = Ppred(0,0);
+    gnss->Pxv(1,1) = Ppred(1,1);
+    gnss->Pxv(2,2) = Ppred(2,2);
 
     //显示
     XYZ2LLA(xyz,LLA);
@@ -800,7 +841,6 @@ int PosSolver::PositionRtkKalman() {
 
     fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,xyz(0),xyz(1),xyz(2));
     fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
-
 
 }
 
@@ -820,6 +860,7 @@ int PosSolver::ProcessRtkData(vector<SV *> *select) {
             SV *sv = select[sys][i];
             double time = rcvtow - tu/Light_speed;
             if(sv->type==SYS_BDS)time-=14;
+
             double pr = sv->InterpRtkData(time,sigInd);
             if(pr){
                 nRtk++;
@@ -834,6 +875,10 @@ int PosSolver::ProcessRtkData(vector<SV *> *select) {
         if(!svsTemp.empty()){
             svsTemp.erase(svsTemp.begin()+svCentreInd);
             svsTemp.insert(svsTemp.begin(),svCectre);
+
+            double pc = (svCectre->position - xyz).norm();
+            tu = svCectre->prMes+svCectre->tsDelta*Light_speed-svCectre->I-svCectre->T-pc;
+            gnss->tu = tu;
         }
         select[sys].swap(svsTemp);
         numOfSys[sys]=0;

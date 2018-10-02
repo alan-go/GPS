@@ -298,6 +298,8 @@ int NtripRTK::ParaseRtk32_1005(char *buffer) {
 
     ECEF_XYZ<<ARP_X,ARP_Y,ARP_Z;
     ECEF_XYZ*=1e-4;
+    printf("refstation Id %d\n", refStationId);
+    cout<<ECEF_XYZ<<endl;
 }
 
 int NtripRTK::TestParase(char *bufferRecv,int recvLength) {

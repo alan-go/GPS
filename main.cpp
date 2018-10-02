@@ -97,6 +97,10 @@ void test(GNSS *gnss){
     cout<<foo <<"pfoo"<<pfoo<<endl;
     *pfoo = 464;
     printf("f3 %d\n", foo[3]);
+    MatrixXd A = MatrixXd::Random(6,3);
+    VectorXd yp(6);yp<<2,5,3,2,6,7;
+#include <Eigen/QR>
+    cout <<"ypa"<<A.colPivHouseholderQr().solve(yp)<<endl;
 
 }
 
@@ -108,13 +112,14 @@ int main()
 //    return 0;
     for (int i = 0; i < 5; ++i) gnss->svMaskBds[i]=0;
     gnss->log = fopen("../log/log.txt","w");
+    gnss->logDebug = fopen("../log/logDebug.txt","w");
 //    gnss->log = fopen("../log/log0829-b1.txt","w");
 
 
     //    gnss->useGPS = false;
     //    gnss->useBeiDou = false;
     gnss->useQianXun = false;
-    gnss->Init(0,1,1,1);
+    gnss->Init(0,1,0,1);
 
 
 //    gnss->StartGNSS("null",115200);

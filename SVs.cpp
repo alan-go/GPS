@@ -619,16 +619,16 @@ double SV::InterpRtkData(double time, int sigInd) {
         printf("rtk data num = %d, not enough,distanse=%lf\n",rtkData.size(),distanse);
         return 0;
     }
-    printf("time: %lf,%lf\n", time,(*ite)->rtktime);
+//    printf("time: %lf,%lf\n", time,(*ite)->rtktime);
 
-    vector<double> times, pr_df400, pr_df401;
+    vector<double> times, prMes, cpMes;
     for(int i=0;i<InterpLength;i++){
         MSM4data* data = *ite+i;
         MSM4Cell* cell = &data->sigData[sigInd];
         if(cell->cpMes!=0){
             times.push_back(data->rtktime);
-            pr_df400.push_back(cell->prMes);
-            pr_df401.push_back(cell->cpMes);
+            prMes.push_back(cell->prMes);
+            cpMes.push_back(cell->cpMes);
 //            printf("t=%f,pr=%f\n",data->rtktime,cell->prMes);
         }
 
@@ -638,8 +638,8 @@ double SV::InterpRtkData(double time, int sigInd) {
         printf("interp time line size = %d, not ok\n",times.size());
         return 0;
     }
-    prInterp[sigInd] = InterpLine(time,times,pr_df400);
-    cpInterp[sigInd] = InterpLine(time,times,pr_df401);
+    prInterp[sigInd] = InterpLine(time,times,prMes);
+    cpInterp[sigInd] = InterpLine(time,times,cpMes);
     return prInterp[sigInd];
 }
 

@@ -34,13 +34,14 @@ int GNSS::Init(int ephem, bool qianXun, bool bds, bool gps) {
 
     for (int i = 0; i < Nsys - 1; ++i) {
         for (int j = 0; j < Nxxs; ++j) {
-            cycle[i][j]=40.0;
-            sigmaCy[i][j]=0.01;
-            sigmaPr[i][j]=1.0;
-            PB[i][j]=10;
+//            cycle[i][j]=40.0;
+            cycle[i][j]=10;
+            sigmaCy[i][j]=0.15;
+            sigmaPr[i][j]=1;
+            PB[i][j]=100;
         }
     }
-    Pxv = 10*MatrixXd::Identity(6,6);
+    Pxv = 10000*MatrixXd::Identity(6,6);
 }
 
 int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate) {
@@ -104,14 +105,14 @@ int GNSS::StopGNSS() {
 
 int GNSS::ParseRawData(char *message, int len) {
     printf("coutnt %d\n", count);
-    if(++count<30)
+    if(++count<1500)
         return -1;
     PosSolver *solver = new PosSolver(svsManager, &rtkManager, this);
     memcpy(solver->raw, message, len);
     if(useQianXun){
 //    if(useQianXun&&isPositioned){
-//        solver->PositionRtk();
-        solver->PositionRtkKalman();
+        if(isPositioned)solver->PositionRtkKalman();
+        else solver->PositionRtk();
     } else{
         solver->PositionSingle();
     }
