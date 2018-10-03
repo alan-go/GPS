@@ -105,8 +105,7 @@ int GNSS::StopGNSS() {
 
 int GNSS::ParseRawData(char *message, int len) {
     printf("coutnt %d\n", count);
-    if(++count<1500)
-        return -1;
+    if(++count<100) return -1;
     PosSolver *solver = new PosSolver(svsManager, &rtkManager, this);
     memcpy(solver->raw, message, len);
     if(useQianXun){

@@ -22,7 +22,7 @@ if __name__=="__main__":
 
     for each in file.readlines():
         temp = each.split(',')
-        data.append(float(temp[1]))
+        data.append(float(temp[2]))
     print(len(data))
     ana(data)
     x = range(len(data))

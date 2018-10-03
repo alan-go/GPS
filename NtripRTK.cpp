@@ -98,14 +98,12 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SysType type) {
     //first Parase MSM message Header:
     uint32_t refID = NetToHost32(bufferRTK,12,12);//DF003
     double rtkTime = double(NetToHost32(bufferRTK+3,0,30))*1e-3;//bdsTime = GPSTime -14s
-//    uint8_t multiMsg = *(uint8_t*)(bufferRTK+6)<<6>>7;//DF393
     uint8_t multiMsg = NetToHost32(bufferRTK+6,6,1);//DF393
     uint32_t IODS = NetToHost32(bufferRTK+6,7,3);//DF409
-//    uint8_t clockCorrect = *(uint8_t*)(bufferRTK+8)<<1>>6;//DF411
     uint8_t clockCorrect = NetToHost32(bufferRTK+8,1,2);//DF411
-//    uint8_t clockExtern = *(uint8_t*)(bufferRTK+8)<<3>>6;//DF412
+    printf("DF411 clock correct= %d\n", clockCorrect);
     uint8_t clockExtern = NetToHost32(bufferRTK+8,3,2);//DF412
-//    uint8_t smoothType = *(uint8_t*)(bufferRTK+8)<<5>>7;//DF417
+    printf("DF412 clock correct= %d\n", clockExtern);
     uint8_t smoothType = NetToHost32(bufferRTK+8,5,1);//DF417
     uint32_t smoothRange = NetToHost32(bufferRTK+8,6,3);//DF418
 

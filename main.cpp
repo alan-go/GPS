@@ -154,6 +154,14 @@ int main()
             }
         }
         fclose(fp);
+        SV* svtemp = &gnss->svsManager->svGpss[9];
+
+//        for (int i = 0; i < svtemp->rtkData.size(); ++i) {
+//            MSM4Cell* tp = &svtemp->rtkData[i]->sigData[1];
+//            fprintf(gnss->logDebug,"%.3f\n",tp->prMes-tp->cpMes);
+////            fprintf(gnss->logDebug,"df402,df420,%.1f,%.1f\n",svtemp->rtkData[i]->sigData[1].df402,svtemp->rtkData[i]->sigData[1].df420);
+//        }
+//        return 0;
         fp = fopen(ssData.data(),"rb");
         while (128==fread(dat,1,128,fp)){
             gnss->serialDataManager.ScanSerialData(dat,128);
