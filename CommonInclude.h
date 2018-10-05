@@ -5,6 +5,7 @@
 #ifndef GPS_COMMONINCLUDE_H
 #define GPS_COMMONINCLUDE_H
 
+#include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -21,11 +22,18 @@
 #include <Eigen/Dense>
 #include <Eigen/StdVector>
 
+using Eigen::Vector3d;
+
 #define Ngps 64
 #define Nbds 64
 #define Nxxs 64
 #define Nsys 8
+
+
 //PI ???GPs_PI
+
+constexpr static double RE_WGS84 =   6378137.0 ;          /* earth semimajor axis (WGS84) (m) */
+constexpr static double FE_WGS84 =   (1.0/298.257223563); /* earth flattening (WGS84) */
 constexpr static double GPS_PI = 3.1415926535898;
 constexpr static double M_miu = 3.986004418e14;
 constexpr static double Omega_e = 7.2921150e-005;//SYS_GPS?Beidou
@@ -33,6 +41,7 @@ constexpr static double Light_speed = 299792358.0;
 constexpr static double Earth_a = 6378137.0;  //地球长半轴
 constexpr static double Earth_f = 3.352810664747481e-003;   //基准椭球体的极扁率  f = 1/298.257223563
 constexpr static double Earth_ee = 6.694379990141317e-003;   //偏心率e   e^2 = f(2-f)
+constexpr static double D2R = GPS_PI/180.0, R2D = 180.0/GPS_PI;
 
 enum SysType{
     SYS_GPS = 0,
@@ -47,6 +56,8 @@ enum SysType{
 };
 
 
+
+
 extern double str2num(char *head, int len);
 
 extern double GetFreq(SysType type, int sigInd, bool lambda = 0);
@@ -57,6 +68,28 @@ extern double lineIntp(double *x,double *y,double xx,int n);
 extern int XYZ2LLA(Eigen::Vector3d XYZ, Eigen::Vector3d &LLA);
 
 extern void deg2dms(double deg, double *dms);
+/* convert ddmm.mm in nmea format to deg -------------------------------------*/
+static double dmm2deg(double dmm)
+{
+    return floor(dmm/100.0)+fmod(dmm,100.0)/60.0;
+}
 
 extern void EarthRotate(Eigen::Vector3d in, Eigen::Vector3d &out, double dt);
+
+/* transform geodetic to ecef position -----------------------------------------
+* transform geodetic position to ecef position
+* args   : double *pos      I   geodetic position {lat,lon,h} (rad,m)
+*          double *r        O   ecef position {x,y,z} (m)
+* return : none
+* notes  : WGS84, ellipsoidal height
+*-----------------------------------------------------------------------------*/
+extern void LLA2XYZ(const Eigen::Vector3d &lla,Eigen::Vector3d &xyz );
+
+
+
+
+
+
+
+
 #endif //GPS_COMMONINCLUDE_H

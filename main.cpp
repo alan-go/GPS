@@ -99,7 +99,6 @@ void test(GNSS *gnss){
     printf("f3 %d\n", foo[3]);
     MatrixXd A = MatrixXd::Random(6,3);
     VectorXd yp(6);yp<<2,5,3,2,6,7;
-#include <Eigen/QR>
     cout <<"ypa"<<A.colPivHouseholderQr().solve(yp)<<endl;
 
 }
@@ -119,7 +118,9 @@ int main()
     //    gnss->useGPS = false;
     //    gnss->useBeiDou = false;
     gnss->useQianXun = false;
+//    gnss->Init(0,0,0,1);
     gnss->Init(0,1,0,1);
+//    gnss->Init(0,1,1,0);
 
 
 //    gnss->StartGNSS("null",115200);
@@ -132,7 +133,7 @@ int main()
         char name[128],dat[512],temp[256],tempc;
         string ss = "0921_13_02";
 //        string ss = "0802-1";
-//        string ss = "0708-2";
+//        string ss = "0708-2.data";
 //        string ss = "0823";
 //        string ss = "0815-2";//soho novatal
 //        scanf("%s",name);
@@ -140,8 +141,7 @@ int main()
         string ssData = "../data/" + ss + ".data";
         string ssRTK = "../data/" + ss + ".rtk";
         printf("open file name:%s\n",ssRTK.data());
-        fp = fopen(ssRTK.data(),"rb");
-
+        if(fp = fopen(ssRTK.data(),"rb")){
         int k = 0;
         while (!feof(fp)){
             dat[k++] = fgetc(fp);
@@ -154,6 +154,8 @@ int main()
             }
         }
         fclose(fp);
+        } else printf("open rtk data failed \n");
+
         SV* svtemp = &gnss->svsManager->svGpss[9];
 
 //        for (int i = 0; i < svtemp->rtkData.size(); ++i) {
@@ -162,12 +164,12 @@ int main()
 ////            fprintf(gnss->logDebug,"df402,df420,%.1f,%.1f\n",svtemp->rtkData[i]->sigData[1].df402,svtemp->rtkData[i]->sigData[1].df420);
 //        }
 //        return 0;
-        fp = fopen(ssData.data(),"rb");
+        if(fp = fopen(ssData.data(),"rb")){
         while (128==fread(dat,1,128,fp)){
             gnss->serialDataManager.ScanSerialData(dat,128);
         }
         fclose(fp);
-
+        } else printf("open data failed \n");
 
     } else if('r'==command){
         gnss->StartGNSS(serialPort,115200);

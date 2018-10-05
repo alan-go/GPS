@@ -10,12 +10,18 @@
 
 class GNSS{
 public:
-    struct PosRcd{
+    class PosRcd{
+    public:
         double rcvtow;
         Eigen::Vector3d xyz, vxyz, lla;
-        PosRcd(double tow,Vector3d xyz,Vector3d vxyz, Vector3d lla):rcvtow(tow),xyz(xyz),vxyz(vxyz),lla(lla){}
+        PosRcd(double tow,Vector3d xyz,Vector3d vxyz):rcvtow(tow),xyz(xyz),vxyz(vxyz){XYZ2LLA(xyz,lla);}
+        void PrintSol(char* tip){
+            printf("%s LLA: %.7f,%.7f,%.2f\t",tip,lla(0)*180/GPS_PI,lla(1)*180/GPS_PI,lla(2));
+            printf("%s XYZ: %.7f,%.7f,%.7f\n",tip,xyz(0),lla(1),lla(2));
+        }
     };
     Eigen::Vector3d xyzDefault, llaDefault;
+    Eigen::Vector3d xyz00;
 //    Eigen::Vector3d LLA, LLAOld;
 //    vector<PosRcd> records;
     deque<PosRcd,Eigen::aligned_allocator<Eigen::Vector3d>> records;

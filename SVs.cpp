@@ -606,30 +606,40 @@ double SV::InterpRtkData(double time, int sigInd) {
     int InterpLength = 5;
 
     auto ite = rtkData.begin();
-    double distanse =100;
-    for (; ite<rtkData.end()-5 ; ite++) {
-        int temp = abs((*ite)->rtktime-time);
-        if(distanse>temp){
-            distanse = temp;
-        }
-        if(distanse<0.5)break;
+    double distanse = 100;
+//    for (; ite<rtkData.end()-5 ; ite++) {
+//        int temp = abs((*ite)->rtktime-time);
+//        if(distanse>temp){
+//            distanse = temp;
+//        }
+//        if(distanse<0.5)break;
+//    }
+//    if(distanse>=0.5)
+//    {
+//        printf("rtk data num = %d, not enough,distanse=%lf\n",rtkData.size(),distanse);
+//        return 0;
+//    }
+
+    for (; ite < rtkData.end() - 5; ite++) {
+        distanse = time - (*ite)->rtktime;
+        if(distanse>0)break;
     }
-    if(distanse>=0.5)
+    if(distanse>2)
     {
-        printf("rtk data num = %d, not enough,distanse=%lf\n",rtkData.size(),distanse);
+        printf("rtk data num size = %d, not enough,closeest distanse=%lf\n",rtkData.size(),distanse);
         return 0;
     }
-//    printf("time: %lf,%lf\n", time,(*ite)->rtktime);
+    printf("time: %lf,%lf\n", time,(*ite)->rtktime);
 
     vector<double> times, prMes, cpMes;
     for(int i=0;i<InterpLength;i++){
-        MSM4data* data = *ite+i;
+        MSM4data* data = *(ite+i);
         MSM4Cell* cell = &data->sigData[sigInd];
         if(cell->cpMes!=0){
             times.push_back(data->rtktime);
             prMes.push_back(cell->prMes);
             cpMes.push_back(cell->cpMes);
-//            printf("t=%f,pr=%f\n",data->rtktime,cell->prMes);
+            printf("t=%f,pr=%f,cp = %f\n",data->rtktime,cell->prMes,cell->cpMes);
         }
 
     }
@@ -640,6 +650,8 @@ double SV::InterpRtkData(double time, int sigInd) {
     }
     prInterp[sigInd] = InterpLine(time,times,prMes);
     cpInterp[sigInd] = InterpLine(time,times,cpMes);
+    printf("Interp:t=%f,pr=%f,cp = %f\n",time,prInterp[sigInd],cpInterp[sigInd]);
+
     return prInterp[sigInd];
 }
 

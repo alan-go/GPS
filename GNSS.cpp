@@ -8,7 +8,7 @@ GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),is
     rtkManager.serverIP_ = "60.205.8.49";
     rtkManager.port_ = 8002;
     xyzDefault<<-2.17166e+06, 4.38439e+06, 4.07802e+06;
-    llaDefault<<40.0*GPS_PI/180.0, 116.345*GPS_PI/180.0, 59.07;
+    llaDefault<<40.0*R2D, 116.345*R2D, 59.07;
 
     time_t timeNow = time(NULL);
     utcTime=gmtime(&timeNow);
@@ -111,7 +111,8 @@ int GNSS::ParseRawData(char *message, int len) {
     if(useQianXun){
 //    if(useQianXun&&isPositioned){
         if(isPositioned)solver->PositionRtkKalman();
-        else solver->PositionRtk();
+//        else solver->PositionRtk();
+        else solver->PositionSingle();
     } else{
         solver->PositionSingle();
     }

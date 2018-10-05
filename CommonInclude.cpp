@@ -89,6 +89,17 @@ void deg2dms(double deg, double *dms)
     dms[2]=a; dms[0]*=sign;
 }
 
+/* convert deg-min-sec to degree -----------------------------------------------
+* convert degree-minute-second to degree
+* args   : double *dms      I   degree-minute-second {deg,min,sec}
+* return : degree
+*-----------------------------------------------------------------------------*/
+double dms2deg(const double *dms)
+{
+    double sign=dms[0]<0.0?-1.0:1.0;
+    return sign*(fabs(dms[0])+dms[1]/60.0+dms[2]/3600.0);
+}
+
 void EarthRotate(Eigen::Vector3d in, Eigen::Vector3d &out, double dt){
     double omega = dt*Omega_e;
     Eigen::Matrix3d earthRotate(3,3);
@@ -117,5 +128,13 @@ double GetFreq(SysType type, int sigInd, bool lambda){
     result = lambda?(Light_speed/result):result;
     return result;
 }
+void LLA2XYZ(const Eigen::Vector3d &lla,Eigen::Vector3d &xyz )
+{
+    double sinp=sin(lla(0)),cosp=cos(lla(0)),sinl=sin(lla(1)),cosl=cos(lla(1));
+    double e2=FE_WGS84*(2.0-FE_WGS84),v=RE_WGS84/sqrt(1.0-e2*sinp*sinp);
 
+    xyz(0)=(v+lla(2))*cosp*cosl;
+    xyz(1)=(v+lla(2))*cosp*sinl;
+    xyz(2)=(v*(1.0-e2)+lla(2))*sinp;
+}
 

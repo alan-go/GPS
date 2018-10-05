@@ -9,6 +9,7 @@
 #include <string>
 #include <unistd.h>
 #include <boost/asio.hpp>
+#include "CommonInclude.h"
 
 
 
@@ -32,6 +33,7 @@ public:
 
     void parse_UBX(char * buffer);
 
+    int  ParaseGGA( char* gga);
     void RecordData(const std::string fileName);
 
     void ReadFromFile(const std::string fileName);

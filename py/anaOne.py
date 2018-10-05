@@ -15,6 +15,7 @@ def ana(data):
 
 if __name__=="__main__":
     path = "../log/logDebug.txt"
+    # path = "../log/log.txt"
     print("read",path)
 
     file = open(path)
@@ -22,7 +23,7 @@ if __name__=="__main__":
 
     for each in file.readlines():
         temp = each.split(',')
-        data.append(float(temp[2]))
+        data.append(float(temp[1]))
     print(len(data))
     ana(data)
     x = range(len(data))
