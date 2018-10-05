@@ -106,18 +106,23 @@ int GNSS::StopGNSS() {
 int GNSS::ParseRawData(char *message, int len) {
     printf("coutnt %d\n", count);
     if(++count<100) return -1;
-    PosSolver *solver = new PosSolver(svsManager, &rtkManager, this);
-    memcpy(solver->raw, message, len);
+
+
+    PosSolver *solverSingle = new PosSolver(svsManager, &rtkManager, this);
+    PosSolver *solverSingle2sys = new PosSolver(svsManager, &rtkManager, this);
+    PosSolver *solverRtk= new PosSolver(svsManager, &rtkManager, this);
+    PosSolver *solverKalman = new PosSolver(svsManager, &rtkManager, this);
+    memcpy(solverSingle->raw, message, len);
     if(useQianXun){
 //    if(useQianXun&&isPositioned){
-        if(isPositioned)solver->PositionRtkKalman();
-//        else solver->PositionRtk();
-        else solver->PositionSingle();
+        if(isPositioned)solverSingle->PositionRtkKalman();
+//        else solverSingle->PositionRtk();
+        else solverSingle->PositionSingle();
     } else{
-        solver->PositionSingle();
+        solverSingle->PositionSingle();
     }
     //todo:多线程算电离层会出错
-//    pthread_create(&threadPos, nullptr, PositionThread, solver);
+//    pthread_create(&threadPos, nullptr, PositionThread, solverSingle);
 
     return 1;
 }
@@ -139,7 +144,7 @@ void* GNSS::PositionThread(void *__pos) {
     _pos->PositionSingle();
 }
 
-int GNSS::AddPosRecord(GNSS::PosRcd record) {
+int GNSS::AddPosRecord(Solution record) {
     records.push_front(record);
     if(records.size()>10240)records.pop_back();
 }

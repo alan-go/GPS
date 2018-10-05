@@ -10,21 +10,12 @@
 
 class GNSS{
 public:
-    class PosRcd{
-    public:
-        double rcvtow;
-        Eigen::Vector3d xyz, vxyz, lla;
-        PosRcd(double tow,Vector3d xyz,Vector3d vxyz):rcvtow(tow),xyz(xyz),vxyz(vxyz){XYZ2LLA(xyz,lla);}
-        void PrintSol(char* tip){
-            printf("%s LLA: %.7f,%.7f,%.2f\t",tip,lla(0)*180/GPS_PI,lla(1)*180/GPS_PI,lla(2));
-            printf("%s XYZ: %.7f,%.7f,%.7f\n",tip,xyz(0),lla(1),lla(2));
-        }
-    };
+
     Eigen::Vector3d xyzDefault, llaDefault;
     Eigen::Vector3d xyz00;
 //    Eigen::Vector3d LLA, LLAOld;
-//    vector<PosRcd> records;
-    deque<PosRcd,Eigen::aligned_allocator<Eigen::Vector3d>> records;
+//    vector<Solution> records;
+    deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> records;
     double cycle[Nsys-1][Nxxs],PB[Nsys-1][Nxxs],sigmaCy[Nsys-1][Nxxs],sigmaPr[Nsys-1][Nxxs];
     Matrix<double,6,6> Pxv;
 //    Matrix<double,Ngps,1> cycleGPS,sigmaGPSCy,sigmaGPSPr;
@@ -59,7 +50,7 @@ public:
 
     int ParseRawData(char * message, int len);
 
-    int AddPosRecord(PosRcd record);
+    int AddPosRecord(Solution record);
 
 private:
     pthread_t thread1_, thread2_, threadPos;

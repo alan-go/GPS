@@ -27,15 +27,15 @@ int PosSolver::PrepareSVsData(vector<SV*> *svsOut) {
 
 ////////////
 //
-//    if (visibleSvs[0]->measureRecord.size() > 20) {
+//    if (visibleSvs[0]->measureDat.size() > 20) {
 //        for (int i = 0; i < visibleSvs.size(); i++) {
 //            SV* sv = visibleSvs[i];
 //            fprintf(gnss->log,"SV ID =  %d,%d\n", sv->type, sv->svId);
-//            for (int j = 0; j < sv->measureRecord.size(); j++) {
-//                SV::Measure* meas = &(sv->measureRecord[j]);
+//            for (int j = 0; j < sv->measureDat.size(); j++) {
+//                SV::Measure* meas = &(sv->measureDat[j]);
 //                fprintf(gnss->log,"time,pr,cp =  %.5f, %.10f,%.10f,%.10f\n", meas->tow,meas->prMes,meas->cpMes,meas->doMes);
 //            }
-//            sv->measureRecord.clear();
+//            sv->measureDat.clear();
 //        }
 //        fprintf(gnss->log,"\n\n\n\n\n\n\n\n\n\n");
 //    }
@@ -168,8 +168,8 @@ int PosSolver::PositionRtk2() {
 
     XYZ2LLA(xyz,LLA);
     gnss->isPositioned = true;
-    GNSS::PosRcd pos(rcvtow,xyz,vxyz);
-    pos.PrintSol("+++++++xyz-end");
+    Solution pos(rcvtow,xyz,vxyz);
+    pos.Show("+++++++xyz-end");
 
     fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,xyz(0),xyz(1),xyz(2));
     fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
@@ -284,8 +284,8 @@ int PosSolver::PositionRtk() {
 
     gnss->isPositioned = true;
 
-    GNSS::PosRcd pos(rcvtow,xyz,vxyz);
-    pos.PrintSol("+++++++xyz-end");
+    Solution pos(rcvtow,xyz,vxyz);
+    pos.Show("+++++++xyz-end");
     gnss->AddPosRecord(pos);
 
     fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,xyz(0),xyz(1),xyz(2));
@@ -387,9 +387,9 @@ int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
     }
     double PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
     gnss->isPositioned = true;
-    GNSS::PosRcd pos(rcvtow,xyz,vxyz);
+    Solution pos(rcvtow,xyz,vxyz);
     LLA = pos.lla;
-    pos.PrintSol("+++++++xyz-From single one mode");
+    pos.Show("+++++++xyz-From single one mode");
     gnss->AddPosRecord(pos);
     gnss->tu = tu;
 //    fprintf(gnss->logDebug,"%f\n", tu);
@@ -479,8 +479,8 @@ int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
         if(numCalcu>30)return false;
     }
     gnss->isPositioned = true;
-    GNSS::PosRcd pos(rcvtow,xyz,vxyz);
-    pos.PrintSol("+++++++xyz-end");
+    Solution pos(rcvtow,xyz,vxyz);
+    pos.Show("+++++++xyz-end");
     gnss->AddPosRecord(pos);
     gnss->tuGps = tuGps;
     gnss->tuBeiDou = tuBeiDou;
@@ -549,9 +549,6 @@ int PosSolver::ReadVisibalSvsRaw(SVs *svs,vector<SV*> &svVisable, char *raw) {
         svTemp->prMes = *(double*)(playload+16+n32);
         svTemp->cpMes = *(double*)(playload+24+n32);
         svTemp->doMes = *(float *)(playload+32+n32);
-//        printf("Measure______ %.5f,%.5f,%.5f\n", svTemp->prMes,svTemp->cpMes*19/100,svTemp->doMes);
-
-        svTemp->measureRecord.push_back(SV::Measure(rcvtow,svTemp->prMes,svTemp->cpMes,svTemp->doMes));
     }
     for (int i = 0; i < Ngps; ++i) {
         tempTrack = svs->svGpss[i].trackingState+1;
@@ -841,8 +838,8 @@ int PosSolver::PositionRtkKalman() {
         Vector3d bx = (-D*E).colPivHouseholderQr().solve(yp);
         xyzrtk = bx+base;
 //        x.head(3) = xyzrtk;
-        GNSS::PosRcd pos00(rcvtow,xyzrtk,vxyz);
-        pos00.PrintSol("+++++xyz 111111 ");
+        Solution pos00(rcvtow,xyzrtk,vxyz);
+        pos00.Show("+++++xyz 111111 ");
 
 //        cout<<D<<E<<endl;
         MatrixXd Dt = D.transpose();
@@ -881,8 +878,8 @@ int PosSolver::PositionRtkKalman() {
 
     //显示
     gnss->isPositioned = true;
-    GNSS::PosRcd pos(rcvtow,xyz,vxyz);
-    pos.PrintSol("+++++++xyz-222222");
+    Solution pos(rcvtow,xyz,vxyz);
+    pos.Show("+++++++xyz-222222");
     gnss->AddPosRecord(pos);
     cout<<"++++xyzDiff single\n"<<-gnss->xyz00<<endl;
     cout<<"++++xyzDiff rtk\n"<<xyzrtk-gnss->xyz00<<endl;

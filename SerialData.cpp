@@ -5,12 +5,9 @@
 #include "SerialData.h"
 #include "GNSS.h"
 
-#include <boost/algorithm/string.hpp>
 int SerialData::ParaseGGA( char* gga){
     printf("GGA: %s\n", gga);
     vector<string> val;
-//    boost::split(val,gga, boost::is_any_of(","),boost::token_compress_off);
-
     auto split = []( char* str,char c,vector<string> &result){
         char temp[16],*p = str;
         int k=0;
@@ -79,8 +76,7 @@ int SerialData::ParaseGGA( char* gga){
 //    trace(5,"decode_nmeagga: %s rr=%.3f %.3f %.3f stat=%d ns=%d hdop=%.1f ua=%c um=%c\n",
 //          time_str(sol->time,0),sol->rr[0],sol->rr[1],sol->rr[2],sol->stat,sol->ns,
 //          hdop,ua,um);
-
-    return 1;
+    return 0;
 }
 
 SerialData::SerialData() :
@@ -174,9 +170,9 @@ void SerialData::parse_UBX(char *buffer) {
     if(0x02==(u_char)buffer[2]){
 
         if(0x15==(u_char)buffer[3]){
-            printf("\n--0--ParseRawData,%d\n",gnss->useBeiDou);
+//            printf("\n--0--ParseRawData,%d\n",gnss->useBeiDou);
             gnss->ParseRawData(buffer, lengthUBX);
-            printf("\n--1--ParseRawData,%d\n",gnss->useBeiDou);
+//            printf("\n--1--ParseRawData,%d\n",gnss->useBeiDou);
 
         }
         if(0x13==(u_char)buffer[3]){

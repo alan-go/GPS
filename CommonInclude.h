@@ -21,6 +21,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/StdVector>
+#include "GnssTime.h"
 
 using Eigen::Vector3d;
 
@@ -89,7 +90,24 @@ extern void LLA2XYZ(const Eigen::Vector3d &lla,Eigen::Vector3d &xyz );
 
 
 
-
+class Measure{
+public:
+    GnssTime time;
+    double pr,cp,slip;
+    int track{0};
+    Measure(GnssTime _time,double _pr,double _cp,double _slip = 0):time(_time),pr(_pr),cp(_cp),slip(_slip){};
+    void Show(char* tip){ printf("%s: %.3f,%.3f,%.1f\n", pr,cp,slip);}
+};
+class Solution{
+public:
+    GnssTime time;
+    Eigen::Vector3d xyz, vxyz, lla;
+    Solution(GnssTime,time,Vector3d xyz,Vector3d vxyz):time(time),xyz(xyz),vxyz(vxyz){XYZ2LLA(xyz,lla);}
+    void Show(char *tip){
+        printf("%s XYZ: %.7f,%.7f,%.7f\t",tip,xyz(0),lla(1),lla(2));
+        printf("%s LLA: %.7f,%.7f,%.2f\n",tip,lla(0)*R2D,lla(1)*R2D,lla(2));
+    }
+};
 
 
 #endif //GPS_COMMONINCLUDE_H

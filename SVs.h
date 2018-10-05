@@ -70,7 +70,6 @@ public:
     double TGD1,TGD2;
     Orbit orbit;
     double prMes, cpMes, doMes;
-    vector<Measure> measureRecord;
     double I,T;
 
     Vector3d position,sLLA;
@@ -80,6 +79,7 @@ public:
     //for RTK:
     //vector<MSM4data*>里面是不同时刻的数据，0是最近的记录
     deque<MSM4data*> rtkData;
+    deque<Measure*> measureDat;
     double prInterp[32], cpInterp[32];
     bool KalmanFirst{1};
 public:
