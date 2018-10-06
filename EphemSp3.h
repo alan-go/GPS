@@ -26,7 +26,7 @@ public:
     double dt = 15;
 public:
     EphemSp3();
-    static int ReadSp3File(string fileName, SVs *svs);
+    static int ReadSp3File(string fileName, SvAll &svs);
     static SysType code2sys(char code);
     static int Sp32ECEF(vector<Sp3Cell> &list, GnssTime interpTime, Sp3Cell &result);
     static int interpECEF(vector<Sp3Cell> &list, GnssTime interpTime, Sp3Cell &result);

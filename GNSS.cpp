@@ -1,7 +1,7 @@
 #include "GNSS.h"
 #include "EphemSp3.h"
 
-GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),isPositioned(false),ephemType(0),logOpen(0){
+GNSS::GNSS() :tu(0),tuBds(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),isPositioned(false),ephemType(0),logOpen(0){
     serialDataManager.gnss = this;
     rtkManager.gnss = this;
 
@@ -19,12 +19,13 @@ GNSS::GNSS() :tu(0),tuBeiDou(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),is
 GNSS::~GNSS() {}
 
 int GNSS::Init(int ephem, bool qianXun, bool bds, bool gps) {
-    svsManager = new SVs(bds,gps);
-    svsManager->gnss = this;
-    ephemType = ephem;
-    useQianXun = qianXun;
     useGPS = gps;
     useBeiDou = bds;
+    svsManager.gnss = this;
+    svsManager.InitAlloc();
+    svsManager.SetOpen(bds,gps);
+    ephemType = ephem;
+    useQianXun = qianXun;
     if(1==ephemType){
         if(0==EphemSp3::ReadSp3File("/home/alan/Desktop/hour20175_19.sp3",svsManager))return 0;
     } else{
@@ -41,6 +42,7 @@ int GNSS::Init(int ephem, bool qianXun, bool bds, bool gps) {
             PB[i][j]=100;
         }
     }
+    //todo
     Pxv = 10000*MatrixXd::Identity(6,6);
 }
 
@@ -104,29 +106,75 @@ int GNSS::StopGNSS() {
 }
 
 int GNSS::ParseRawData(char *message, int len) {
-    printf("coutnt %d\n", count);
-    if(++count<100) return -1;
+    if(len>256)return -1;
+    char raw[256];
+    vector<SV*> svsVisable;
+    memcpy(raw,message+6,len-6);
 
+    double rcvtow = *(double*)raw;
+    int week = *(uint16_t*)(raw+8);
+    int numMeas = *(u_int8_t*)(raw+11);
+    GnssTime rTime(week,rcvtow);
+    printf("prepare rawdata , numMesa=%d\n",numMeas);
+    if(0==numMeas)return -1;
 
-    PosSolver *solverSingle = new PosSolver(svsManager, &rtkManager, this);
-    PosSolver *solverSingle2sys = new PosSolver(svsManager, &rtkManager, this);
-    PosSolver *solverRtk= new PosSolver(svsManager, &rtkManager, this);
-    PosSolver *solverKalman = new PosSolver(svsManager, &rtkManager, this);
-    memcpy(solverSingle->raw, message, len);
-    if(useQianXun){
-//    if(useQianXun&&isPositioned){
-        if(isPositioned)solverSingle->PositionRtkKalman();
-//        else solverSingle->PositionRtk();
-        else solverSingle->PositionSingle();
-    } else{
-        solverSingle->PositionSingle();
+    for(u_int8_t n = 0;n<numMeas;n++){
+        int n32 = n*32;
+        uint8_t gnssId = *(uint8_t *)(raw+36+n32);
+        uint8_t svId = *(uint8_t *)(raw+37+n32);
+        double prMes = *(double*)(raw+16+n32);
+        double cpMes = *(double*)(raw+24+n32);
+        double doMes = *(float *)(raw+32+n32);
+        SV* sv = svsManager.GetSv(SysType(gnssId),svId);
+        if(sv== nullptr){
+            printf("Wrong sv Id! %d,%d\n", gnssId, svId);
+            continue;
+        }
+        if((rTime-sv->measureDat.front()->time)>1.5)sv->trackCount=0;
+        else sv->trackCount++;
+        Measure *mesur = new Measure(rTime,prMes,cpMes,doMes);
+        sv->measureDat.push_front(mesur);
+        svsVisable.push_back(sv);
     }
-    //todo:多线程算电离层会出错
-//    pthread_create(&threadPos, nullptr, PositionThread, solverSingle);
-
-    return 1;
+    Test(svsVisable);
+    return 0;
 }
 
+int GNSS::Test(vector<SV *> svs) {
+    printf("coutnt %d\n", count);
+    if(++count<100) return -1;
+    PosSolver solverSingle(svsManager, &rtkManager, this);
+    PosSolver solverSingle2sys(svsManager, &rtkManager, this);
+    PosSolver solverRtk(svsManager, &rtkManager, this);
+    PosSolver solverKalman(svsManager, &rtkManager, this);
+
+//    solverSingle.
+    if(useQianXun){
+//    if(useQianXun&&isPositioned){
+        if(isPositioned)solverSingle.PositionRtkKalman();
+//        else solverSingle->PositionRtk();
+        else solverSingle.PositionSingle();
+    } else{
+        solverSingle.PositionSingle();
+    }
+
+}
+int GNSS::Peform(vector<SV *> svs) {
+    printf("coutnt %d\n", count);
+    if(++count<100) return -1;
+    PosSolver *solver = new PosSolver(svsManager, &rtkManager, this);
+    if(useQianXun){
+//    if(useQianXun&&isPositioned){
+        if(isPositioned)solver->PositionRtkKalman();
+//        else solver->PositionRtk();
+        else solver->PositionSingle();
+    } else{
+        solver->PositionSingle();
+    }
+    //todo:多线程算电离层会出错
+//    pthread_create(&threadPos, nullptr, PositionThread, solver);
+
+}
 void* GNSS::ThreadAdapterGNSS(void *__sData) {
     auto _sData= ( SerialData* ) __sData;
     _sData->StartCapture(_sData->serialPort_,_sData->baudRate,_sData->saveName);

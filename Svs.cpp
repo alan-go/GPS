@@ -1,33 +1,43 @@
-#include "SVs.h"
+#include "Svs.h"
 #include "NtripRTK.h"
 #include "EphemSp3.h"
 
-SV::SV():SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsDelta(0),ephemSp3(nullptr),trackingState(0){
+SV::SV(int id):svId(id),SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsDelta(0),ephemSp3(nullptr),trackCount(0){
     memset(bstEphemOK,0,10 * sizeof(int8_t));
 }
-SV::~SV(){}
+SV::SV(){}
 
-BeiDouSV::BeiDouSV(){}
+BeiDouSV::BeiDouSV(int id):SV(id){type = SYS_BDS;}
 BeiDouSV::~BeiDouSV(){}
-GpsSV::GpsSV(){}
+GpsSV::GpsSV(int id):SV(id){type = SYS_GPS;}
 GpsSV::~GpsSV(){}
 
 
-SVs::SVs(bool bds,bool gps){
+void SvAll::SetOpen(bool bds, bool gps) {
+    GetSys(SYS_BDS)->OpenClose(bds);
+    GetSys(SYS_GPS)->OpenClose(gps);
+}
+SvAll::SvAll(){}
+
+void SvAll::InitAlloc() {
+    SvSys sBds(SYS_BDS),sGps(SYS_GPS);
+    for (int i = 0; i < Nbds; ++i) {
+        SV* sv = new BeiDouSV(i+1);
+        sBds.table.push_back(sv);
+        sv->isBeiDouGEO = i<5?true:false;
+    }
     for(int i=0;i<Ngps;i++){
-        svGpss[i].type = SYS_GPS;
-        svGpss[i].svId = i+1;
-        svGpss[i].open = gps;
+        sGps.table.push_back(new GpsSV(i+1));
     }
-    for(int i=0;i<Nbds;i++){
-        svBeiDous[i].type = SYS_BDS;
-        svBeiDous[i].svId = i+1;
-        svBeiDous[i].isBeiDouGEO = i<5?true: false;
-        svBeiDous[i].open = bds;
-    }
+    sysAll.push_back(&sBds);
+    sysAll.push_back(&sGps);
+}
+int SvAll::AddUsed(SV *sv) {
+    svUsedAll.push_back(sv);
+    GetSys(sv->type)->used.push_back(sv);
 }
 
-SVs::~SVs(){}
+SvAll::~SvAll(){}
 
 
 bool SV::IsEphemOK(int ephemType, GnssTime time) {
@@ -69,7 +79,7 @@ bool SV::IsEphemOK(int ephemType, GnssTime time) {
 }
 
 bool SV::CalcuTime(double tow) {
-    tsv = tow - prMes/Light_speed;
+    tsv = tow - measureDat.front()->prMes/Light_speed;
     tsReal = tsv;
     //此时的钟差是没有考虑相对论效应和 TGD的
     for(int i = 0;i<5;i++){
@@ -173,7 +183,7 @@ bool SV::CalcuECEF(double tow) {
     tsReal-=tsDelta;
 }
 
-void SVs::UpdateEphemeris(char *subFrame) {
+void SvAll::UpdateEphemeris(char *subFrame) {
     char* playload = subFrame + 6;
 
     uint8_t gnssId = *(uint8_t*)(playload);
@@ -561,23 +571,16 @@ int SV::CalcuTroposhphere(double elev, double azim) {
     return 0;
 }
 
-int SV::CorrectIT(Vector3d receiverPosition, Vector3d LLA,double time) {
-    CalcuelEvationAzimuth(receiverPosition,LLA);
+int SV::CorrectIT(Vector3d pos,double time) {
+    Vector3d LLA;
+    XYZ2LLA(pos,LLA);
+    CalcuelEvationAzimuth(pos,LLA);
     printf("elevation = %lf, azim = %lf\n",elevationAngle,azimuthAngle);
     CalcuTroposhphere(elevationAngle,azimuthAngle);
     CalcuInoshphere(elevationAngle,azimuthAngle,LLA,time);
 }
 
-SV* SVs::SatTable(SysType type, int ind) {
-    switch (type){
-        case SYS_GPS:
-            return &(svGpss[ind]);
-        case SYS_BDS:
-            return &(svBeiDous[ind]);
-        default:
-            return nullptr;
-    }
-}
+
 
 bool SV::ElevGood() {
     if(0==elevationAngle)
@@ -594,8 +597,8 @@ bool SV::MeasureGood() {
     if(!measureGood){
         printf("\npr measure bad sv:%d,%02d,angle:%lf\n",type,svId,prMes);
     }
-    if (trackingState<5) {
-        printf("trackingTime %d < 5\n", trackingState);
+    if (trackCount<5) {
+        printf("trackingTime %d < 5\n", trackCount);
         return 0;
     }
 
@@ -678,3 +681,4 @@ bool SV::IsMaskOn() {
             break;
     }
 }
+

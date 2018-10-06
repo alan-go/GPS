@@ -246,7 +246,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SysType type) {
         headi+=6;
     }
 
-//    for(int n = 0; n< nSat; n++){
+//    for(int n = 0; n< nSv; n++){
 //        int m = sats[n];
 ////                printf("m,n=%d,%d\n",m,n);
 //        MSM4data *dataTemp = GetRtkRecord(m,0,type);
@@ -301,49 +301,12 @@ int NtripRTK::ParaseRtk32_1005(char *buffer) {
 }
 
 int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
-    char buferRTK[256];
 
-    for(int i = 0;i<recvLength;i++){
-        if(0xd3==(u_char)bufferRecv[i]&&0==(bufferRecv[i+1]>>2)){
-            printf("get 0xd3,i = %d.\n",i);
-            uint32_t messageLength = NetToHost32(bufferRecv+i,14,10);
-            printf("messageLength = %d\n",messageLength);
-            uint32_t checkSumGet = NetToHost32(bufferRecv+i+3+messageLength,0,24);
-            crc24Q.reset();
-            crc24Q.process_bytes(bufferRecv+i,messageLength+3);
-            if(checkSumGet==crc24Q.checksum()){
-                printf("CheckSum OK.\n");
-                memcpy(buferRTK,bufferRecv+i+3,messageLength);
-                uint32_t type = NetToHost32(buferRTK,0,12);
-                switch (type){
-                    case 1005:
-                        ParaseRtk32_1005(buferRTK);
-                        break;
-                    case 1074:
-                        ParaseMSM4(buferRTK, SYS_GPS);
-                        break;
-                    case 1084:
-                        break;
-                    case 1124:
-                        ParaseMSM4(buferRTK, SYS_BDS);
-                        break;
-                    default:
-                        break;
-                }
-
-                i+=messageLength;
-            } else{
-                printf("CheckSum failed.%d,%d\n",checkSumGet,crc24Q.checksum());
-            }
-        }
-    }
-//    ParaseMSM4(bufferRecv);
 }
 
 int NtripRTK::AddRtkRecord(MSM4data *data, SysType sys, int id) {
-    //maximum:5
-//    printf("ADD record\n");
     int maxNumber = 102400;
+    //todo;
     deque<MSM4data*> *temp;
     switch (sys){
         case SYS_GPS:

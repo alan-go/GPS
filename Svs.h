@@ -13,15 +13,6 @@ class MSM4data;
 class EphemSp3;
 class SV{
 public:
-
-    struct Measure{
-        double tow = 0;
-        double prMes = 0;
-        double cpMes = 0;
-        double doMes = 0;
-        Measure(){}
-        Measure(double tow, double prMes, double cpMes, double doMes):tow(tow),prMes(prMes),cpMes(cpMes),doMes(doMes){}
-    };
     struct Orbit{
         uint32_t AODE;//SYS_BDS
         uint32_t IODE;//SYS_GPS
@@ -53,7 +44,7 @@ public:
     };
 
     EphemSp3 *ephemSp3;
-    int trackingState;
+    int trackCount;
     bool temp = 1;
     int8_t bstEphemOK[10];
     bool isBeiDouGEO;
@@ -69,6 +60,7 @@ public:
     uint32_t a1High,a1Low;
     double TGD1,TGD2;
     Orbit orbit;
+    //todo:remove
     double prMes, cpMes, doMes;
     double I,T;
 
@@ -77,13 +69,14 @@ public:
 
     double elevationAngle,azimuthAngle;
     //for RTK:
-    //vector<MSM4data*>里面是不同时刻的数据，0是最近的记录
+    //vector<MSM4data*>里面是不同时刻的数据，0 always是最近的记录
     deque<MSM4data*> rtkData;
     deque<Measure*> measureDat;
     double prInterp[32], cpInterp[32];
     bool KalmanFirst{1};
 public:
     SV();
+    SV(int id);
     ~SV();
     bool IsEphemOK(int ephemType, GnssTime time);
     bool MeasureGood();
@@ -94,7 +87,7 @@ public:
     int CalcuelEvationAzimuth(Vector3d receiverPosition, Vector3d LLA);
     int CalcuTroposhphere(double elev,double azim);
     int CalcuInoshphere(double elev,double azim,Vector3d LLA,double time);
-    int CorrectIT(Vector3d receiverPosition, Vector3d LLA,double time);
+    int CorrectIT(Vector3d pos,double time);
     void PrintInfo(int printType);
     virtual int DecodeSubFrame(uint32_t* dwrds) = 0;
     double InterpRtkData(double time, int sigInd);
@@ -115,7 +108,7 @@ public:
     //signal number:2,3,4;  8,9,10;  14,15,16;
     SignalData B1_2I,B1_2Q,B1_2X,B3_6I,B3_6Q,B3_6X,B2_7I,B2_7Q,B2_7X;
 public:
-    BeiDouSV();
+    BeiDouSV(int id);
     ~BeiDouSV();
     int DecodeSubFrame(uint32_t* dwrds){
         if(isBeiDouGEO)DecodeD2Frame1(dwrds);
@@ -132,25 +125,55 @@ class GpsSV:public SV{
 public:
     SignalData L1_1C,L1_1P,L1_1W,L2_2C,L2_2P,L2_2W,L2_2S,L2_2L,L2_2X,L5_5I,L5_5Q,L5_5X;
 public:
-    GpsSV();
+    GpsSV(int id);
     ~GpsSV();
     int DecodeSubFrame(uint32_t* dwrds);
     SignalData* SignalTable(int index);
 };
 
-class SVs{
+class SvSys{
 public:
-    GpsSV svGpss[Ngps];
-    BeiDouSV svBeiDous[Nbds];
+    SysType type;
+    vector<SV*> table,used;
+    SvSys(SysType _type):type(_type){};
+    void OpenClose(bool state){
+        for(SV* sv:table)sv->open=state;
+    }
+};
+
+class SvAll{
+public:
     GNSS* gnss;
+//    SvSys* collect[Nsys];
+//    vector<int> sysIds;
+    vector<SvSys*> sysAll;
+    vector<SV*> svUsedAll;
 
-
+//    GpsSV svGpss[Ngps];
+//    BeiDouSV svBeiDous[Nbds];
 public:
-    SVs(bool bds,bool gps);
-//    SVs(GNSS* gnss);
-    ~SVs();
+    SvAll();
+    void SetOpen(bool bds,bool gps);
+//    SvAll(GNSS* gnss);
+    ~SvAll();
+    void InitAlloc();
     void UpdateEphemeris(char * subFrame);
-    SV* SatTable(SysType type,int ind);
+    SV* GetSv(SysType type, int ind){
+        SvSys *sys =GetSys(type);
+        if(ind>sys->table.size()+1){
+            printf("svSys Data not found!\n");
+            return nullptr;
+        }
+        return sys->table[ind];
+    }
+    SvSys* GetSys(SysType type){
+        for(SvSys* sys:sysAll){
+            if(sys->type==type)return sys;
+        }
+        printf("svSys Data not found!\n");
+        return nullptr;
+    }
+    int AddUsed(SV *sv);
 private:
 };
 

@@ -28,7 +28,7 @@ using Eigen::Vector3d;
 #define Ngps 64
 #define Nbds 64
 #define Nxxs 64
-#define Nsys 8
+#define Nsys 8//7 第7个表示任意星座
 
 
 //PI ???GPs_PI
@@ -93,16 +93,19 @@ extern void LLA2XYZ(const Eigen::Vector3d &lla,Eigen::Vector3d &xyz );
 class Measure{
 public:
     GnssTime time;
-    double pr,cp,slip;
+    double prMes,cpMes,doMes,slip;
     int track{0};
-    Measure(GnssTime _time,double _pr,double _cp,double _slip = 0):time(_time),pr(_pr),cp(_cp),slip(_slip){};
-    void Show(char* tip){ printf("%s: %.3f,%.3f,%.1f\n", pr,cp,slip);}
+    Measure(GnssTime _time,double _pr,double _cp,double _doplr=0,double _slip = 0)
+        : time(_time),prMes(_pr),cpMes(_cp),doMes(_doplr),slip(_slip){};
+    void Show(char* tip){ printf("%s: %.3f,%.3f,%.1f\n", prMes,cpMes,slip);}
 };
 class Solution{
 public:
     GnssTime time;
     Eigen::Vector3d xyz, vxyz, lla;
-    Solution(GnssTime,time,Vector3d xyz,Vector3d vxyz):time(time),xyz(xyz),vxyz(vxyz){XYZ2LLA(xyz,lla);}
+    double tu[Nsys]={0};
+    Solution(){}
+    Solution(GnssTime time,Vector3d xyz,Vector3d vxyz):time(time),xyz(xyz),vxyz(vxyz){XYZ2LLA(xyz,lla);}
     void Show(char *tip){
         printf("%s XYZ: %.7f,%.7f,%.7f\t",tip,xyz(0),lla(1),lla(2));
         printf("%s LLA: %.7f,%.7f,%.2f\n",tip,lla(0)*R2D,lla(1)*R2D,lla(2));

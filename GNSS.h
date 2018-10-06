@@ -2,7 +2,7 @@
 #define GNSS_H
 
 #include "CommonInclude.h"
-#include "SVs.h"
+#include "Svs.h"
 #include "PosSolver.h"
 #include "NtripRTK.h"
 #include "SerialData.h"
@@ -19,8 +19,8 @@ public:
     double cycle[Nsys-1][Nxxs],PB[Nsys-1][Nxxs],sigmaCy[Nsys-1][Nxxs],sigmaPr[Nsys-1][Nxxs];
     Matrix<double,6,6> Pxv;
 //    Matrix<double,Ngps,1> cycleGPS,sigmaGPSCy,sigmaGPSPr;
-    double tu, tuBeiDou, tuGps;
-    SVs *svsManager;
+    double tu, tuBds, tuGps;
+    SvAll svsManager;
     SerialData serialDataManager;
     NtripRTK rtkManager;
     std::string serialPort_, rtk_protocol_;
@@ -51,6 +51,9 @@ public:
     int ParseRawData(char * message, int len);
 
     int AddPosRecord(Solution record);
+
+    int Peform(vector<SV*> svs);
+    int Test(vector<SV*> svs);
 
 private:
     pthread_t thread1_, thread2_, threadPos;

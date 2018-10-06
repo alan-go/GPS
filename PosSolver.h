@@ -1,43 +1,42 @@
 #ifndef POSSOLVER_H
 #define POSSOLVER_H
 
-#include "SVs.h"
+#include "Svs.h"
 #include "NtripRTK.h"
 #include "CommonInclude.h"
 
-struct MeasData{
-    GnssTime time;
-    double prMes, cpMes, doMes;
-};
 
 class PosSolver{
 public:
-    SVs *svs;
+    SvAll svsBox;
     GNSS* gnss;
-    char raw[1024];
     NtripRTK *rtk;
+    double PDOP;
     double rcvtow;
-    GnssTime rTime;
-    Vector3d xyz, LLA, vxyz;
-    double tu, tuBeiDou, tuGps;
+    GnssTime timeSolver;
+    Vector3d xyz, vxyz;
+    Solution soltion;
+    vector<SV*> svsForCalcu[Nsys];
+//    double tuBds, tuGps;
+    double tu[Nsys]={0};
     int numMeas;
 public:
     PosSolver();
-    PosSolver(SVs *svs, NtripRTK *rtk, GNSS *gnss);
+    PosSolver(SvAll svs, NtripRTK *rtk, GNSS *gnss);
     ~PosSolver();
-    int PositionSingle();
+    int PositionSingle(vector<SV*> _svsIn);
     int PositionRtk();
     int PositionRtk2();
     int PositionRtkKalman();
     int MakeGGA(char *gga,Vector3d lla,GnssTime gpsTime);
 
 private:
-    vector<SV*>visibleSvs;
-    int numOfSys[Nsys],nsysUsed;
+    int sysEachNum[Nsys],sysCount;
+//    int N,N_n;
+    int nSv,nSys;
 private:
-    int PrepareSVsData(vector<SV*> *svsOut);
-    int ReadVisibalSvsRaw(SVs *svs, vector<SV*> &svVisable, char *raw);
-    int SelectSvsFromVisible(vector<SV*> &all,vector<SV*> *select);
+    int PrepareSVsData(vector<SV*> &_svsIn);
+    int SelectSvsFromVisible(vector<SV*> &all);
     int ProcessRtkData(vector<SV *> *select);
     int UpdateSvsPosition(vector<SV*> &svs, GnssTime rt, int ephType);
     int SolvePosition(vector<SV*>svsForCalcu);

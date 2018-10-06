@@ -24,7 +24,7 @@ include_directories( "/usr/local/include/eigen3" )
 ############### dependencies ######################
 
 set(SOURCE_FILES
-        SVs.cpp
+        Svs.cpp
         NtripRTK.cpp
         PosSolver.cpp
         SerialData.cpp
