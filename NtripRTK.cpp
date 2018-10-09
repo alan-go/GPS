@@ -127,22 +127,22 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SysType type) {
     int headi = 1;
     u_char temp = (u_char)byteInd[0];
     //卫星掩膜
-    for(int id=0;id<64;id++,headi++){
+    for(int i=0;i<64;i++,headi++){
         if(8==headi){
             headi=0;
             byteInd++;
             temp = (u_char)byteInd[0];
         }
         if(temp&(128>>headi)){
-            sats.push_back(id);
+            sats.push_back(i+1);
             nSat++;
 //            printf("time = %f,,",rtkTime);
-            printf("Sat:%d, ",id+1);
+            printf("Sat:%d, ",i+1);
             MSM4data *tempData = new MSM4data;
             tempData->rtktime = rtkTime;
             tempData->refID = refID;
             satsData.push_back(tempData);
-            AddRtkRecord(tempData,type,id);
+            AddRtkRecord(tempData,type,i+1);
         }
     }
     //signal信号掩膜
@@ -306,7 +306,6 @@ int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
 
 int NtripRTK::AddRtkRecord(MSM4data *data, SysType sys, int id) {
     int maxNumber = 102400;
-    //todo;
     deque<MSM4data*> *temp = &(gnss->svsManager.GetSv(sys,id)->rtkData);
     temp->push_front(data);
     if(temp->size()>maxNumber){
@@ -314,17 +313,7 @@ int NtripRTK::AddRtkRecord(MSM4data *data, SysType sys, int id) {
         temp->pop_back();
         delete(endp);
     }
-
-//    if (temp->size() == maxNumber) {
-//        for (int i = 0; i < temp->size(); ++i) {
-//            double pr = (*temp)[i]->sigData[1].prMes;
-//            double cp = (*temp)[i]->sigData[1].cpMes;
-//            printf("time = %f, pr =  %f, cp = %f\n", (*temp)[i]->rtktime, pr, cp);
-//        }
-//    }
-
     return 0;
-
 }
 
 MSM4data* NtripRTK::GetRtkRecord(int satInd, int timeInd, SysType type) {

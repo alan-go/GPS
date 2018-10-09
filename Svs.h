@@ -133,7 +133,8 @@ public:
 class SvSys{
 public:
     SysType type;
-    vector<SV*> table,used;
+    vector<SV*> table;
+
     SvSys(SysType _type):type(_type){};
     void OpenClose(bool state){
         for(SV* sv:table)sv->open=state;
@@ -158,22 +159,39 @@ public:
     ~SvAll();
     void InitAlloc();
     void UpdateEphemeris(char * subFrame);
-    SV* GetSv(SysType type, int ind){
+    SV* GetSv(SysType type, int id){
         SvSys *sys =GetSys(type);
-        if(ind>sys->table.size()+1){
-            printf("svSys Data not found!\n");
+        if(id>sys->table.size()){
+            printf("sv not found!\n");
             return nullptr;
         }
-        return sys->table[ind];
+        return sys->table[id-1];
     }
+
     SvSys* GetSys(SysType type){
+        SvSys* result= nullptr;
         for(SvSys* sys:sysAll){
-            if(sys->type==type)return sys;
+            if(sys->type==type){
+                result = sys;
+                break;
+            }
         }
-        printf("svSys Data not found!\n");
-        return nullptr;
+        if(result== nullptr)
+            printf("svSys Data not found!\n");
+        return result;
     }
-    int AddUsed(SV *sv);
+    SvSys* GetUsedSys(SysType type){
+        SvSys* result = nullptr;
+        for(SvSys* sys:sysUsed){
+            if(sys->type==type)result = sys;
+        }
+        if(nullptr==result){
+            sysUsed.push_back(new SvSys(type));
+            result = sysUsed.back();
+        }
+        return result;
+    }
+    int AddToUsed(SV *sv);
 private:
 };
 

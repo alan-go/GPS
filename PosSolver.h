@@ -18,7 +18,7 @@ public:
     Solution soltion;
     vector<SV*> svsForCalcu[Nsys];
 //    double tuBds, tuGps;
-    double tu[Nsys]={0};
+    double tu[Nsys]={0},tui;
     int numMeas;
 public:
     PosSolver();

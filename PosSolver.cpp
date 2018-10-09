@@ -19,7 +19,9 @@ PosSolver::PosSolver(SvAll svs, NtripRTK *rtk, GNSS *gnss):svsBox(svs),rtk(rtk),
     }
 }
 
-PosSolver::~PosSolver(){}
+PosSolver::~PosSolver(){
+    for(SvSys* sys:svsBox.sysUsed)delete(sys);
+}
 
 int PosSolver::PrepareSVsData(vector<SV*> &svsIn) {
     SelectSvsFromVisible(svsIn);
@@ -48,30 +50,30 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
 //    cout<<pc<<endl;
 
     while (dt_xyz_tu.norm()>threshold){
-        printf("threshould %.3f\n", dt_xyz_tu.norm());
+        printf("*******************************threshould %.3f\n", dt_xyz_tu.norm());
         cout<<"xyz"<<xyz<<endl;
         int yhead=0,xhead=3;
         MatrixXd G(nSat,3+nSys),Gt(3+nSys,nSat);
         G.fill(0);
         for(SvSys* sys:svsBox.sysUsed){
             i=0;
-            int ntemp = sys->used.size();
+            int ntemp = sys->table.size();
+            printf("ntemp %d\n", ntemp);
             if(0==ntemp)continue;
             MatrixXd E(ntemp,3);
-            for(SV* sv:sys->used){
-                printf("size =  %d\n", sys->used.size());
-                double tRotate = ((sv->position-xyz).norm()+sv->I+sv->T)/Light_speed;
+            for(SV* sv:sys->table){
+//                printf("size =  %d\n", sys->table.size());
+                double tRotate = ((sv->position-xyz).norm())/Light_speed;
                 Vector3d posRotate,e;
                 EarthRotate(sv->position,posRotate,tRotate);
                 e = posRotate-xyz;
                 double r = e.norm();
-                E.block<1,3>(i,0)<<(e).transpose();
-                printf("yhead,i %d,%d\n", yhead, i);
+                E.block<1,3>(i,0)<<(e/r).transpose();
+//                printf("yhead,i %d,%d\n", yhead, i);
                 b(yhead+i)=pc(yhead+i)-r-tu[sys->type];
                 i++;
             }
-            printf("ntemp %d\n", ntemp);
-            cout<<E<<endl;
+//            cout<<E<<endl;
             G.block(yhead,0,ntemp,3)<<-E;
             G.block(yhead,xhead,ntemp,1)<<VectorXd::Ones(ntemp);
             yhead+=ntemp;xhead++;
@@ -85,11 +87,11 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
         cout<<dt_xyz_tu<<endl;
         i=3;
         //todo:sysused:
-        for(SvSys* sys:svsBox.sysAll)
-            if(!sys->used.empty())
+        for(SvSys* sys:svsBox.sysUsed)
+            if(!sys->table.empty())
                 tu[sys->type]+=dt_xyz_tu(i++);
-        if(++count>30)return -1;
-        cout<<"xyz222"<<xyz<<endl;
+        if(++count>10)return -1;
+        cout<<"xyz222"<<endl<<xyz<<endl;
     }
     PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
     soltion = Solution(timeSolver,xyz,vxyz);
@@ -146,7 +148,6 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
 //    MatrixXd G(N,4);
 //    Matrix<double,4,4> H;
 //    while (dtxyzt.norm()>0.1){
-////    while (numCalcu<20){
 //        numCalcu++;
 //        for(int i = 0;i< N;i++){
 //            SV *sv= svsForCalcu[i];
@@ -330,16 +331,11 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
         //remain svs:
 
 
-        svsBox.AddUsed(sv);
+        svsBox.AddToUsed(sv);
        printf("+++this one useable\n");
     }
     nSat = svsBox.svUsedAll.size();
-    nSys = 0;
-    for(SvSys* sys:svsBox.sysAll)
-        if(!sys->used.empty()){
-            nSys++;
-            svsBox.sysUsed.push_back(sys);
-        }
+    nSys = svsBox.sysUsed.size();
 }
 
 int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {

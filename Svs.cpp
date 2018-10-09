@@ -20,8 +20,8 @@ void SvAll::SetOpen(bool bds, bool gps) {
 SvAll::SvAll(){}
 
 void SvAll::InitAlloc() {
-    SvSys *sBds = new SvSys(SYS_BDS);
-    SvSys *sGps = new SvSys(SYS_GPS);
+    SvSys* sBds = new SvSys(SYS_BDS);
+    SvSys* sGps = new SvSys(SYS_GPS);
     for (int i = 0; i < Nbds; ++i) {
         SV* sv = new BeiDouSV(i+1);
         sBds->table.push_back(sv);
@@ -34,10 +34,11 @@ void SvAll::InitAlloc() {
     }
     sysAll.push_back(sGps);
 }
+
 //todo get usedSys
-int SvAll::AddUsed(SV *sv) {
+int SvAll::AddToUsed(SV *sv) {
     svUsedAll.push_back(sv);
-    GetSys(sv->type)->used.push_back(sv);
+    GetUsedSys(sv->type)->table.push_back(sv);
 }
 
 SvAll::~SvAll(){}

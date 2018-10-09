@@ -146,9 +146,11 @@ int GNSS::Test(vector<SV *> svs) {
     printf("coutnt %d\n", count);
     if(++count<100) return -1;
     PosSolver solverSingle(svsManager, &rtkManager, this);
+    PosSolver solverSingle0(svsManager, &rtkManager, this);
     PosSolver solverSingle2sys(svsManager, &rtkManager, this);
     PosSolver solverRtk(svsManager, &rtkManager, this);
     PosSolver solverKalman(svsManager, &rtkManager, this);
+
 
     if(0==solverSingle.PositionSingle(svs)){
     solverSingle.soltion.Show("single solution:::");
