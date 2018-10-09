@@ -33,7 +33,7 @@ public:
 private:
     int sysEachNum[Nsys],sysCount;
 //    int N,N_n;
-    int nSv,nSys;
+    int nSat,nSys;
 private:
     int PrepareSVsData(vector<SV*> &_svsIn);
     int SelectSvsFromVisible(vector<SV*> &all);

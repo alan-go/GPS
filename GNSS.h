@@ -8,6 +8,7 @@
 #include "SerialData.h"
 #include "GnssTime.h"
 
+
 class GNSS{
 public:
 

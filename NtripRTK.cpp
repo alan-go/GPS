@@ -307,17 +307,7 @@ int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
 int NtripRTK::AddRtkRecord(MSM4data *data, SysType sys, int id) {
     int maxNumber = 102400;
     //todo;
-    deque<MSM4data*> *temp;
-    switch (sys){
-        case SYS_GPS:
-            temp = &(gnss->svsManager->svGpss[id].rtkData);
-            break;
-        case SYS_BDS:
-            temp = &(gnss->svsManager->svBeiDous[id].rtkData);
-            break;
-        default:
-            break;
-    }
+    deque<MSM4data*> *temp = &(gnss->svsManager.GetSv(sys,id)->rtkData);
     temp->push_front(data);
     if(temp->size()>maxNumber){
         MSM4data* endp = temp->back();
@@ -338,14 +328,7 @@ int NtripRTK::AddRtkRecord(MSM4data *data, SysType sys, int id) {
 }
 
 MSM4data* NtripRTK::GetRtkRecord(int satInd, int timeInd, SysType type) {
-    switch (type){
-        case SYS_GPS:
-            return gnss->svsManager->svGpss[satInd].rtkData[timeInd];
-        case SYS_BDS:
-            return gnss->svsManager->svBeiDous[satInd].rtkData[timeInd];
-        default:
-            return nullptr;
-    }
+    return gnss->svsManager.GetSv(type,satInd)->rtkData[timeInd];
 }
 
 int NtripRTK::ParaseRTK(char *buffer, int length) {

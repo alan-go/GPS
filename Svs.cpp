@@ -6,7 +6,7 @@ SV::SV(int id):svId(id),SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),
     memset(bstEphemOK,0,10 * sizeof(int8_t));
 }
 SV::SV(){}
-
+SV::~SV(){}
 BeiDouSV::BeiDouSV(int id):SV(id){type = SYS_BDS;}
 BeiDouSV::~BeiDouSV(){}
 GpsSV::GpsSV(int id):SV(id){type = SYS_GPS;}
@@ -20,17 +20,19 @@ void SvAll::SetOpen(bool bds, bool gps) {
 SvAll::SvAll(){}
 
 void SvAll::InitAlloc() {
-    SvSys sBds(SYS_BDS),sGps(SYS_GPS);
+    SvSys *sBds = new SvSys(SYS_BDS);
+    SvSys *sGps = new SvSys(SYS_GPS);
     for (int i = 0; i < Nbds; ++i) {
         SV* sv = new BeiDouSV(i+1);
-        sBds.table.push_back(sv);
+        sBds->table.push_back(sv);
         sv->isBeiDouGEO = i<5?true:false;
     }
+    sysAll.push_back(sBds);
+
     for(int i=0;i<Ngps;i++){
-        sGps.table.push_back(new GpsSV(i+1));
+        sGps->table.push_back(new GpsSV(i+1));
     }
-    sysAll.push_back(&sBds);
-    sysAll.push_back(&sGps);
+    sysAll.push_back(sGps);
 }
 int SvAll::AddUsed(SV *sv) {
     svUsedAll.push_back(sv);
@@ -185,35 +187,18 @@ bool SV::CalcuECEF(double tow) {
 
 void SvAll::UpdateEphemeris(char *subFrame) {
     char* playload = subFrame + 6;
-
     uint8_t gnssId = *(uint8_t*)(playload);
     uint8_t svId = *(uint8_t*)(playload + 1);
     uint8_t numWords = *(uint8_t*)(playload+4);
-    SV* sv;
-
 //    printf("Update subframe;;gnssid:%d,svid:%d\n",gnssId,svId);
-
     char* tmp = playload+8;
-
     if(10==numWords){
         uint32_t dwrds[10];
         for(int i=0;i<10;i++) {
             dwrds[i] = *(uint32_t*)(tmp+4*i);
         }
-        switch (gnssId){
-            case 0:
-                sv = &(svGpss[svId-1]);
-//                svGpss[svId-1].DecodeSubFrame(dwrds);
-                break;
-            case 3:
-                sv = &(svBeiDous[svId-1]);
-//                svBeiDous[svId-1].DecodeSubFrame(dwrds);
-                break;
-        }
-        sv->DecodeSubFrame(dwrds);
+        GetSv(SysType(gnssId),svId)->DecodeSubFrame(dwrds);
     }
-
-
 }
 
 uint32_t SV::Read1Word(uint32_t word, int length, int head, bool isInt) {
@@ -593,9 +578,10 @@ bool SV::ElevGood() {
 }
 
 bool SV::MeasureGood() {
-    measureGood = prMes<45e6&&prMes>15e6;
+    Measure *temp = measureDat.front();
+    measureGood = temp->prMes<45e6&&temp->prMes>15e6;
     if(!measureGood){
-        printf("\npr measure bad sv:%d,%02d,angle:%lf\n",type,svId,prMes);
+        printf("\npr measure bad sv:%d,%02d,angle:%lf\n",type,svId,temp->prMes);
     }
     if (trackCount<5) {
         printf("trackingTime %d < 5\n", trackCount);

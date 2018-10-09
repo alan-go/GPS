@@ -2,7 +2,6 @@
 #define SVS_H
 
 #include "CommonInclude.h"
-#include "GnssTime.h"
 
 using namespace std;
 using namespace Eigen;
@@ -61,7 +60,7 @@ public:
     double TGD1,TGD2;
     Orbit orbit;
     //todo:remove
-    double prMes, cpMes, doMes;
+//    double prMes, cpMes, doMes;
     double I,T;
 
     Vector3d position,sLLA;
@@ -146,6 +145,7 @@ public:
     GNSS* gnss;
 //    SvSys* collect[Nsys];
 //    vector<int> sysIds;
+
     vector<SvSys*> sysAll;
     vector<SV*> svUsedAll;
 

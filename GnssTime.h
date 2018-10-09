@@ -5,7 +5,11 @@
 #ifndef GPS_GNSSTIME_H
 #define GPS_GNSSTIME_H
 
-#include "CommonInclude.h"
+#include <string>
+#include <time.h>
+#include <cmath>
+#include <string.h>
+//#include "CommonInclude.h"
 #define MAXLEAPS 64
 const static double gpst0[]={1980,1, 6,0,0,0}; /* gps time reference */
 const static double gst0 []={1999,8,22,0,0,0}; /* galileo system time reference */

@@ -106,8 +106,8 @@ int GNSS::StopGNSS() {
 }
 
 int GNSS::ParseRawData(char *message, int len) {
-    if(len>256)return -1;
-    char raw[256];
+    if(len>2048)return -1;
+    char raw[2048];
     vector<SV*> svsVisable;
     memcpy(raw,message+6,len-6);
 
@@ -115,7 +115,7 @@ int GNSS::ParseRawData(char *message, int len) {
     int week = *(uint16_t*)(raw+8);
     int numMeas = *(u_int8_t*)(raw+11);
     GnssTime rTime(week,rcvtow);
-    printf("prepare rawdata , numMesa=%d\n",numMeas);
+    printf("prepare rawdata ,len = %d numMesa=%d\n",len,numMeas);
     if(0==numMeas)return -1;
 
     for(u_int8_t n = 0;n<numMeas;n++){
@@ -130,12 +130,14 @@ int GNSS::ParseRawData(char *message, int len) {
             printf("Wrong sv Id! %d,%d\n", gnssId, svId);
             continue;
         }
-        if((rTime-sv->measureDat.front()->time)>1.5)sv->trackCount=0;
-        else sv->trackCount++;
+        if(!sv->measureDat.empty())
+            if((rTime-sv->measureDat.front()->time)>1.5)sv->trackCount=0;
+            else sv->trackCount++;
         Measure *mesur = new Measure(rTime,prMes,cpMes,doMes);
         sv->measureDat.push_front(mesur);
         svsVisable.push_back(sv);
     }
+
     Test(svsVisable);
     return 0;
 }
@@ -148,29 +150,24 @@ int GNSS::Test(vector<SV *> svs) {
     PosSolver solverRtk(svsManager, &rtkManager, this);
     PosSolver solverKalman(svsManager, &rtkManager, this);
 
-//    solverSingle.
-    if(useQianXun){
-//    if(useQianXun&&isPositioned){
-        if(isPositioned)solverSingle.PositionRtkKalman();
-//        else solverSingle->PositionRtk();
-        else solverSingle.PositionSingle();
-    } else{
-        solverSingle.PositionSingle();
-    }
+    solverSingle.PositionSingle(svs);
+    solverSingle.soltion.Show("single solution:::");
+    AddPosRecord(solverSingle.soltion);
+
 
 }
 int GNSS::Peform(vector<SV *> svs) {
     printf("coutnt %d\n", count);
     if(++count<100) return -1;
     PosSolver *solver = new PosSolver(svsManager, &rtkManager, this);
-    if(useQianXun){
-//    if(useQianXun&&isPositioned){
-        if(isPositioned)solver->PositionRtkKalman();
-//        else solver->PositionRtk();
-        else solver->PositionSingle();
-    } else{
-        solver->PositionSingle();
-    }
+//    if(useQianXun){
+////    if(useQianXun&&isPositioned){
+//        if(isPositioned)solver->PositionRtkKalman();
+////        else solver->PositionRtk();
+//        else solver->PositionSingle();
+//    } else{
+//        solver->PositionSingle();
+//    }
     //todo:多线程算电离层会出错
 //    pthread_create(&threadPos, nullptr, PositionThread, solver);
 
@@ -189,7 +186,7 @@ void* GNSS::ThreadAdapterQianXun(void *__rtk) {
 
 void* GNSS::PositionThread(void *__pos) {
     auto _pos = ( PosSolver* ) __pos;
-    _pos->PositionSingle();
+//    _pos->PositionSingle();
 }
 
 int GNSS::AddPosRecord(Solution record) {

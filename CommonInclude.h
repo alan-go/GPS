@@ -15,13 +15,13 @@
 #include <chrono>
 #include <unistd.h>
 #include <stdio.h>
-#include <time.h>
 #include <cmath>
 #include <vector>
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/StdVector>
 #include "GnssTime.h"
+
 
 using Eigen::Vector3d;
 
@@ -95,7 +95,7 @@ public:
     GnssTime time;
     double prMes,cpMes,doMes,slip;
     int track{0};
-    Measure(GnssTime _time,double _pr,double _cp,double _doplr=0,double _slip = 0)
+    Measure(GnssTime _time,double _pr,double _cp,double _doplr = 0,double _slip = 0)
         : time(_time),prMes(_pr),cpMes(_cp),doMes(_doplr),slip(_slip){};
     void Show(char* tip){ printf("%s: %.3f,%.3f,%.1f\n", prMes,cpMes,slip);}
 };

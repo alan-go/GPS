@@ -55,7 +55,7 @@ int EphemSp3::ReadSp3File(string fileName, SvAll &svs) {
             char dataType = buff[0];
             SysType tempSys =code2sys(buff[1]);
             int prn=(int)str2num(buff+2,2);
-            sv = svs->GetSv(tempSys,prn-1);
+            sv = svs.GetSv(tempSys,prn-1);
             if(sv == nullptr)continue;
             if (sv->ephemSp3 == nullptr){
                 sv->ephemSp3 = new EphemSp3;

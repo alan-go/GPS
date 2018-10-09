@@ -170,14 +170,14 @@ void SerialData::parse_UBX(char *buffer) {
     if(0x02==(u_char)buffer[2]){
 
         if(0x15==(u_char)buffer[3]){
-//            printf("\n--0--ParseRawData,%d\n",gnss->useBeiDou);
+//            printf("\n--0--ParseRawData,len = %d\n",lengthUBX);
             gnss->ParseRawData(buffer, lengthUBX);
 //            printf("\n--1--ParseRawData,%d\n",gnss->useBeiDou);
 
         }
         if(0x13==(u_char)buffer[3]){
 //            printf("\n----0----ParseBstSubFrame,%d\n",gnss->useBeiDou);
-            gnss->svsManager->UpdateEphemeris(buffer);
+            gnss->svsManager.UpdateEphemeris(buffer);
 //            printf("\n----1----ParseBstSubFrame,%d\n",gnss->useBeiDou);
         }
     }
