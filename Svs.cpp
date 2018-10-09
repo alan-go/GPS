@@ -34,6 +34,7 @@ void SvAll::InitAlloc() {
     }
     sysAll.push_back(sGps);
 }
+//todo get usedSys
 int SvAll::AddUsed(SV *sv) {
     svUsedAll.push_back(sv);
     GetSys(sv->type)->used.push_back(sv);

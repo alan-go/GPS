@@ -146,7 +146,7 @@ public:
 //    SvSys* collect[Nsys];
 //    vector<int> sysIds;
 
-    vector<SvSys*> sysAll;
+    vector<SvSys*> sysAll,sysUsed;
     vector<SV*> svUsedAll;
 
 //    GpsSV svGpss[Ngps];

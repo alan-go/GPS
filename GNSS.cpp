@@ -150,9 +150,10 @@ int GNSS::Test(vector<SV *> svs) {
     PosSolver solverRtk(svsManager, &rtkManager, this);
     PosSolver solverKalman(svsManager, &rtkManager, this);
 
-    solverSingle.PositionSingle(svs);
+    if(0==solverSingle.PositionSingle(svs)){
     solverSingle.soltion.Show("single solution:::");
     AddPosRecord(solverSingle.soltion);
+    }
 
 
 }

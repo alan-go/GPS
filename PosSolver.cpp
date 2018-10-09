@@ -31,9 +31,7 @@ int PosSolver::PrepareSVsData(vector<SV*> &svsIn) {
 int PosSolver::PositionSingle(vector<SV*> _svsIn) {
     PrepareSVsData(_svsIn);
     printf("single sinlel========== count=%d,nSat=%d,nSys=%d\n", gnss->count,nSat,nSys);
-    for(SvSys* sys:svsBox){
 
-    }
     if(nSat-nSys<4){
         printf("Not enough svs nSat,nSys=%d,%d\n",nSat,nSys);
         return -1;
@@ -47,7 +45,7 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
     for(SV* sv:svsBox.svUsedAll)
         pc(i++) = sv->measureDat.front()->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
 
-    cout<<pc<<endl;
+//    cout<<pc<<endl;
 
     while (dt_xyz_tu.norm()>threshold){
         printf("threshould %.3f\n", dt_xyz_tu.norm());
@@ -55,18 +53,19 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
         int yhead=0,xhead=3;
         MatrixXd G(nSat,3+nSys),Gt(3+nSys,nSat);
         G.fill(0);
-        for(SvSys* sys:svsBox.sysAll){
+        for(SvSys* sys:svsBox.sysUsed){
             i=0;
             int ntemp = sys->used.size();
             if(0==ntemp)continue;
             MatrixXd E(ntemp,3);
             for(SV* sv:sys->used){
+                printf("size =  %d\n", sys->used.size());
                 double tRotate = ((sv->position-xyz).norm()+sv->I+sv->T)/Light_speed;
                 Vector3d posRotate,e;
                 EarthRotate(sv->position,posRotate,tRotate);
                 e = posRotate-xyz;
                 double r = e.norm();
-                E.block<1,3>(i,0)<<(e/r).transpose();
+                E.block<1,3>(i,0)<<(e).transpose();
                 printf("yhead,i %d,%d\n", yhead, i);
                 b(yhead+i)=pc(yhead+i)-r-tu[sys->type];
                 i++;
@@ -86,7 +85,9 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
         cout<<dt_xyz_tu<<endl;
         i=3;
         //todo:sysused:
-        for(SvSys* sys:svsBox.sysAll)tu[sys->type]+=dt_xyz_tu(i++);
+        for(SvSys* sys:svsBox.sysAll)
+            if(!sys->used.empty())
+                tu[sys->type]+=dt_xyz_tu(i++);
         if(++count>30)return -1;
         cout<<"xyz222"<<xyz<<endl;
     }
@@ -328,12 +329,17 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
 //        }
         //remain svs:
 
+
         svsBox.AddUsed(sv);
        printf("+++this one useable\n");
     }
     nSat = svsBox.svUsedAll.size();
     nSys = 0;
-    for(SvSys* sys:svsBox.sysAll)nSys+=int(!sys->used.empty());
+    for(SvSys* sys:svsBox.sysAll)
+        if(!sys->used.empty()){
+            nSys++;
+            svsBox.sysUsed.push_back(sys);
+        }
 }
 
 int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
