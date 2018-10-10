@@ -89,6 +89,7 @@ SerialData::~SerialData() {
 }
 
 void SerialData::StartCapture(const std::string serialPort, unsigned int baudRate, char *saveName) {
+    sprintf(saveName,"../data/device%d_%s.data",id,gnss->timeName);
     std::ofstream outF;
     if(gnss->logOpen)outF.open(saveName,std::ofstream::binary);
     try {
@@ -165,8 +166,6 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
 }
 
 void SerialData::parse_UBX(char *buffer) {
-    //todo:
-
     if(0x02==(u_char)buffer[2]){
 
         if(0x15==(u_char)buffer[3]){
@@ -184,3 +183,18 @@ void SerialData::parse_UBX(char *buffer) {
 }
 
 
+int SerialData::StopDevice() {
+    stopCapture = true;
+    try {
+        if (thread > 0) {//(void*)0
+            pthread_join(thread, nullptr);
+        }
+        thread = 0;
+        if (sp_ != nullptr) {
+            sp_->close();
+            delete sp_;
+        }
+        sp_ = nullptr;
+    }catch (...){}
+
+}

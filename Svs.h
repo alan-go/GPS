@@ -83,6 +83,8 @@ public:
     bool IsMaskOn();
     bool CalcuECEF(double tow);
     bool CalcuTime(double tow);
+    template <typename FUN>
+    double DiffBase(FUN);
     int CalcuelEvationAzimuth(Vector3d receiverPosition, Vector3d LLA);
     int CalcuTroposhphere(double elev,double azim);
     int CalcuInoshphere(double elev,double azim,Vector3d LLA,double time);
@@ -138,6 +140,41 @@ public:
     SvSys(SysType _type):type(_type){};
     void OpenClose(bool state){
         for(SV* sv:table)sv->open=state;
+    }
+    template <typename T>
+    VectorXd DiffDouble(T FUN){
+        int N = table.size();
+        double fun0 = FUN(table[0]);
+        VectorXd result(N-1);
+        for (int i = 1; i < N; ++i) {
+            result(i-1) = fun0-FUN(table[i]);
+        }
+        return result;
+    }
+    MatrixXd GetE(Vector3d &pos,VectorXd &rs){
+        int N = table.size();
+        double r,t;
+        MatrixXd result_T(3,N);
+        Vector3d svRotate,ei;
+        for (int i = 0; i < N; ++i) {
+            SV* sv = table[i];
+            r = (sv->position-pos).norm();
+            t = (r+sv->I+sv->T)/Light_speed;
+            EarthRotate(sv->position,svRotate,t);
+            ei = svRotate-pos;
+            rs(i) = ei.norm();
+            result_T.block<3,1>(0,i)<<ei/rs(i);
+        }
+        return result_T.transpose();
+    }
+    MatrixXd GetD(){
+        int N = table.size();
+        MatrixXd D(N-1,N);
+        for (int i =1; i <N; ++i) {
+            D(i-1,i) =-1;
+            D(i-1,0) = 1;
+        }
+        return D;
     }
 };
 

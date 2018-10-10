@@ -615,3 +615,8 @@ bool SV::IsMaskOn() {
     }
 }
 
+
+template <typename FUN>
+double SV::DiffBase(FUN) {
+
+}

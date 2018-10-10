@@ -64,6 +64,7 @@ void NtripRTK::RecvThread() {
     char bufferRecv[1024];
     printf("in recv thread\n");
     FILE *fp;
+    sprintf(saveName,"../data/%s.rtk",gnss->timeName);
     if(gnss->logOpen)fp = fopen(saveName, "wb");
     while(!stopRTK) {
         auto recvLength = recv(sock_, bufferRecv, sizeof(bufferRecv), 0);

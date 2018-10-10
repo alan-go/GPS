@@ -107,8 +107,8 @@ public:
     Solution(){}
     Solution(GnssTime time,Vector3d xyz,Vector3d vxyz):time(time),xyz(xyz),vxyz(vxyz){XYZ2LLA(xyz,lla);}
     void Show(char *tip){
-        printf("%s XYZ: %.7f,%.7f,%.7f\t",tip,xyz(0),lla(1),lla(2));
-        printf("%s LLA: %.7f,%.7f,%.2f\n",tip,lla(0)*R2D,lla(1)*R2D,lla(2));
+        printf("%s LLA: %.7f,%.7f,%.2f\t",tip,lla(0)*R2D,lla(1)*R2D,lla(2));
+        printf("%s XYZ: %.7f,%.7f,%.7f\n",tip,xyz(0),lla(1),lla(2));
     }
 };
 

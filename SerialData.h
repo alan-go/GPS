@@ -16,24 +16,31 @@
 class GNSS;
 class SerialData {
 public:
+    int type,id;
     std::string serialPort_;
     boost::asio::serial_port *sp_;
     unsigned int baudRate;
-    bool stopCapture;
-    bool showData{0};
-    char saveName[64];
+    bool stopCapture{0};
+    bool showData{0},logOpen{0},paraseDara{0};
+    char saveName[128];
+    pthread_t thread;
     GNSS* gnss;
 
 public:
     SerialData();
+    SerialData(int type,int id,std::string portNane, unsigned int baudRate,bool logOpen,bool pData,GNSS* gnss)
+                : type(type),id(id),serialPort_(portNane),baudRate(baudRate),logOpen(logOpen),paraseDara(pData),gnss(gnss){};
     ~SerialData();
     void StartCapture(const std::string serialPort, unsigned int baudRate, char *saveName);
+
+    int StopDevice();
 
     void ScanSerialData(char *tmp,int transferred);
 
     void parse_UBX(char * buffer);
 
     int  ParaseGGA( char* gga);
+
     void RecordData(const std::string fileName);
 
     void ReadFromFile(const std::string fileName);

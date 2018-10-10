@@ -105,8 +105,9 @@ void test(GNSS *gnss){
 
 int main()
 {
-
     GNSS *gnss = new GNSS();
+    gnss->AddSerial(0,0,"/dev/ttyUSB0",115200,true,true);
+    gnss->AddSerial(1,1,"/dev/ttyUSB1",115200,true, false);
 //    test(gnss);
 //    return 0;
     for (int i = 0; i < 5; ++i) gnss->svMaskBds[i]=0;
@@ -158,7 +159,7 @@ int main()
 
         if(fp = fopen(ssData.data(),"rb")){
         while (128==fread(dat,1,128,fp)){
-            gnss->serialDataManager.ScanSerialData(dat,128);
+            gnss->GetSerial(0)->ScanSerialData(dat,128);
         }
         fclose(fp);
         } else printf("open data failed \n");

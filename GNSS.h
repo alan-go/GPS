@@ -22,7 +22,7 @@ public:
 //    Matrix<double,Ngps,1> cycleGPS,sigmaGPSCy,sigmaGPSPr;
     double tu, tuBds, tuGps;
     SvAll svsManager;
-    SerialData serialDataManager;
+    vector<SerialData*> serialDataManager;
     NtripRTK rtkManager;
     std::string serialPort_, rtk_protocol_;
 
@@ -35,6 +35,7 @@ public:
     bool logOpen;
     std::FILE *log,*logRTK,*logDebug;
     struct tm *utcTime;
+    char timeName[128];
 
 public:
     GNSS();
@@ -52,6 +53,17 @@ public:
     int ParseRawData(char * message, int len);
 
     int AddPosRecord(Solution record);
+
+    int AddSerial(int id,int type,string name, unsigned int baudRate,bool logOpen,bool paraseData)
+        {serialDataManager.push_back(new SerialData(type,id,name,baudRate,logOpen,paraseData,this));};
+
+    SerialData* GetSerial(int id){
+        for(SerialData* seri:serialDataManager)
+            if(id==seri->id)
+                return seri;
+        return nullptr;
+    }
+
 
     int Peform(vector<SV*> svs);
     int Test(vector<SV*> svs);

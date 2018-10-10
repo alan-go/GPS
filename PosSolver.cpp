@@ -98,210 +98,7 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
     PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
     soltion = Solution(timeSolver,xyz,vxyz);
     return 0;
-
-
-
-
-////    return 0;
-//    printf("rcvtow = %.4f\n",rcvtow);
-//    int N = svsForCalcu[7].size();
-//    if(N<4){
-//        printf("\n\n----------calcu:%d,Not enough Svs.\n",N);
-//        return -1;
-//    } else if(4==N && sysEachNum[SYS_BDS]*sysEachNum[SYS_GPS]){
-//        printf("4 SvAll with SYS_bds and SYS_gps:%d, %d,   Unable to solve.\n",sysEachNum[SYS_BDS],sysEachNum[SYS_GPS]);
-//        return -1;
-//    } else if(0==sysEachNum[SYS_BDS]*sysEachNum[SYS_GPS]){
-//        result = SolvePosition(svsForCalcu[7]);
-//
-////        if(N>4){
-////            for (int i = 0; i < N; ++i) {
-////                vector<SV*> svsT = svsForCalcu;
-////                svsT.erase(svsT.begin()+i);
-////                SolvePosition(svsT);
-////            }
-////        }
-//
-//    } else{
-////        result = SolvePositionBeiDouGPS(svsForCalcu);
-//        result = SolvePosition(svsForCalcu[7]);
-//    }
-//
-////    if(result)
-////    delete(this);
 }
-
-//
-//int PosSolver::SolvePosition(vector<SV*>svsForCalcu) {
-//    int N = svsForCalcu.size();
-//    if(N<4)
-//        return -1;
-//    printf("\nSolve Position N = %d\n",N);
-//    Vector4d dtxyzt = Vector4d::Ones();
-//    MatrixXd pc(N,1);
-//    MatrixXd b(N,1);
-//
-//    for(int i = 0;i< N;i++){
-//        SV *sv= svsForCalcu[i];
-//        pc(i) = sv->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
-//    }
-//
-//    int numCalcu = 0;
-//    MatrixXd G(N,4);
-//    Matrix<double,4,4> H;
-//    while (dtxyzt.norm()>0.1){
-//        numCalcu++;
-//        for(int i = 0;i< N;i++){
-//            SV *sv= svsForCalcu[i];
-//            double r = (sv->position-xyz).norm();
-//            //todo 自转修正
-//            Vector3d svPositionEarthRotate;
-//            EarthRotate(sv->position,svPositionEarthRotate,r/Light_speed);
-//            r = (svPositionEarthRotate-xyz).norm();
-//
-//            b(i) = pc(i)-r-tui;
-//            G(i,0) = (xyz(0)-svPositionEarthRotate(0))/r;  //x
-//            G(i,1) = (xyz(1)-svPositionEarthRotate(1))/r;  //y
-//            G(i,2) = (xyz(2)-svPositionEarthRotate(2))/r;  //z
-//            G(i,3) = 1;
-//        }
-//        MatrixXd GT = G.transpose();
-//        H = (GT*G).inverse();
-//        dtxyzt = H*GT*b;
-//
-////        cout<<"b = "<<b<<endl;
-//        cout<<"dt = "<<dtxyzt<<endl;
-//        xyz += dtxyzt.head(3);
-//        tui+=dtxyzt(3);
-////        cout<<"++++++++++++xyzt\n"<<xyz<<endl;
-////        cout<<"xyzNorm\n"<<xyz.norm()<<endl;
-////        XYZ2LLA(xyz,LLA);
-////        cout<<"++++++++++++LLA\n"<<LLA<<endl;
-//        printf("num = %d, norm = %lf\n",numCalcu,dtxyzt.norm());
-//        if(numCalcu>30)return false;
-//    }
-//    double PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
-//    gnss->isPositioned = true;
-//    Solution pos(rcvtow,xyz,vxyz);
-//    LLA = pos.lla;
-//    pos.Show("+++++++xyz-From single one mode");
-//    gnss->AddPosRecord(pos);
-//    gnss->tu = tui;
-////    fprintf(gnss->logDebug,"%f\n", tui);
-//
-//    fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f, PDOP=%.2f\n",rcvtow,xyz(0),xyz(1),xyz(2),PDOP);
-//    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(0)*180/GPS_PI,LLA(1)*180/GPS_PI,LLA(2));
-//    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(0),LLA(1),LLA(2));
-//
-////    cout<<"++++++++++++LLA\n"<<LLA*180/GPS_PI<<endl;
-//
-//    printf("rcvtow = %lf\n",rcvtow);
-//    for(int i=0;i<N;i++)
-//    {
-//        double prres = b(i);
-//        SV *svTemp = svsForCalcu[i];
-////        svTemp->CalcuelEvationAzimuth(xyz,LLA);
-//        printf("svsVis:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,%f\n",rcvtow,
-//               svTemp->type,svTemp->svId,svTemp->prMes,prres,svTemp->elevationAngle);
-//        fprintf(gnss->log,"svsVis:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
-//                svTemp->type,svTemp->svId,svTemp->prMes,prres,
-//                svTemp->position.norm(),svTemp->position(0),svTemp->position(1),svTemp->position(2));
-//    }
-//
-//    printf("PDOP = %lf\n",PDOP);
-//    return 1;
-//}
-//
-//int PosSolver::SolvePositionBeiDouGPS(vector<SV*>svsForCalcu){
-//    int N = svsForCalcu.size();
-//    printf("\nSolve Position SYS_GPS-SYS_BDS, N = %d\n",N);
-//    VectorXd dtxyzBG(5);
-//    Matrix<double, 5,5> H;
-//    dtxyzBG<<1,1,1,1,1;
-//    MatrixXd pc(N,1);
-//    MatrixXd b(N,1);
-//
-//    for(int i = 0;i< N;i++){
-//        SV *sv= svsForCalcu[i];
-//        pc(i) = sv->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
-//    }
-//
-//    int numCalcu = 0;
-//    while (dtxyzBG.norm()>0.1){
-//        numCalcu++;
-//        MatrixXd G(N,5);
-//        for(int i = 0;i< N;i++){
-//            SV *sv= svsForCalcu[i];
-////            cout<<"rxyz=\n"<<xyz<<endl;
-//            double r = (sv->position-xyz).norm();
-//            //自转修正,这个我需要考虑一下是不是在这里处理
-//            double omegat = r/Light_speed*Omega_e;
-//            Matrix<double,3,3>earthRotate;
-//            earthRotate<<cos(omegat),sin(omegat),0,-sin(omegat),cos(omegat),0,0,0,1;
-//            Vector3d svPositionEarthRotate = earthRotate*sv->position;
-////            cout<<"positon = \n"<<sv->position<<endl;
-////            cout<<"earthRotate = \n"<<earthRotate<<endl;
-////            cout<<"positionRotate = \n"<<svPositionEarthRotate<<endl;
-//            r = (svPositionEarthRotate-xyz).norm();
-////            printf("r=%.10f\n",r);
-////            r = (sv->position-rxyz).norm()+(sv->position(0)*rxyz(1)-sv->position(1)*rxyz(0))*Omega_e/Light_speed;
-////            printf("r=%.10f\n",r);
-////            printf("r=%.10f\n",(sv->position-rxyz).norm());
-//
-//            G(i,0) = (xyz(0)-svPositionEarthRotate(0))/r;  //x
-//            G(i,1) = (xyz(1)-svPositionEarthRotate(1))/r;  //y
-//            G(i,2) = (xyz(2)-svPositionEarthRotate(2))/r;  //z
-//            G(i,3) = (SYS_BDS==sv->type)?1:0;
-//            G(i,4) = (SYS_GPS==sv->type)?1:0;
-////            b(i) = pc(i)-r-tuBds-tuGps;  //这里的r需要考虑一下
-//            b(i) = pc(i)-r-tuBds*G(i,3)-tuGps*G(i,4);  //这里的r需要考虑一下
-//
-//        }
-//        MatrixXd GT = G.transpose();
-//        H = (GT*G).inverse();
-//        dtxyzBG = H*GT*b;
-//
-////        cout<<"G=\n"<<G<<endl;
-////        cout<<"GTG=\n"<<GT*G<<endl;
-////        cout<<"GTGi=\n"<<(GT*G).inverse()<<endl;
-////        cout<<"b = "<<b<<endl;
-//        cout<<"dt = "<<dtxyzBG<<endl;
-//        xyz += dtxyzBG.head(3);
-//        tuBds+=dtxyzBG(3);
-//        tuGps+=dtxyzBG(4);
-//        printf("tuGps,tuBds %.15f,%.15f\n", tuGps / Light_speed, tuBds / Light_speed);
-//        printf("num = %d, norm = %lf\n",numCalcu,dtxyzBG.norm());
-//        if(numCalcu>30)return false;
-//    }
-//    gnss->isPositioned = true;
-//    Solution pos(rcvtow,xyz,vxyz);
-//    pos.Show("+++++++xyz-end");
-//    gnss->AddPosRecord(pos);
-//    gnss->tuGps = tuGps;
-//    gnss->tuBds = tuBds;
-//    cout<<"++++++++++++rxyzt\n"<<xyz<<endl;
-//    printf("++++++++++++LLA === %lf,%lf,%lf\n",LLA(0)*180/GPS_PI,LLA(1)*180/GPS_PI,LLA(2));
-//    double PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
-//    printf("PDOP = %lf\n",PDOP);
-//
-//    fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f, PDOP=%.2f\n",rcvtow,xyz(0),xyz(1),xyz(2),PDOP);
-//    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(0)*180/GPS_PI,LLA(1)*180/GPS_PI,LLA(2));
-//
-//    printf("rcvtow = %lf\n",rcvtow);
-//    for(int i=0;i<N;i++)
-//    {
-//        double prres = b(i);
-//        SV *svTemp = svsForCalcu[i];
-////        svTemp->CalcuelEvationAzimuth(xyz,LLA);
-//        printf("svsVis:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,%f\n",rcvtow,
-//               svTemp->type,svTemp->svId,svTemp->prMes,prres,svTemp->elevationAngle);
-//        fprintf(gnss->log,"svsVis:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
-//                svTemp->type,svTemp->svId,svTemp->prMes,prres,
-//                svTemp->position.norm(),svTemp->position(0),svTemp->position(1),svTemp->position(2));
-//    }
-//
-//    return 1;
-//}
 
 
 
@@ -431,6 +228,298 @@ int PosSolver::MakeGGA(char *gga, Vector3d lla, GnssTime gpsTime) {
     return p-(char *)gga;
 }
 
+
+
+int PosSolver::ProcessRtkData() {
+    int sigInd = 1;
+    nSat=nSys=0;
+    SvAll tempAll = gnss->svsManager;
+    svsBox.svUsedAll.clear();
+
+    for(SvSys* sys:svsBox.sysUsed){
+        double elevMax = -5;
+        int svCentreInd = -2;
+        SV* svCectre;
+        vector<SV*> temp,temp0;
+        temp.swap(sys->table);
+        int n = temp.size(),nRtk = 0;
+        for(SV* sv:temp){
+            double time = timeSolver.tow - tu[sv->type]/Light_speed;
+            if(sv->type==SYS_BDS)time-=14;
+
+            double pr = sv->InterpRtkData(time,sigInd);
+            if(0!=pr){
+                nRtk++;
+                temp0.push_back(sv);
+                if(sv->elevationAngle>elevMax){
+                    elevMax = sv->elevationAngle;
+                    svCectre = sv;
+                    svCentreInd = nRtk-1;
+                }
+            }
+            if(temp0.size()>1){
+                temp0.erase(temp0.begin()+svCentreInd);
+                svsBox.AddToUsed(sv);
+                for(SV* svv:temp0)svsBox.AddToUsed(svv);
+            }
+        }
+    }
+    nSat = svsBox.svUsedAll.size();
+    nSys = svsBox.sysUsed.size();
+}
+
+//int PosSolver::PositionRtk2() {
+//    int sigInd = 1;
+//    //插值
+//    int result = 0;
+//
+//    vector<SV*> svs0[Nsys], svs1;
+//    PrepareSVsData(svs0);
+//    printf("rcvtow = %lf\n",rcvtow);
+//    //暂时单模计算
+//    if(sysEachNum[SYS_BDS]*sysEachNum[SYS_GPS]){
+//        printf("NOT one sys mode ------------count 0\n");
+////        return -1;
+//    }
+//    SV* svCectre;
+//    int svCentreInd = -2;
+//    double elevMax = -5;
+////    gnss->rtkManager.mtxData.lock();
+//    printf(" positon rtk lock 0\n");
+//    printf("---------calcu N0 = %d\n",svs0[7].size());
+//
+//    for(int i = 0,k=-1; i<svs0[7].size();i++){
+//        SV* sv = svs0[7][i];
+//        double time = rcvtow - tui/Light_speed;
+//        if(sv->type==SYS_BDS)time-=14;
+//        double pr = sv->InterpRtkData(time,sigInd);
+//        printf("--sv:%d,%d-pr time= %f, interp = %f\n",
+//               sv->type,sv->svId,time,pr);
+//
+//        if(0.0!=pr){
+//            svs1.push_back(sv);
+//            k++;
+//            printf("angle = %.2f\n",sv->elevationAngle);
+//            if(sv->elevationAngle>elevMax){
+//                elevMax = sv->elevationAngle;
+//                svCectre = sv;
+//                svCentreInd = k;
+//            }
+//        }
+//    }
+//    printf("---------calcu N1 = %d, svCentreInd = %d\n",svs1.size(),svCentreInd);
+//    if(svs1.size()<4){
+//        printf("N1 not enough");
+//        return -1;
+//    }
+//
+//    svs1.erase(svs1.begin()+svCentreInd);
+//
+//    int N = svs1.size();
+//    printf("---------calcu N2 = %d\n",N);
+//    if(N<4){
+////        gnss->rtkManager.mtxData.unlock();
+//        return -1;
+//    }
+//    MatrixXd pur(N,1);
+//    MatrixXd Gur(N,4);
+//
+//    double pur0 = svCectre->prMes - svCectre->prInterp[sigInd];
+//    printf("pur0-base:%f - %f\n",svCectre->prMes ,svCectre->prInterp[sigInd]);
+//    Vector3d referBase = gnss->rtkManager.ECEF_XYZ;
+//    Vector3d referLLA;
+//    XYZ2LLA(referBase,referLLA);
+////    printf("++++++++++++BaseLLA === %lf,%lf,%lf\n",referLLA(1)*180/GPS_PI,referLLA(0)*180/GPS_PI,referLLA(2));
+//
+//    Vector3d Ir0 = svCectre->position - referBase;
+//    Ir0 = Ir0/Ir0.norm();
+//
+//    printf("start 2222222222222SSSSSSSSSSSSSSSSS\n");
+//
+//    for(int i=0;i<N;i++){
+//        SV* sv = svs1[i];
+//        pur(i) = (sv->prMes-sv->prInterp[sigInd])-pur0;
+//        printf("sv in N2:%d,%d,%f\n",sv->type,sv->svId,pur(i));
+//
+//        Vector3d Iri = sv->position - referBase;
+//        Iri = Iri/Iri.norm();
+//        Vector3d Ir_0i = Ir0 - Iri;
+//        Gur(i,0) = Ir_0i(0);
+//        Gur(i,1) = Ir_0i(1);
+//        Gur(i,2) = Ir_0i(2);
+//        Gur(i,3) = double(sv->type==SYS_BDS);
+//    }
+////    printf(" positon rtk unlock 0\n");
+////    gnss->rtkManager.mtxData.unlock();
+////    printf(" positon rtk unlock 1\n");
+//    cout<<"++++++++++++Gur\n"<<Gur<<endl;
+//    cout<<"++++++++++++pur\n"<<pur<<endl;
+//
+//
+//    MatrixXd GurT = Gur.transpose();
+//    Matrix4d H = (GurT*Gur).inverse();
+////    cout<<"+++++H\n"<<H<<endl;
+//
+//    Vector4d burt = H*(GurT*pur);
+//    cout<<"++++++bur\n"<<burt<<endl;
+//
+//    xyz = referBase+burt.head(3);
+//    cout<<"++++++++++++basexyz\n"<<referBase<<endl;
+//    cout<<"++++++++++++xyz\n"<<xyz<<endl;
+//
+//    XYZ2LLA(xyz,LLA);
+//    gnss->isPositioned = true;
+//    Solution pos(rcvtow,xyz,vxyz);
+//    pos.Show("+++++++xyz-end");
+//
+//    fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,xyz(0),xyz(1),xyz(2));
+//    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
+//
+//    double pc = (svCectre->position - xyz).norm();
+//    tui = svCectre->prMes+svCectre->tsDelta*Light_speed-svCectre->I-svCectre->T-pc;
+//    gnss->tu = tui;
+//    printf("tui= %f\n", tui);
+//    delete (this);
+//}
+
+int PosSolver::PositionRtk() {
+    int sigInd = 1;
+    //插值
+    int result = 0;
+
+    vector<SV*> svs0[Nsys], svs1;
+    PrepareSVsData(svs0);
+    printf("rcvtow = %lf\n",rcvtow);
+    //暂时单模计算
+    if(sysEachNum[SYS_BDS]*sysEachNum[SYS_GPS]){
+        printf("NOT one sys mode ------------count 0\n");
+//        return -1;
+    }
+    SV* svCectre;
+    int svCentreInd = -2;
+    double elevMax = -5;
+//    gnss->rtkManager.mtxData.lock();
+    printf(" positon rtk lock 0\n");
+    printf("---------calcu N0 = %d\n",svs0[7].size());
+
+    for(int i = 0,k=-1; i<svs0[7].size();i++){
+        SV* sv = svs0[7][i];
+        double time = rcvtow - tui/Light_speed;
+        if(sv->type==SYS_BDS)time-=14;
+        double pr = sv->InterpRtkData(time,sigInd);
+        printf("--sv:%d,%d-pr time= %f, interp = %f\n",
+                sv->type,sv->svId,time,pr);
+
+        if(0.0!=pr){
+            svs1.push_back(sv);
+            k++;
+            printf("angle = %.2f\n",sv->elevationAngle);
+            if(sv->elevationAngle>elevMax){
+                elevMax = sv->elevationAngle;
+                svCectre = sv;
+                svCentreInd = k;
+            }
+        }
+    }
+    printf("---------calcu N1 = %d, svCentreInd = %d\n",svs1.size(),svCentreInd);
+    if(svs1.size()<4){
+        printf("N1 not enough");
+        return -1;
+    }
+
+    svs1.erase(svs1.begin()+svCentreInd);
+
+    int N = svs1.size();
+    printf("---------calcu N1-1 = %d\n",N);
+    if(N<3){
+//        gnss->rtkManager.mtxData.unlock();
+        return -1;
+    }
+    MatrixXd pur(N,1);
+    MatrixXd Gur(N,3);
+
+    double pur0 = svCectre->prMes - svCectre->prInterp[sigInd];
+    printf("pur0-base:%f - %f\n",svCectre->prMes ,svCectre->prInterp[sigInd]);
+    Vector3d referBase = gnss->rtkManager.ECEF_XYZ;
+    Vector3d referLLA;
+    XYZ2LLA(referBase,referLLA);
+//    printf("++++++++++++BaseLLA === %lf,%lf,%lf\n",referLLA(1)*180/GPS_PI,referLLA(0)*180/GPS_PI,referLLA(2));
+
+    Vector3d Ir0 = svCectre->position - referBase;
+    Ir0 = Ir0/Ir0.norm();
+
+    printf("start 2222222222222SSSSSSSSSSSSSSSSS\n");
+
+    for(int i=0;i<N;i++){
+        SV* sv = svs1[i];
+        pur(i) = (sv->prMes-sv->prInterp[sigInd])-pur0;
+        printf("sv in N2:%d,%d,%f\n",sv->type,sv->svId,pur(i));
+
+        Vector3d svPositionEarthRotate;
+        EarthRotate(sv->position,svPositionEarthRotate,(sv->position - xyz).norm()/Light_speed);
+
+        Vector3d Iri = svPositionEarthRotate - referBase;
+        Iri = Iri/Iri.norm();
+        Vector3d Ir_0i = Ir0 - Iri;
+        Gur(i,0) = Ir_0i(0);
+        Gur(i,1) = Ir_0i(1);
+        Gur(i,2) = Ir_0i(2);
+    }
+//    printf(" positon rtk unlock 0\n");
+//    gnss->rtkManager.mtxData.unlock();
+//    printf(" positon rtk unlock 1\n");
+//    cout<<"++++++++++++Gur\n"<<Gur<<endl;
+    cout<<"++++++++++++pur\n"<<pur<<endl;
+
+
+    MatrixXd GurT = Gur.transpose();
+    Matrix3d H = (GurT*Gur).inverse();
+//    cout<<"+++++H\n"<<H<<endl;
+
+    Vector3d bur = H*(GurT*pur);
+    cout<<"++++++bur\n"<<bur<<endl;
+
+    xyz = referBase+bur;
+    cout<<"++++++++++++basexyz\n"<<referBase<<endl;
+    cout<<"++++++++++++xyz\n"<<xyz<<endl;
+
+    gnss->isPositioned = true;
+
+    Solution pos(rcvtow,xyz,vxyz);
+    pos.Show("+++++++xyz-end");
+    gnss->AddPosRecord(pos);
+
+    fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,xyz(0),xyz(1),xyz(2));
+    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
+
+    double pc = (svCectre->position - xyz).norm();
+    tui = svCectre->prMes+svCectre->tsDelta*Light_speed-svCectre->I-svCectre->T-pc;
+    gnss->tu = tui;
+    printf("tui= %f\n", tui);
+    char gga[128];
+    MakeGGA(gga,LLA,timeSolver);
+    rtk->SentGGA(gga,strlen(gga));
+    delete (this);
+}
+int PosSolver::PositionRtk(vector<SV *> _svsIn) {
+    int sigInd = 1;
+    printf("rtk pr========= count=%d,nSat=%d,nSys=%d\n", gnss->count,nSat,nSys);
+    PrepareSVsData(_svsIn);
+    ProcessRtkData();
+
+    if(nSat-nSys<4){
+        printf("Not enough svs nSat,nSys=%d,%d\n",nSat,nSys);
+        return -1;
+    }
+    VectorXd dt_xyz_tu(3+nSys),pc(nSat),b(nSat);
+    MatrixXd H(3+nSys,3+nSys);
+    dt_xyz_tu.fill(1);
+    int i =0,count =0;
+
+    for(SvSys* sys:svsBox.sysUsed){
+
+    }
+}
 //int PosSolver::PositionRtkKalman() {
 //    Vector3d xyzBackup = xyz;
 //    int sigInd = 1;
@@ -627,276 +716,4 @@ int PosSolver::MakeGGA(char *gga, Vector3d lla, GnssTime gpsTime) {
 //    fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,xyz(0),xyz(1),xyz(2));
 //    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
 //
-//}
-//
-//int PosSolver::ProcessRtkData(vector<SV *> *select) {
-//    int sigInd = 1;
-//    nSv=nSys=0;
-//    SvAll tempAll = gnss->svsManager;
-//    svsBox.svUsedAll.clear();
-//    for(SvSys* sys:svsBox.sysAll){
-//        double elevMax = -5;
-//        int svCentreInd = -2;
-//        SV* svCectre;
-//        vector<SV*> temp,temp0;
-//        temp.swap(sys->used);
-//        int n = temp.size(),nRtk = 0;
-//        for(SV* sv:temp){
-//            //todo change time
-//            double time = rcvtow - tu[sv->type]/Light_speed;
-//            if(sv->type==SYS_BDS)time-=14;
-//
-//            double pr = sv->InterpRtkData(time,sigInd);
-//            if(0!=pr){
-//                nRtk++;
-//                temp0.push_back(sv);
-//                if(sv->elevationAngle>elevMax){
-//                    elevMax = sv->elevationAngle;
-//                    svCectre = sv;
-//                    svCentreInd = nRtk-1;
-//                }
-//            }
-//            if(!temp0.empty()){
-//                temp0.erase(temp0.begin()+svCentreInd);
-//                svsBox.AddUsed(sv);
-//                for(SV* svv:temp0)svsBox.AddUsed(svv);
-//                nSys++;
-//            }
-//        }
-//    }
-//    nSv = svsBox.svUsedAll.size();
-//}
-//
-//int PosSolver::PositionRtk2() {
-//    int sigInd = 1;
-//    //插值
-//    int result = 0;
-//
-//    vector<SV*> svs0[Nsys], svs1;
-//    PrepareSVsData(svs0);
-//    printf("rcvtow = %lf\n",rcvtow);
-//    //暂时单模计算
-//    if(sysEachNum[SYS_BDS]*sysEachNum[SYS_GPS]){
-//        printf("NOT one sys mode ------------count 0\n");
-////        return -1;
-//    }
-//    SV* svCectre;
-//    int svCentreInd = -2;
-//    double elevMax = -5;
-////    gnss->rtkManager.mtxData.lock();
-//    printf(" positon rtk lock 0\n");
-//    printf("---------calcu N0 = %d\n",svs0[7].size());
-//
-//    for(int i = 0,k=-1; i<svs0[7].size();i++){
-//        SV* sv = svs0[7][i];
-//        double time = rcvtow - tui/Light_speed;
-//        if(sv->type==SYS_BDS)time-=14;
-//        double pr = sv->InterpRtkData(time,sigInd);
-//        printf("--sv:%d,%d-pr time= %f, interp = %f\n",
-//               sv->type,sv->svId,time,pr);
-//
-//        if(0.0!=pr){
-//            svs1.push_back(sv);
-//            k++;
-//            printf("angle = %.2f\n",sv->elevationAngle);
-//            if(sv->elevationAngle>elevMax){
-//                elevMax = sv->elevationAngle;
-//                svCectre = sv;
-//                svCentreInd = k;
-//            }
-//        }
-//    }
-//    printf("---------calcu N1 = %d, svCentreInd = %d\n",svs1.size(),svCentreInd);
-//    if(svs1.size()<4){
-//        printf("N1 not enough");
-//        return -1;
-//    }
-//
-//    svs1.erase(svs1.begin()+svCentreInd);
-//
-//    int N = svs1.size();
-//    printf("---------calcu N2 = %d\n",N);
-//    if(N<4){
-////        gnss->rtkManager.mtxData.unlock();
-//        return -1;
-//    }
-//    MatrixXd pur(N,1);
-//    MatrixXd Gur(N,4);
-//
-//    double pur0 = svCectre->prMes - svCectre->prInterp[sigInd];
-//    printf("pur0-base:%f - %f\n",svCectre->prMes ,svCectre->prInterp[sigInd]);
-//    Vector3d referBase = gnss->rtkManager.ECEF_XYZ;
-//    Vector3d referLLA;
-//    XYZ2LLA(referBase,referLLA);
-////    printf("++++++++++++BaseLLA === %lf,%lf,%lf\n",referLLA(1)*180/GPS_PI,referLLA(0)*180/GPS_PI,referLLA(2));
-//
-//    Vector3d Ir0 = svCectre->position - referBase;
-//    Ir0 = Ir0/Ir0.norm();
-//
-//    printf("start 2222222222222SSSSSSSSSSSSSSSSS\n");
-//
-//    for(int i=0;i<N;i++){
-//        SV* sv = svs1[i];
-//        pur(i) = (sv->prMes-sv->prInterp[sigInd])-pur0;
-//        printf("sv in N2:%d,%d,%f\n",sv->type,sv->svId,pur(i));
-//
-//        Vector3d Iri = sv->position - referBase;
-//        Iri = Iri/Iri.norm();
-//        Vector3d Ir_0i = Ir0 - Iri;
-//        Gur(i,0) = Ir_0i(0);
-//        Gur(i,1) = Ir_0i(1);
-//        Gur(i,2) = Ir_0i(2);
-//        Gur(i,3) = double(sv->type==SYS_BDS);
-//    }
-////    printf(" positon rtk unlock 0\n");
-////    gnss->rtkManager.mtxData.unlock();
-////    printf(" positon rtk unlock 1\n");
-//    cout<<"++++++++++++Gur\n"<<Gur<<endl;
-//    cout<<"++++++++++++pur\n"<<pur<<endl;
-//
-//
-//    MatrixXd GurT = Gur.transpose();
-//    Matrix4d H = (GurT*Gur).inverse();
-////    cout<<"+++++H\n"<<H<<endl;
-//
-//    Vector4d burt = H*(GurT*pur);
-//    cout<<"++++++bur\n"<<burt<<endl;
-//
-//    xyz = referBase+burt.head(3);
-//    cout<<"++++++++++++basexyz\n"<<referBase<<endl;
-//    cout<<"++++++++++++xyz\n"<<xyz<<endl;
-//
-//    XYZ2LLA(xyz,LLA);
-//    gnss->isPositioned = true;
-//    Solution pos(rcvtow,xyz,vxyz);
-//    pos.Show("+++++++xyz-end");
-//
-//    fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,xyz(0),xyz(1),xyz(2));
-//    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
-//
-//    double pc = (svCectre->position - xyz).norm();
-//    tui = svCectre->prMes+svCectre->tsDelta*Light_speed-svCectre->I-svCectre->T-pc;
-//    gnss->tu = tui;
-//    printf("tui= %f\n", tui);
-//    delete (this);
-//}
-//
-//int PosSolver::PositionRtk() {
-//    int sigInd = 1;
-//    //插值
-//    int result = 0;
-//
-//    vector<SV*> svs0[Nsys], svs1;
-//    PrepareSVsData(svs0);
-//    printf("rcvtow = %lf\n",rcvtow);
-//    //暂时单模计算
-//    if(sysEachNum[SYS_BDS]*sysEachNum[SYS_GPS]){
-//        printf("NOT one sys mode ------------count 0\n");
-////        return -1;
-//    }
-//    SV* svCectre;
-//    int svCentreInd = -2;
-//    double elevMax = -5;
-////    gnss->rtkManager.mtxData.lock();
-//    printf(" positon rtk lock 0\n");
-//    printf("---------calcu N0 = %d\n",svs0[7].size());
-//
-//    for(int i = 0,k=-1; i<svs0[7].size();i++){
-//        SV* sv = svs0[7][i];
-//        double time = rcvtow - tui/Light_speed;
-//        if(sv->type==SYS_BDS)time-=14;
-//        double pr = sv->InterpRtkData(time,sigInd);
-//        printf("--sv:%d,%d-pr time= %f, interp = %f\n",
-//                sv->type,sv->svId,time,pr);
-//
-//        if(0.0!=pr){
-//            svs1.push_back(sv);
-//            k++;
-//            printf("angle = %.2f\n",sv->elevationAngle);
-//            if(sv->elevationAngle>elevMax){
-//                elevMax = sv->elevationAngle;
-//                svCectre = sv;
-//                svCentreInd = k;
-//            }
-//        }
-//    }
-//    printf("---------calcu N1 = %d, svCentreInd = %d\n",svs1.size(),svCentreInd);
-//    if(svs1.size()<4){
-//        printf("N1 not enough");
-//        return -1;
-//    }
-//
-//    svs1.erase(svs1.begin()+svCentreInd);
-//
-//    int N = svs1.size();
-//    printf("---------calcu N1-1 = %d\n",N);
-//    if(N<3){
-////        gnss->rtkManager.mtxData.unlock();
-//        return -1;
-//    }
-//    MatrixXd pur(N,1);
-//    MatrixXd Gur(N,3);
-//
-//    double pur0 = svCectre->prMes - svCectre->prInterp[sigInd];
-//    printf("pur0-base:%f - %f\n",svCectre->prMes ,svCectre->prInterp[sigInd]);
-//    Vector3d referBase = gnss->rtkManager.ECEF_XYZ;
-//    Vector3d referLLA;
-//    XYZ2LLA(referBase,referLLA);
-////    printf("++++++++++++BaseLLA === %lf,%lf,%lf\n",referLLA(1)*180/GPS_PI,referLLA(0)*180/GPS_PI,referLLA(2));
-//
-//    Vector3d Ir0 = svCectre->position - referBase;
-//    Ir0 = Ir0/Ir0.norm();
-//
-//    printf("start 2222222222222SSSSSSSSSSSSSSSSS\n");
-//
-//    for(int i=0;i<N;i++){
-//        SV* sv = svs1[i];
-//        pur(i) = (sv->prMes-sv->prInterp[sigInd])-pur0;
-//        printf("sv in N2:%d,%d,%f\n",sv->type,sv->svId,pur(i));
-//
-//        Vector3d svPositionEarthRotate;
-//        EarthRotate(sv->position,svPositionEarthRotate,(sv->position - xyz).norm()/Light_speed);
-//
-//        Vector3d Iri = svPositionEarthRotate - referBase;
-//        Iri = Iri/Iri.norm();
-//        Vector3d Ir_0i = Ir0 - Iri;
-//        Gur(i,0) = Ir_0i(0);
-//        Gur(i,1) = Ir_0i(1);
-//        Gur(i,2) = Ir_0i(2);
-//    }
-////    printf(" positon rtk unlock 0\n");
-////    gnss->rtkManager.mtxData.unlock();
-////    printf(" positon rtk unlock 1\n");
-////    cout<<"++++++++++++Gur\n"<<Gur<<endl;
-//    cout<<"++++++++++++pur\n"<<pur<<endl;
-//
-//
-//    MatrixXd GurT = Gur.transpose();
-//    Matrix3d H = (GurT*Gur).inverse();
-////    cout<<"+++++H\n"<<H<<endl;
-//
-//    Vector3d bur = H*(GurT*pur);
-//    cout<<"++++++bur\n"<<bur<<endl;
-//
-//    xyz = referBase+bur;
-//    cout<<"++++++++++++basexyz\n"<<referBase<<endl;
-//    cout<<"++++++++++++xyz\n"<<xyz<<endl;
-//
-//    gnss->isPositioned = true;
-//
-//    Solution pos(rcvtow,xyz,vxyz);
-//    pos.Show("+++++++xyz-end");
-//    gnss->AddPosRecord(pos);
-//
-//    fprintf(gnss->log,"xyz:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,xyz(0),xyz(1),xyz(2));
-//    fprintf(gnss->log,"LLA:time = ,%.5f, pos = ,%.5f,%.5f,%.5f\n",rcvtow,LLA(1)*180/GPS_PI,LLA(0)*180/GPS_PI,LLA(2));
-//
-//    double pc = (svCectre->position - xyz).norm();
-//    tui = svCectre->prMes+svCectre->tsDelta*Light_speed-svCectre->I-svCectre->T-pc;
-//    gnss->tu = tui;
-//    printf("tui= %f\n", tui);
-//    char gga[128];
-//    MakeGGA(gga,LLA,timeSolver);
-//    rtk->SentGGA(gga,strlen(gga));
-//    delete (this);
 //}

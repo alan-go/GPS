@@ -2,9 +2,7 @@
 #include "EphemSp3.h"
 
 GNSS::GNSS() :tu(0),tuBds(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),isPositioned(false),ephemType(0),logOpen(0){
-    serialDataManager.gnss = this;
     rtkManager.gnss = this;
-
     rtkManager.serverIP_ = "60.205.8.49";
     rtkManager.port_ = 8002;
     xyzDefault<<-2.17166e+06, 4.38439e+06, 4.07802e+06;
@@ -16,7 +14,9 @@ GNSS::GNSS() :tu(0),tuBds(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),isPos
     memset(svMaskGps,1,Ngps * sizeof(int));
 }
 
-GNSS::~GNSS() {}
+GNSS::~GNSS() {
+    for(SerialData* seri:serialDataManager)delete seri;
+}
 
 int GNSS::Init(int ephem, bool qianXun, bool bds, bool gps) {
     useGPS = gps;
@@ -48,13 +48,7 @@ int GNSS::Init(int ephem, bool qianXun, bool bds, bool gps) {
 
 int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate) {
     //    rtk_protocol_ = rtk_protocol;
-    serialDataManager.serialPort_ = serial_port;
-    serialDataManager.baudRate = baudRate;
-    serialDataManager.stopCapture = false;
-    sprintf(serialDataManager.saveName,"../data/%02d%02d_%02d_%02d.data",
-            utcTime->tm_mon+1,utcTime->tm_mday,utcTime->tm_hour,utcTime->tm_min);
-    sprintf(rtkManager.saveName,"../data/%02d%02d_%02d_%02d.rtk",
-            utcTime->tm_mon+1,utcTime->tm_mday,utcTime->tm_hour,utcTime->tm_min);
+    sprintf(timeName,"%02d%02d_%02d_%02d",utcTime->tm_mon+1,utcTime->tm_mday,utcTime->tm_hour,utcTime->tm_min);
 
     if(useQianXun){
         if(!rtkManager.NtripLogin(rtk_protocol_)) {
@@ -68,8 +62,11 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
     }
 
     //todo : for temmp
-    pthread_create(&thread1_, nullptr, ThreadAdapterSerial, &serialDataManager);
-    sleep(2);
+    for(SerialData* seri:serialDataManager){
+        pthread_create(&seri->thread, nullptr, ThreadAdapterSerial, seri);
+        sleep(2);
+    }
+
     return 1;
 }
 
@@ -84,24 +81,15 @@ int GNSS::StopGNSS() {
         }
         rtkManager.sock_ = 0;
         rtkManager.stopRTK = true;
-        serialDataManager.stopCapture = true;
         if (thread2_ > 0) {//(void*)0
             pthread_join(thread2_, nullptr);
         }
         thread2_ = 0;
-        if (thread1_ > 0) {//(void*)0
-            pthread_join(thread1_, nullptr);
-        }
-        thread1_ = 0;
-        if (serialDataManager.sp_ != nullptr) {
-            serialDataManager.sp_->close();
-            delete serialDataManager.sp_;
-        }
-        serialDataManager.sp_ = nullptr;
     }
-    catch(...) {
+    catch(...) { }
+    for (SerialData* seri:serialDataManager)
+        seri->StopDevice();
 
-    }
     printf("quit Ntrip thread\n");
 }
 
