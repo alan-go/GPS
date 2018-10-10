@@ -68,7 +68,7 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
     }
 
     //todo : for temmp
-    pthread_create(&thread1_, nullptr, ThreadAdapterGNSS, &serialDataManager);
+    pthread_create(&thread1_, nullptr, ThreadAdapterSerial, &serialDataManager);
     sleep(2);
     return 1;
 }
@@ -175,7 +175,7 @@ int GNSS::Peform(vector<SV *> svs) {
 //    pthread_create(&threadPos, nullptr, PositionThread, solver);
 
 }
-void* GNSS::ThreadAdapterGNSS(void *__sData) {
+void* GNSS::ThreadAdapterSerial(void *__sData) {
     auto _sData= ( SerialData* ) __sData;
     _sData->StartCapture(_sData->serialPort_,_sData->baudRate,_sData->saveName);
     return nullptr;

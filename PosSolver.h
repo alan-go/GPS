@@ -12,7 +12,7 @@ public:
     GNSS* gnss;
     NtripRTK *rtk;
     double PDOP;
-    double rcvtow;
+//    double rcvtow;
     GnssTime timeSolver;
     Vector3d xyz, vxyz;
     Solution soltion;

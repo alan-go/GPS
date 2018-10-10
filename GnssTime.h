@@ -39,7 +39,8 @@ static double leaps[MAXLEAPS+1][7]={ /* leap seconds (y,m,d,h,m,s,utc-gpst) */
 class GnssTime {
 public:
     time_t time;
-    double sec;
+    double sec,tow;
+    int week;
 //    static double leaps[MAXLEAPS+1][7]; /* leap seconds (y,m,d,h,m,s,utc-gpst) */
 
 public:

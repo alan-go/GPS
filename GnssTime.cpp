@@ -11,7 +11,7 @@ GnssTime::GnssTime(const double *ep) {
     epoch2time(ep);
 }
 
-GnssTime::GnssTime(int week, double tow) {
+GnssTime::GnssTime(int week, double tow):week(week),tow(tow) {
     epoch2time(gpst0);
     if (tow<-1E9||1E9<tow) tow=0.0;
     time+=86400*7*week+(int)tow;

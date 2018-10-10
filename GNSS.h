@@ -59,7 +59,7 @@ public:
 private:
     pthread_t thread1_, thread2_, threadPos;
 private:
-    static void *ThreadAdapterGNSS(void *__sData);
+    static void *ThreadAdapterSerial(void *__sData);
 
     static void *ThreadAdapterQianXun(void *__rtk);
 

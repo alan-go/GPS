@@ -119,7 +119,7 @@ int main()
     //    gnss->useBeiDou = false;
     gnss->useQianXun = false;
 //    gnss->Init(0,0,0,1);
-    gnss->Init(0,1,0,1);
+    gnss->Init(0,1,1,1);
 //    gnss->Init(0,1,1,0);
 
 

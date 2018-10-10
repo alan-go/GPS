@@ -103,9 +103,9 @@ public:
 };
 
 class BeiDouSV:public SV{
-public:
-    //signal number:2,3,4;  8,9,10;  14,15,16;
-    SignalData B1_2I,B1_2Q,B1_2X,B3_6I,B3_6Q,B3_6X,B2_7I,B2_7Q,B2_7X;
+//public:
+//    //signal number:2,3,4;  8,9,10;  14,15,16;
+//    SignalData B1_2I,B1_2Q,B1_2X,B3_6I,B3_6Q,B3_6X,B2_7I,B2_7Q,B2_7X;
 public:
     BeiDouSV(int id);
     ~BeiDouSV();
@@ -116,18 +116,18 @@ public:
     }
     int DecodeD1(uint32_t* dwrds);
     int DecodeD2Frame1(uint32_t *dwrds);
-    SignalData* SignalTable(int index);
+//    SignalData* SignalTable(int index);
 
 };
 
 class GpsSV:public SV{
-public:
-    SignalData L1_1C,L1_1P,L1_1W,L2_2C,L2_2P,L2_2W,L2_2S,L2_2L,L2_2X,L5_5I,L5_5Q,L5_5X;
+//public:
+//    SignalData L1_1C,L1_1P,L1_1W,L2_2C,L2_2P,L2_2W,L2_2S,L2_2L,L2_2X,L5_5I,L5_5Q,L5_5X;
 public:
     GpsSV(int id);
     ~GpsSV();
     int DecodeSubFrame(uint32_t* dwrds);
-    SignalData* SignalTable(int index);
+//    SignalData* SignalTable(int index);
 };
 
 class SvSys{

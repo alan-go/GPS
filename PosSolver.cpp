@@ -25,6 +25,8 @@ PosSolver::~PosSolver(){
 
 int PosSolver::PrepareSVsData(vector<SV*> &svsIn) {
     SelectSvsFromVisible(svsIn);
+    if(svsBox.svUsedAll.empty()){ return -1;}
+    timeSolver = svsBox.svUsedAll.front()->measureDat.front()->time;
     UpdateSvsPosition(svsBox.svUsedAll, timeSolver, gnss->ephemType);
 
 }
@@ -34,64 +36,64 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
     PrepareSVsData(_svsIn);
     printf("single sinlel========== count=%d,nSat=%d,nSys=%d\n", gnss->count,nSat,nSys);
 
+    soltion = Solution(timeSolver,xyz,vxyz);
+    soltion.Show("0000000before");
     if(nSat-nSys<4){
         printf("Not enough svs nSat,nSys=%d,%d\n",nSat,nSys);
         return -1;
     }
-
     double threshold = 0.1;
     VectorXd dt_xyz_tu(3+nSys),pc(nSat),b(nSat);
     MatrixXd H(3+nSys,3+nSys);
     dt_xyz_tu.fill(1);
     int i =0,count =0;
-    for(SV* sv:svsBox.svUsedAll)
-        pc(i++) = sv->measureDat.front()->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
 
-//    cout<<pc<<endl;
+//    for(SV* sv:svsBox.svUsedAll)
+//        pc(i++) = sv->measureDat.front()->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
 
     while (dt_xyz_tu.norm()>threshold){
-        printf("*******************************threshould %.3f\n", dt_xyz_tu.norm());
-        cout<<"xyz"<<xyz<<endl;
         int yhead=0,xhead=3;
         MatrixXd G(nSat,3+nSys),Gt(3+nSys,nSat);
         G.fill(0);
         for(SvSys* sys:svsBox.sysUsed){
             i=0;
             int ntemp = sys->table.size();
-            printf("ntemp %d\n", ntemp);
             if(0==ntemp)continue;
             MatrixXd E(ntemp,3);
             for(SV* sv:sys->table){
-//                printf("size =  %d\n", sys->table.size());
-                double tRotate = ((sv->position-xyz).norm())/Light_speed;
+                double tRotate = ((sv->position-xyz).norm()+sv->I+sv->T)/Light_speed;
                 Vector3d posRotate,e;
                 EarthRotate(sv->position,posRotate,tRotate);
                 e = posRotate-xyz;
                 double r = e.norm();
                 E.block<1,3>(i,0)<<(e/r).transpose();
 //                printf("yhead,i %d,%d\n", yhead, i);
-                b(yhead+i)=pc(yhead+i)-r-tu[sys->type];
+//                sv->PrintInfo(1);
+                double pc = sv->measureDat.front()->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
+                b(yhead+i)=pc-r-tu[sys->type];
+//                printf("b---- %.2f,%.2f,%.2f\n",pc,r,tu[sys->type] );
                 i++;
             }
-//            cout<<E<<endl;
             G.block(yhead,0,ntemp,3)<<-E;
             G.block(yhead,xhead,ntemp,1)<<VectorXd::Ones(ntemp);
             yhead+=ntemp;xhead++;
-            cout<<"G"<<endl<<G<<endl;
         }
 //        dt_xyz_tu =  G.colPivHouseholderQr().solve(b);
         Gt = G.transpose();
         H = (Gt*G).inverse();
         dt_xyz_tu = H*Gt*b;
         xyz+=dt_xyz_tu.head(3);
-        cout<<dt_xyz_tu<<endl;
+//        cout<<"dt = "<<endl<<dt_xyz_tu<<endl;
+//        cout<<"b = "<<endl<<b<<endl;
+//        cout<<"G= "<<endl<<G<<endl;
+//        cout<<"pc = "<<endl<<pc<<endl;
+
         i=3;
         //todo:sysused:
         for(SvSys* sys:svsBox.sysUsed)
             if(!sys->table.empty())
                 tu[sys->type]+=dt_xyz_tu(i++);
         if(++count>10)return -1;
-        cout<<"xyz222"<<endl<<xyz<<endl;
     }
     PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
     soltion = Solution(timeSolver,xyz,vxyz);
@@ -341,12 +343,13 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
 int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
     vector<SV *> result;
     printf("N0= %d\n", svs.size());
+    printf("rcvtow %.3f\n", rt.tow);
     double ep[6];
     rt.time2epoch(ep);
     for(SV* sv:svs){
         Measure *measure = sv->measureDat.front();
         //todo:rcvtow calculated from rt;
-        double timeForECEF = rcvtow;
+        double timeForECEF = rt.tow;
         if(SYS_BDS == sv->type)timeForECEF-=14;
         sv->CalcuTime(timeForECEF);
 //        printf("ep = % 2.0f % 2.0f % 2.0f % 2.0f % 2.0f \n",ep[0],ep[1],ep[2],ep[3],ep[4]);
@@ -355,9 +358,9 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
 //        sv->CalcuECEF(sv->tsReal);
 //        printf("ts1 =  %.3f\n", sv->tsDelta*1e9);
 
-        fprintf(gnss->log,"svsVisBrt:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
-                sv->type,sv->svId,measure->prMes,0.0,
-                sv->position.norm(),sv->position(0),sv->position(1),sv->position(2));
+//        fprintf(gnss->log,"svsVisBrt:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
+//                sv->type,sv->svId,measure->prMes,0.0,
+//                sv->position.norm(),sv->position(0),sv->position(1),sv->position(2));
 
         Sp3Cell cell;
         GnssTime ts0 = rt;
@@ -369,9 +372,9 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
 
                 sv->position = cell.pxyz;
 
-                fprintf(gnss->log,"svsVisSp3:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
-                        sv->type,sv->svId,measure->prMes,0.0,
-                        sv->position.norm(),sv->position(0),sv->position(1),sv->position(2));
+//                fprintf(gnss->log,"svsVisSp3:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
+//                        sv->type,sv->svId,measure->prMes,0.0,
+//                        sv->position.norm(),sv->position(0),sv->position(1),sv->position(2));
 //                if(cell.ts!=0.0)sv->tsDelta = cell.ts;
 //                sv->tsDelta-=sv->TGD1;
 //                sv->PrintInfo(1);
@@ -380,6 +383,8 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
             case 0:
                 if(!sv->IsEphemOK(0,rt))return -1;
                 sv->CalcuECEF(sv->tsReal);
+//                sv->PrintInfo(0);
+//                cout<<"svpositon"<<endl<<sv->position<<endl;
                 result.push_back(sv);
 //                sv->PrintInfo(1);
                 break;
