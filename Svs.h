@@ -36,11 +36,6 @@ public:
         double b0,b1,b2,b3;
         ionosphere():a0(0),a1(0),a2(0),a3(0),b0(0),b1(0),b2(0),b3(0){}
     };
-    struct SignalData{
-        double df400,df401;
-        uint32_t df402,df420,df403;
-        SignalData():df400(0),df401(0),df402(0),df420(0),df403(0){}
-    };
 
     EphemSp3 *ephemSp3;
     int trackCount;
@@ -59,8 +54,7 @@ public:
     uint32_t a1High,a1Low;
     double TGD1,TGD2;
     Orbit orbit;
-    //todo:remove
-//    double prMes, cpMes, doMes;
+
     double I,T;
 
     Vector3d position,sLLA;
@@ -83,6 +77,7 @@ public:
     bool IsMaskOn();
     bool CalcuECEF(double tow);
     bool CalcuTime(double tow);
+    bool AddMeasure(Measure* mesr);
     template <typename FUN>
     double DiffBase(FUN);
     int CalcuelEvationAzimuth(Vector3d receiverPosition, Vector3d LLA);
@@ -136,18 +131,28 @@ class SvSys{
 public:
     SysType type;
     vector<SV*> table;
-
+    double tu;
     SvSys(SysType _type):type(_type){};
     void OpenClose(bool state){
         for(SV* sv:table)sv->open=state;
     }
+
     template <typename T>
-    VectorXd DiffDouble(T FUN){
+    VectorXd DiffDouble(T FUN,int sigId){
         int N = table.size();
-        double fun0 = FUN(table[0]);
+        double fun0 = FUN(table[0],sigId);
         VectorXd result(N-1);
         for (int i = 1; i < N; ++i) {
-            result(i-1) = fun0-FUN(table[i]);
+            result(i-1) = fun0-FUN(table[i],sigId);
+        }
+        return result;
+    }
+    template <typename T>
+    VectorXd DiffZero(T FUN,int sigId){
+        int N = table.size();
+        VectorXd result(N);
+        for (int i = 0; i < N; ++i) {
+            result(i) = FUN(table[i],sigId);
         }
         return result;
     }
@@ -232,4 +237,13 @@ public:
 private:
 };
 
+bool SV::AddMeasure(Measure *mesr) {
+    if(!measureDat.empty()){
+        Measure* latest = measureDat.front();
+        mesr->cycle = latest->cycle;
+        if(mesr->time-latest->time>1.5)trackCount=0;
+        else trackCount++;
+    }
+    measureDat.push_front(mesr);
+}
 #endif

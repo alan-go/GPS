@@ -101,6 +101,10 @@ void test(GNSS *gnss){
     VectorXd yp(6);yp<<2,5,3,2,6,7;
     cout <<"ypa"<<A.colPivHouseholderQr().solve(yp)<<endl;
 
+    VectorXd xii(5);
+    xii.fill(3);
+
+
 }
 
 int main()
@@ -108,7 +112,7 @@ int main()
     GNSS *gnss = new GNSS();
     gnss->AddSerial(0,0,"/dev/ttyUSB0",115200,true,true);
     gnss->AddSerial(1,1,"/dev/ttyUSB1",115200,true, false);
-//    test(gnss);
+    test(gnss);
 //    return 0;
     for (int i = 0; i < 5; ++i) gnss->svMaskBds[i]=0;
     gnss->log = fopen("../log/log.txt","w");

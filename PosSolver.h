@@ -12,13 +12,12 @@ public:
     GNSS* gnss;
     NtripRTK *rtk;
     double PDOP;
-//    double rcvtow;
     GnssTime timeSolver;
     Vector3d xyz, vxyz;
     Solution soltion;
     vector<SV*> svsForCalcu[Nsys];
-//    double tuBds, tuGps;
-    double tu[Nsys]={0},tui;
+
+    double tu[Nsys]={0};
     int numMeas;
 public:
     PosSolver();
@@ -31,11 +30,8 @@ public:
     int PositionRtkKalman();
     int MakeGGA(char *gga,Vector3d lla,GnssTime gpsTime);
 
-private:
-    int sysEachNum[Nsys],sysCount;
-//    int N,N_n;
     int nSat,nSys;
-private:
+
     int PrepareSVsData(vector<SV*> &_svsIn);
     int SelectSvsFromVisible(vector<SV*> &all);
     int ProcessRtkData();
@@ -44,6 +40,14 @@ private:
     int SolvePositionBeiDouGPS(vector<SV*>svsForCalcu);
     int SolvePositionCalman();
 
+};
+
+class PosSolverKalman:private PosSolver{
+public:
+    VectorXd cyclS,Pii;
+    Matrix<double,6,6> Pxv;
+
+    int PositionKalman(vector<SV*> _svsIn);
 };
 
 #endif

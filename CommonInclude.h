@@ -25,6 +25,7 @@
 
 using Eigen::Vector3d;
 
+
 #define Ngps 64
 #define Nbds 64
 #define Nxxs 64
@@ -93,11 +94,13 @@ extern void LLA2XYZ(const Eigen::Vector3d &lla,Eigen::Vector3d &xyz );
 class Measure{
 public:
     GnssTime time;
-    double prMes,cpMes,doMes,slip;
+    double prMes,cpMes,doMes;
+    double cycle{40},cycleP{100};
+    double sigmaPr{1.0},sigmaCp{0.05};
     int track{0};
-    Measure(GnssTime _time,double _pr,double _cp,double _doplr = 0,double _slip = 0)
-        : time(_time),prMes(_pr),cpMes(_cp),doMes(_doplr),slip(_slip){};
-    void Show(char* tip){ printf("%s: %.3f,%.3f,%.1f\n", prMes,cpMes,slip);}
+    Measure(GnssTime _time,double _pr,double _cp,double _doplr = 0)
+        : time(_time),prMes(_pr),cpMes(_cp),doMes(_doplr){};
+    void Show(char* tip){ printf("%s: %.3f,%.3f,%.1f\n", prMes,cpMes,cycle);}
 };
 class Solution{
 public:

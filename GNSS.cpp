@@ -1,7 +1,7 @@
 #include "GNSS.h"
 #include "EphemSp3.h"
 
-GNSS::GNSS() :tu(0),tuBds(0),tuGps(0),useGPS(1),useBeiDou(1),useQianXun(1),isPositioned(false),ephemType(0),logOpen(0){
+GNSS::GNSS() :useGPS(1),useBeiDou(1),useQianXun(1),isPositioned(false),ephemType(0),logOpen(0){
     rtkManager.gnss = this;
     rtkManager.serverIP_ = "60.205.8.49";
     rtkManager.port_ = 8002;
@@ -95,6 +95,7 @@ int GNSS::StopGNSS() {
 
 int GNSS::ParseRawData(char *message, int len) {
     if(len>2048)return -1;
+    int sigId =1;
     char raw[2048];
     vector<SV*> svsVisable;
     memcpy(raw,message+6,len-6);
@@ -113,16 +114,13 @@ int GNSS::ParseRawData(char *message, int len) {
         double prMes = *(double*)(raw+16+n32);
         double cpMes = *(double*)(raw+24+n32);
         double doMes = *(float *)(raw+32+n32);
+        cpMes *= GetFreq(SysType(gnssId),sigId,1);
         SV* sv = svsManager.GetSv(SysType(gnssId),svId);
         if(sv== nullptr){
             printf("Wrong sv Id! %d,%d\n", gnssId, svId);
             continue;
         }
-        if(!sv->measureDat.empty())
-            if((rTime-sv->measureDat.front()->time)>1.5)sv->trackCount=0;
-            else sv->trackCount++;
-        Measure *mesur = new Measure(rTime,prMes,cpMes,doMes);
-        sv->measureDat.push_front(mesur);
+        sv->AddMeasure(new Measure(rTime,prMes,cpMes,doMes));
         svsVisable.push_back(sv);
     }
 
@@ -141,9 +139,11 @@ int GNSS::Test(vector<SV *> svs) {
 
 
     if(0==solverSingle.PositionSingle(svs)){
-    solverSingle.soltion.Show("single solution:::");
-    AddPosRecord(solverSingle.soltion);
+        solverSingle.soltion.Show("single solution:::");
+        AddPosRecord(solverSingle.soltion);
     }
+    if(0== solverRtk.PositionRtk(svs))
+        solverRtk.soltion.Show("rtk pr solution:::");
 
 
 }
