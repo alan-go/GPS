@@ -91,7 +91,7 @@ SerialData::~SerialData() {
 void SerialData::StartCapture(const std::string serialPort, unsigned int baudRate, char *saveName) {
     sprintf(saveName,"../data/device%d_%s.data",id,gnss->timeName);
     std::ofstream outF;
-    if(gnss->logOpen)outF.open(saveName,std::ofstream::binary);
+    if(logOpen)outF.open(saveName,std::ofstream::binary);
     try {
         boost::asio::io_service ios;
         sp_ = new boost::asio::serial_port(ios, serialPort);
@@ -106,9 +106,10 @@ void SerialData::StartCapture(const std::string serialPort, unsigned int baudRat
                 printf ( "serial port return 0\n" );
                 continue;
             }
-//                printf ( "transferred = %d , flag = %d\n",transferred, flag );
-            if(gnss->logOpen)outF.write(tmp,transferred);
-            ScanSerialData(tmp,transferred);
+//            printf ( "transferred = %d , flag = %d\n",transferred, flag  );
+            printf("get %d byte from USB%d  ::: %s\n",transferred, id,tmp);
+            if(logOpen)outF.write(tmp,transferred);
+            if(paraseDara)ScanSerialData(tmp,transferred);
         }
         sp_->close();
         outF.close();

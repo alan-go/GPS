@@ -113,22 +113,16 @@ int main()
     for (int i = 0; i < 5; ++i) gnss->svMaskBds[i]=0;
     gnss->log = fopen("../log/log.txt","w");
     gnss->logDebug = fopen("../log/logDebug.txt","w");
-//    gnss->log = fopen("../log/log0829-b1.txt","w");
 
-
-    //    gnss->useGPS = false;
-    //    gnss->useBeiDou = false;
     gnss->useQianXun = false;
 //    gnss->Init(0,0,0,1);
-    gnss->Init(0,1,1,1);
+    gnss->Init(0,0,1,1);
 //    gnss->Init(0,1,1,0);
 
 
-//    gnss->StartGNSS("null",115200);
-
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-//    char command = getchar();
-    char command = 'd';
+    char command = getchar();
+//    char command = 'd';
     if('d'==command) {
         FILE *fp;
         char name[128],dat[512],temp[256],tempc;
@@ -165,11 +159,10 @@ int main()
         } else printf("open data failed \n");
 
     } else if('r'==command){
-        gnss->StartGNSS(serialPort,115200);
+        gnss->StartGNSS();
+        char c = getchar();
         if('x'==getchar()){
             cout<<"stop capture."<<endl;
-//            gnss.stop;
-//            stopUblox = 1;
         }
     }else if('l'==command){
         printf("start write file %s",saveDataName);

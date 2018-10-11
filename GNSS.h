@@ -46,7 +46,7 @@ public:
 
     int StartGNSS(const std::string &serial_port, const unsigned int baudRate);
 
-    int StartGNSS(const std::string &fileName);
+    int StartGNSS();
 
     int StopGNSS();
 

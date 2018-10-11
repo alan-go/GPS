@@ -48,6 +48,10 @@ int GNSS::Init(int ephem, bool qianXun, bool bds, bool gps) {
 
 int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate) {
     //    rtk_protocol_ = rtk_protocol;
+
+}
+
+int GNSS::StartGNSS() {
     sprintf(timeName,"%02d%02d_%02d_%02d",utcTime->tm_mon+1,utcTime->tm_mday,utcTime->tm_hour,utcTime->tm_min);
 
     if(useQianXun){
@@ -63,15 +67,11 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
 
     //todo : for temmp
     for(SerialData* seri:serialDataManager){
-        pthread_create(&seri->thread, nullptr, ThreadAdapterSerial, seri);
+        pthread_create(&(seri->thread), nullptr, ThreadAdapterSerial, seri);
         sleep(2);
     }
 
     return 1;
-}
-
-int GNSS::StartGNSS(const std::string &fileName) {
-
 }
 
 int GNSS::StopGNSS() {
