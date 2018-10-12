@@ -27,7 +27,7 @@ double lineIntp(double *x,double *y,double xx,int n){
 
 }
 
-int XYZ2LLA(Eigen::Vector3d XYZ, Eigen::Vector3d &LLA) {
+int XYZ2LLA(Eigen::Vector3d &XYZ, Eigen::Vector3d &LLA) {
     double x,y,z,r,sinA,cosA,sinB,cosB,N,h,lati;
     int i;
     double v_xyz[3],v_enu[3],a_xyz[3],a_enu[3];

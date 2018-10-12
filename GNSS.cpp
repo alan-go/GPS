@@ -33,17 +33,8 @@ int GNSS::Init(int ephem, bool qianXun, bool bds, bool gps) {
 //        return -1;
     }
 
-    for (int i = 0; i < Nsys - 1; ++i) {
-        for (int j = 0; j < Nxxs; ++j) {
-//            cycle[i][j]=40.0;
-            cycle[i][j]=10;
-            sigmaCy[i][j]=0.15;
-            sigmaPr[i][j]=1;
-            PB[i][j]=100;
-        }
-    }
-    //todo
-    Pxv = 10000*MatrixXd::Identity(6,6);
+    kalmanSolver.InitKalman(this);
+
 }
 
 int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate) {
@@ -120,7 +111,7 @@ int GNSS::ParseRawData(char *message, int len) {
             printf("Wrong sv Id! %d,%d\n", gnssId, svId);
             continue;
         }
-        sv->AddMeasure(new Measure(rTime,prMes,cpMes,doMes));
+        sv->AddMmeasure(new Measure(rTime, prMes, cpMes, doMes));
         svsVisable.push_back(sv);
     }
 
@@ -132,19 +123,19 @@ int GNSS::Test(vector<SV *> svs) {
     printf("coutnt %d\n", count);
     if(++count<100) return -1;
     PosSolver solverSingle(svsManager, &rtkManager, this);
-    PosSolver solverSingle0(svsManager, &rtkManager, this);
-    PosSolver solverSingle2sys(svsManager, &rtkManager, this);
-    PosSolver solverRtk(svsManager, &rtkManager, this);
-    PosSolver solverKalman(svsManager, &rtkManager, this);
-
 
     if(0==solverSingle.PositionSingle(svs)){
-        solverSingle.soltion.Show("single solution:::");
+        solverSingle.soltion.Show("sssssssssssingle solution:::");
         AddPosRecord(solverSingle.soltion);
     }
-    if(0== solverRtk.PositionRtk(svs))
-        solverRtk.soltion.Show("rtk pr solution:::");
 
+    PosSolver solverRtk(svsManager, &rtkManager, this);
+    if(0== solverRtk.PositionRtk(svs))
+        solverRtk.soltion.Show("rrrrrrrrrrrrrtk pr solution:::");
+
+//    if(0== kalmanSolver.PositionKalman(svs)){
+//        solverRtk.soltion.Show("Kalman solution:::");
+//    }
 
 }
 int GNSS::Peform(vector<SV *> svs) {

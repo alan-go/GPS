@@ -33,6 +33,7 @@ public:
     std::FILE *log,*logRTK,*logDebug;
     struct tm *utcTime;
     char timeName[128];
+    PosSolver kalmanSolver;
 
 public:
     GNSS();

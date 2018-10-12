@@ -1,31 +1,29 @@
 #include "PosSolver.h"
 #include "GNSS.h"
 #include "EphemSp3.h"
+#include "Svs.h"
 
 auto Diff_Vec = [](VectorXd x,int n)->VectorXd { return x(0)*VectorXd::Ones(n-1)-x.tail(n-1);};
 
 auto Diff_Pr_rb = [](SV* sv,int sigId)->double { return sv->measureDat.front()->prMes-sv->prInterp[sigId];};
 auto Diff_Cp_rb = [](SV* sv,int sigId)->double { return sv->measureDat.front()->cpMes-sv->cpInterp[sigId];};
-auto Diff_Cyc_0 = [](SV* sv,int sigId)->double { return sv->measureDat.front()->cycle;};
-auto Diff_cyP_0 = [](SV* sv,int sigId)->double { return sv->measureDat.front()->cycleP;};
-auto Diff_Rcp_0 = [](SV* sv,int sigId)->double { return sv->measureDat.front()->sigmaCp;};
-auto Diff_Rpr_0 = [](SV* sv,int sigId)->double { return sv->measureDat.front()->sigmaPr;};
+auto Diff_Cyc_0 = [](SV* sv,int sigId)->double& { return sv->measureDat.front()->cycle;};
+auto Diff_cyP_0 = [](SV* sv,int sigId)->double& { return sv->measureDat.front()->cycleP;};
+auto Diff_Rcp_0 = [](SV* sv,int sigId)->double { return 2*pow(sv->measureDat.front()->sigmaCp,2);};
+auto Diff_Rpr_0 = [](SV* sv,int sigId)->double { return 2*pow(sv->measureDat.front()->sigmaPr,2);};
 
 
 PosSolver::PosSolver(){}
 
 PosSolver::PosSolver(SvAll svs, NtripRTK *rtk, GNSS *gnss):svsBox(svs),rtk(rtk),gnss(gnss){
-    Solution recent = gnss->records.front();
-    if(gnss->isPositioned){
+    if(gnss->records.size()>0){
+        Solution recent = gnss->records.front();
         xyz = recent.xyz;
-//        LLA = gnss->records.back().lla;
+        memcpy(tu,recent.tu,Nsys* sizeof(double));
     } else{
         xyz = gnss->xyzDefault;
-//        LLA = gnss->llaDefault;
     }
-    for (int i = 0; i < Nsys; ++i) {
-        tu[i] = recent.tu[i];
-    }
+    XYZ2LLA(xyz,lla);
 }
 
 PosSolver::~PosSolver(){
@@ -45,57 +43,57 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
     PrepareSVsData(_svsIn);
     printf("single sinlel========== count=%d,nSat=%d,nSys=%d\n", gnss->count,nSat,nSys);
 
-    soltion = Solution(timeSolver,xyz,vxyz);
+    soltion = Solution(timeSolver,xyz,vxyz,tu);
     soltion.Show("0000000before");
     if(nSat-nSys<4){
         printf("Not enough svs nSat,nSys=%d,%d\n",nSat,nSys);
         return -1;
     }
     double threshold = 0.1;
-    VectorXd dt_xyz_tu(3+nSys),pc(nSat),b(nSat);
+    VectorXd dt_xyz_tu(3+nSys),b(nSat);
     MatrixXd H(3+nSys,3+nSys);
+    MatrixXd data(nSat,5);
     dt_xyz_tu.fill(1);
     int i =0,count =0;
 
-//    for(SV* sv:svsBox.svUsedAll)
-//        pc(i++) = sv->measureDat.front()->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
+    auto CalcuPc = [](SV* sv,int sigId)->double{
+        return sv->measureDat.front()->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
+    };
+    auto CalcuI = [](SV* sv,int sigId)->double{ return  sv->I; };
+    auto CalcuT = [](SV* sv,int sigId)->double{ return  sv->T; };
+    auto Calcue = [](SV* sv,int sigId)->double{ return  sv->elevationAngle; };
 
     while (dt_xyz_tu.norm()>threshold){
         int yhead=0,xhead=3;
         MatrixXd G(nSat,3+nSys),Gt(3+nSys,nSat);
         G.fill(0);
         for(SvSys* sys:svsBox.sysUsed){
-            i=0;
-            int ntemp = sys->table.size();
-            if(0==ntemp)continue;
-            MatrixXd E(ntemp,3);
-            for(SV* sv:sys->table){
-                double tRotate = ((sv->position-xyz).norm()+sv->I+sv->T)/Light_speed;
-                Vector3d posRotate,e;
-                EarthRotate(sv->position,posRotate,tRotate);
-                e = posRotate-xyz;
-                double r = e.norm();
-                E.block<1,3>(i,0)<<(e/r).transpose();
-//                printf("yhead,i %d,%d\n", yhead, i);
-//                sv->PrintInfo(1);
-                double pc = sv->measureDat.front()->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
-                b(yhead+i)=pc-r-tu[sys->type];
-//                printf("b---- %.2f,%.2f,%.2f\n",pc,r,tu[sys->type] );
-                i++;
-            }
-            G.block(yhead,0,ntemp,3)<<-E;
-            G.block(yhead,xhead,ntemp,1)<<VectorXd::Ones(ntemp);
-            yhead+=ntemp;xhead++;
+            int Ni = sys->table.size();
+            if(0==Ni)continue;
+            VectorXd rr(Ni),bi(Ni),pci;
+            MatrixXd Ei = sys->GetE(xyz,rr);
+            pci = sys->DiffZero(CalcuPc,1);
+            bi = pci-rr-tu[sys->type]*(VectorXd::Ones(Ni));
+            data.block(yhead,0,Ni,1)<<pci;
+            data.block(yhead,1,Ni,1)<<sys->DiffZero(CalcuI,1);
+            data.block(yhead,2,Ni,1)<<sys->DiffZero(CalcuT,1);
+            data.block(yhead,3,Ni,1)<<bi;
+            data.block(yhead,4,Ni,1)<<sys->DiffZero(Calcue,1);
+
+            b.segment(yhead,Ni)<<bi;
+            G.block(yhead,0,Ni,3)<<-Ei;
+            G.block(yhead,xhead,Ni,1)<<VectorXd::Ones(Ni);
+            yhead+=Ni;xhead++;
         }
 //        dt_xyz_tu =  G.colPivHouseholderQr().solve(b);
         Gt = G.transpose();
         H = (Gt*G).inverse();
         dt_xyz_tu = H*Gt*b;
         xyz+=dt_xyz_tu.head(3);
-//        cout<<"dt = "<<endl<<dt_xyz_tu<<endl;
-//        cout<<"b = "<<endl<<b<<endl;
-//        cout<<"G= "<<endl<<G<<endl;
-//        cout<<"pc = "<<endl<<pc<<endl;
+        cout<<"dt = "<<endl<<dt_xyz_tu<<endl;
+        cout<<"b = "<<endl<<b<<endl;
+        cout<<"G= "<<endl<<G<<endl;
+        cout<<"data = "<<endl<<data<<endl;
 
         i=3;
         //todo:sysused:
@@ -105,7 +103,7 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
         if(++count>10)return -1;
     }
     PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
-    soltion = Solution(timeSolver,xyz,vxyz);
+    soltion = Solution(timeSolver,xyz,vxyz,tu);
     return 0;
 }
 
@@ -115,16 +113,15 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
     for(SV* sv:all)
     {
         Measure *msTemp = sv->measureDat.front();
-        printf("getsv:%d,%02d:h:%d,pr=%lf,cp=%lf\t\t",sv->type,sv->svId,sv->SatH1,
-                msTemp->prMes,msTemp->cpMes);
+//        printf("getsv:%d,%02d:h:%d,pr=%lf,cp=%lf\t\t",sv->type,sv->svId,sv->SatH1,
+//                msTemp->prMes,msTemp->cpMes);
 
         //1,is used?
         if(!sv->open){
-            printf("____closed\n");
+            sprintf(sv->tip,"____closed\n");
             continue;
         }
         //2,judge ephemeric
-        if(!sv->IsEphemOK(0,timeSolver))continue;
         if(!sv->IsEphemOK(gnss->ephemType,timeSolver))continue;
         //3,measure
         if(!sv->MeasureGood())continue;
@@ -140,33 +137,23 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
 
 
         svsBox.AddToUsed(sv);
-       printf("+++this one useable\n");
+       sprintf(sv->tip,"++ok\n");
     }
+    for(SV* sv:all) sv->PrintInfo(0);
     nSat = svsBox.svUsedAll.size();
     nSys = svsBox.sysUsed.size();
 }
 
 int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
-    vector<SV *> result;
     printf("N0= %d\n", svs.size());
     printf("rcvtow %.3f\n", rt.tow);
     double ep[6];
     rt.time2epoch(ep);
     for(SV* sv:svs){
         Measure *measure = sv->measureDat.front();
-        //todo:rcvtow calculated from rt;
         double timeForECEF = rt.tow;
         if(SYS_BDS == sv->type)timeForECEF-=14;
-        sv->CalcuTime(timeForECEF);
-//        printf("ep = % 2.0f % 2.0f % 2.0f % 2.0f % 2.0f \n",ep[0],ep[1],ep[2],ep[3],ep[4]);
-//        sv->PrintInfo(1);
-//        printf("ts0 =  %.3f\n", sv->tsDelta*1e9);
-//        sv->CalcuECEF(sv->tsReal);
-//        printf("ts1 =  %.3f\n", sv->tsDelta*1e9);
-
-//        fprintf(gnss->log,"svsVisBrt:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
-//                sv->type,sv->svId,measure->prMes,0.0,
-//                sv->position.norm(),sv->position(0),sv->position(1),sv->position(2));
+        timeForECEF-=tu[sv->type]/Light_speed;
 
         Sp3Cell cell;
         GnssTime ts0 = rt;
@@ -175,44 +162,22 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
                 ts0+=(-measure->prMes/Light_speed-sv->tsDelta);
                 if(EphemSp3::Sp32ECEF(sv->ephemSp3->records, ts0, cell))break;
                 printf("ts2 =  %.3f\n", cell.ts*1e9);
-
-                sv->position = cell.pxyz;
-
-//                fprintf(gnss->log,"svsVisSp3:time,%.4f,s%d%02d,pr,%.5f,prres,%.4f,norm-x-y-z,%.5f,%.5f,%.5f,%.5f\n",rcvtow,
-//                        sv->type,sv->svId,measure->prMes,0.0,
-//                        sv->position.norm(),sv->position(0),sv->position(1),sv->position(2));
-//                if(cell.ts!=0.0)sv->tsDelta = cell.ts;
-//                sv->tsDelta-=sv->TGD1;
-//                sv->PrintInfo(1);
-                result.push_back(sv);
+                sv->xyz = cell.pxyz;
                 break;
             case 0:
-                if(!sv->IsEphemOK(0,rt))return -1;
+                sv->CalcuTime(timeForECEF);
                 sv->CalcuECEF(sv->tsReal);
-//                sv->PrintInfo(0);
-//                cout<<"svpositon"<<endl<<sv->position<<endl;
-                result.push_back(sv);
-//                sv->PrintInfo(1);
                 break;
             default:
                 continue;
         }
 
-        if(gnss->isPositioned){
-//            printf("elevation newed.\n");
-            sv->CorrectIT(xyz,timeForECEF);
-            sv->CalcuelEvationAzimuth(gnss->records.back().xyz,gnss->records.back().lla);
-        } else{
-//            printf("elevation default.\n");
-            sv->CalcuelEvationAzimuth(gnss->xyzDefault,gnss->llaDefault);
-        }
-
-        XYZ2LLA(sv->position,sv->sLLA);
-//        sv->PrintInfo(2);
-//        sv->PrintInfo(1);
-//        cout<<"norm"<<sv->position.norm()<<endl;
+        sv->CorrectIT(xyz,lla,timeForECEF);
+        double tt = ((sv->xyz-xyz).norm()+sv->I+sv->T)/Light_speed;
+        EarthRotate(sv->xyz,sv->xyzR,tt);
+        XYZ2LLA(sv->xyz,sv->lla);
+        XYZ2LLA(sv->xyzR,sv->llaR);
     }
-    svs = result;
     return 0;
 }
 
@@ -536,15 +501,17 @@ int PosSolver::PositionRtk(vector<SV *> _svsIn) {
     }
     dtb = G.colPivHouseholderQr().solve(pr_rb);
     xyz = base+dtb;
-    soltion = Solution(timeSolver,xyz,vxyz);
+    soltion = Solution(timeSolver,xyz,vxyz,tu);
 }
 
 
-int PosSolverKalman::PositionKalman(vector<SV *> _svsIn) {
-     int sigId = 1;
-    printf("rtk pr========= count=%d,nSat=%d,nSys=%d\n", gnss->count,nSat,nSys);
+int PosSolver::PositionKalman(vector<SV *> _svsIn) {
+    int sigId = 1;
+    svsBox = gnss->svsManager;
     PrepareSVsData(_svsIn);
     ProcessRtkData();
+
+    printf("rtk pr========= count=%d,nSat=%d,nSys=%d\n", gnss->count,nSat,nSys);
 
     if(nSat-nSys<4){
         printf("Not enough svs nSat,nSys=%d,%d\n",nSat,nSys);
@@ -554,14 +521,14 @@ int PosSolverKalman::PositionKalman(vector<SV *> _svsIn) {
     int ny = 2*(nSat-nSys),nx = nSat+6,yhead=0,xhead=6;
     Vector3d base = gnss->rtkManager.ECEF_XYZ;
     VectorXd x(nx),y(ny),hx(ny);
-    MatrixXd P(nx),Ppred(nx),Q(nx);
-    MatrixXd Hx(ny,nx),R(ny);
+    MatrixXd P(nx,nx),Ppred(nx,nx),Q(nx,nx);
+    MatrixXd Hx(ny,nx),R(ny,ny);
 
     x.fill(0);y.fill(0);hx.fill(0);P.fill(0);Q.fill(0);Hx.fill(0);R.fill(0);
     x.head(6)<<xyz,vxyz;
     P.block<6,6>(0,0)<<Pxv;
     Q.block<3,3>(0,0) = 1e5*Matrix3d::Identity();
-
+    //准备数据
     for(SvSys* sys:svsBox.sysUsed){
         double lambdai = GetFreq(sys->type,sigId,1);
         int Ni = sys->table.size();
@@ -597,197 +564,224 @@ int PosSolverKalman::PositionKalman(vector<SV *> _svsIn) {
 
         yhead+=Ni-1;xhead+=Ni;
     }
-}
-int PosSolver::PositionRtkKalman() {
-    Vector3d xyzBackup = xyz;
-    int sigInd = 1;
-    int result = 0;
-    Vector3d base = gnss->rtkManager.ECEF_XYZ;
-    vector<SV*> svsForCalcu[Nsys];
-    PrepareSVsData(svsForCalcu);
-
-    SolvePosition(svsForCalcu[7]);
-    printf("ttttttttttttttttttttttttttttttttu %f\n", tui);
-
-    ProcessRtkData(svsForCalcu);
-    Vector3d xyzSingle = xyz;
-
-    int N = 0,xi=6,yi=0;
-    for (int sys = 0; sys < Nsys-1; ++sys)N+=sysEachNum[sys];
-    printf("N= %d,nsys=%d\n", N,sysCount);
-    if(N-sysCount<5){
-        printf("svs not enough %d,nsys %d\n", N,sysCount);
-        return -1;
-    }
-    VectorXd x(N+6),y(2*(N-sysCount)),hx(2*(N-sysCount));
-    MatrixXd P(N+6,N+6),Q(N+6,N+6),Ppred(N+6,N+6);
-    MatrixXd Hx(2*(N-sysCount),N+6),R(2*(N-sysCount),2*(N-sysCount));
-    double cp_rb[2],pr_rb[2],r_rb[2],B_rb[2];
-    vector<double*>pB,pPB,pRc,pRp;
-
-    x.fill(0);y.fill(0);hx.fill(0);P.fill(0);Q.fill(0);Hx.fill(0);R.fill(0);
-    x.head(6)<<xyzBackup,vxyz;
-    P.block<6,6>(0,0)<<gnss->Pxv;
-    Q.block<3,3>(0,0) = 1e5*Matrix3d::Identity();
-
-    Vector3d bxlla,xyzrtk;
-    //各系统
-    for (int sys = 0,yHead,n,n_; sys < Nsys-1; ++sys) {
-        n = sysEachNum[sys];
-        n_=n-1;
-        if(0==n)continue;
-        cout <<"sys="<< sys <<", n="<<n<<endl;
-
-        double lambdai = GetFreq((SysType)sys, sigInd, true);
-        printf("lambdai %f\n", lambdai);
-        MatrixXd E(n,3),D(n-1,n),Rci(n,n),Rpi(n,n);
-        D.fill(0);Rci.fill(0);Rpi.fill(0);
-        //各卫星
-        VectorXd yp(n-1);
-
-        for (int i = 0,i_; i < n; ++i) {
-            SV *sv = svsForCalcu[sys][i];
-            Vector3d svPositionEarthRotate;
-            EarthRotate(sv->position,svPositionEarthRotate,(sv->position - xyz).norm()/Light_speed);
-            Vector3d e_sr = svPositionEarthRotate - xyz, e_sb = svPositionEarthRotate -base;
-            E.block<1,3>(i,0)<<(e_sr/e_sr.norm()).transpose();
-
-            printf("xi,yi %d,%d,\t", xi,yi);
-            printf("rtksv:%d,%02d:h:%d,pr=%lf---%lf,.,cp=%lf,%.1f---%lf,%.1f [%.2f]\telev=%lf\n",sv->type,sv->svId,sv->SatH1,
-                   sv->prMes,sv->prInterp[sigInd],sv->cpMes*lambdai,sv->cpMes-sv->prMes/lambdai,sv->cpInterp[sigInd],
-                   (sv->cpInterp[sigInd]-sv->prInterp[sigInd])/lambdai,sv->cpMes-sv->cpInterp[sigInd]/lambdai,sv->elevationAngle);
-            //单差部分
-            double *tempBi=&(gnss->cycle[sys][sv->svId]);     pB.push_back(tempBi);
-            double *tempPB=&(gnss->PB[sys][sv->svId]);        pPB.push_back(tempPB);
-            double *tempRci=&(gnss->sigmaCy[sys][sv->svId]);  pRc.push_back(tempRci);
-            double *tempRpi=&(gnss->sigmaPr[sys][sv->svId]);  pRp.push_back(tempRpi);
-
-//            if(sv->KalmanFirst){
-//                *tempBi = ((sv->cpMes*lambdai-sv->cpInterp[sigInd]) - (e_sr.norm()-e_sb.norm()) - tui)/lambdai;
-//                sv->KalmanFirst = 0;
-//            }
-
-            double rdiff = sv->cpMes*lambdai-sv->prMes;
-            double bdiff = sv->cpInterp[sigInd]-sv->prInterp[sigInd];
-            double pr_ = sv->cpMes*lambdai-sv->cpInterp[sigInd];
-            double pr__ = pr_ - tui;
-            double r_ =  e_sr.norm()-e_sb.norm();
-            double Biii = (rdiff-bdiff)/lambdai;
-            printf("-----------cp- r-,tui,bi = %.2f,%.2f,%.2f,%.2f, %.2f\n",pr_,pr__,r_,tui,Biii);
-            double rr = e_sr.norm(),rb = e_sb.norm();
-            double ts = sv->tsDelta*Light_speed;
-//            double tutemp = sv->prMes-rr+ts-sv->I-sv->T;
-            double tub = sv->prInterp[sigInd]+ts-sv->I-sv->T-e_sb.norm();
-            fprintf(gnss->logDebug,"%f,%f\n",tui,tub);
-            double p_r_r = sv->prMes-rr-tui+ts;
-            double p_r_b = sv->prInterp[sigInd] - rb - tub +ts;
-//            fprintf(gnss->logDebug,"%.6f,\n",tui);
-            if(sv->svId==0){
-//                fprintf(gnss->logDebug,"%.6f,",sv->prInterp[sigInd]+sv->tsDelta*Light_speed-e_sb.norm());
-//                fprintf(gnss->logDebug,"%.6f,",tui);
-//                fprintf(gnss->logDebug,"%.6f,",sv->prMes+sv->tsDelta*Light_speed-e_sr.norm());
-//
-//                fprintf(gnss->logDebug,"%.6f,",Biii);
-//                fprintf(gnss->logDebug,"%.6f,",sv->cpInterp[sigInd]);
-
-                fprintf(gnss->logDebug,"%.6f,%.6f,",sv->I,sv->T);
-                fprintf(gnss->logDebug,"%.6f,%.6f,",p_r_r,p_r_b);
-                fprintf(gnss->logDebug,"%.6f,",tub);
-                fprintf(gnss->logDebug,"%.6f,",tui);
-                fprintf(gnss->logDebug,"%.6f,",rdiff);
-                fprintf(gnss->logDebug,"%.6f,",bdiff);
-                fprintf(gnss->logDebug,"%.6f,",(rdiff-bdiff)/lambdai);
-                fprintf(gnss->logDebug,"\n");
-            }
-            //            *tempBi = Biii;
-            x(xi) = *tempBi;
-            P(xi,xi) = *tempPB;
-            Rci(i,i) = 2*pow(*tempRci,2);
-            Rpi(i,i) = 2*pow(*tempRpi,2);
-
-            xi++;
-            cp_rb[1] = sv->cpMes*lambdai-sv->cpInterp[sigInd];
-            pr_rb[1] = sv->prMes-sv->prInterp[sigInd];
-            B_rb[1] = *tempBi;
-            r_rb[1] = e_sr.norm()-e_sb.norm();
-
-            //双差部分
-            if(0==i){
-                cp_rb[0] = cp_rb[1];    pr_rb[0] = pr_rb[1];
-                B_rb[0] = B_rb[1];      r_rb[0] = r_rb[1];
-
-                yHead = 2*yi;
-                continue;
-            }
-            i_ = i-1;
-            D(i_,0)=1;D(i_,i)=-1;
-            y(yHead+i_)     = cp_rb[0] - cp_rb[1];
-            y(yHead+n_+i_)  = pr_rb[0] - pr_rb[1];
-            yp(i_) = y(yHead+n_+i_);
-
-            hx(yHead+i_)    = r_rb[0]-r_rb[1] + lambdai*(B_rb[0] - B_rb[1]);
-            hx(yHead+n_+i_) = r_rb[0]-r_rb[1];
-
-            printf("yi comp [%.2f,%.2f]\n", y(yHead+i_), y(yHead+n_+i_));
-            printf("hxi comp [%.2f,%.2f]\n", hx(yHead+i_), hx(yHead+n_+i_));
-            printf("B0,bi %f --- %f\n", B_rb[0],*tempBi);
-            yi++;
-
-            if(sv->svId==0){
-                double rrb12 = r_rb[0]-r_rb[1];
-                double prb12 = pr_rb[0]- pr_rb[1];
-                fprintf(gnss->logDebug,"%f,%f,%f,%f\n",prb12,rrb12,prb12-rrb12,sv->tsDelta*Light_speed);
-            }
-        }
-        Vector3d bx = (-D*E).colPivHouseholderQr().solve(yp);
-        xyzrtk = bx+base;
-//        x.head(3) = xyzrtk;
-        Solution pos00(rcvtow,xyzrtk,vxyz);
-        pos00.Show("+++++xyz 111111 ");
-
-//        cout<<D<<E<<endl;
-        MatrixXd Dt = D.transpose();
-        Hx.block(yHead,0,n-1,3)<<-D*E;
-        Hx.block(yHead+n-1,0,n-1,3)<<-D*E;
-        Hx.block(yHead,xi-n,n-1,n)<<lambdai*D;
-        R.block(yHead,yHead,n-1,n-1)<<D*Rci*Dt;
-        R.block(yHead+n-1,yHead+n-1,n-1,n-1)<<D*Rpi*Dt;
-    }
-    P = 1*MatrixXd::Identity(N+6,N+6)+P;
-//    P.block<3,3>(0,0) = P.block<3,3>(0,0)+0.1*Matrix3d::Identity();
-
+    //计算Kalman
     MatrixXd Ht = Hx.transpose();
     MatrixXd Kk = P*Ht*((Hx*P*Ht+R).inverse());
-    Ppred = (MatrixXd::Identity(N+6,N+6)-Kk*Hx)*P;
+    Ppred = (MatrixXd::Identity(nx,nx)-Kk*Hx)*P;
     VectorXd xyzPred = x + Kk*(y-hx);
-
-    cout <<"\nx\n"<<x.transpose() <<"\ny\n"<<y.transpose()<<"\nhx\n"<<hx.transpose()<<"\ny-hx\n"<<(y-hx).transpose()<<endl;
-//    cout<<"\nP\n"<<P <<"\nHx\n"<<Hx<<"\npPred\n"<<Ppred<<endl;
-//    cout <<"\nKk\n"<<Kk<<endl;
-//    cout <<"\nR\n"<<R<<endl<<;
-    cout<<"\nxyzAdd\n"<<(Kk*(y-hx)).transpose() <<endl;
-    cout<<"\nxyzPred\n"<<xyzPred.transpose() <<endl;
-    //更新
+    //更新参数
     xyz = xyzPred.head(3);
-//    xyz = xyzrtk;
     vxyz = xyzPred.segment(3,3);
-    for (int i = 0; i < pB.size(); ++i) {
-        *pB[i] = xyzPred(6+i);
-        *pPB[i] = Ppred(6+i,6+i);
+    Pxv = Ppred.block<6,6>(0,0);
+    xhead=6;
+    for(SvSys* sys:svsBox.sysUsed){
+        int Ni = sys->table.size();
+        VectorXd Bii = xyzPred.segment(xhead,Ni);
+        VectorXd Pii = Ppred.diagonal().segment(xhead,Ni);
+        sys->SetValue(Diff_Cyc_0,sigId,Bii);
+        sys->SetValue(Diff_cyP_0,sigId,Pii);
+        xhead+=Ni;
     }
-    gnss->Pxv = Ppred.block<6,6>(0,0);
-        //    gnss->Pxv(0,0) = Ppred(0,0);
-        //    gnss->Pxv(1,1) = Ppred(1,1);
-    //    gnss->Pxv(2,2) = Ppred(2,2);
 
-        //显示
-        gnss->isPositioned = true;
-        Solution pos(rcvtow,xyz,vxyz);
-        pos.Show("+++++++xyz-222222");
-        gnss->AddPosRecord(pos);
-        cout<<"++++xyzDiff single\n"<<-gnss->xyz00<<endl;
-        cout<<"++++xyzDiff rtk\n"<<xyzrtk-gnss->xyz00<<endl;
-        cout<<"++++xyzDiff rtk kalman\n"<<xyzPred.head(3)-gnss->xyz00<<endl;
-
+    soltion = Solution(timeSolver,xyz,vxyz,tu);
+    return 0;
 }
+int PosSolver::InitKalman(GNSS *_gnss) {
+    gnss = _gnss;
+    rtk = &(gnss->rtkManager);
+    xyz = gnss->xyzDefault;
+    Pxv = 10000*MatrixXd::Identity(6,6);
+}
+//int PosSolver::PositionRtkKalman() {
+//    Vector3d xyzBackup = xyz;
+//    int sigInd = 1;
+//    int result = 0;
+//    Vector3d base = gnss->rtkManager.ECEF_XYZ;
+//    vector<SV*> svsForCalcu[Nsys];
+//    PrepareSVsData(svsForCalcu);
+//
+//    SolvePosition(svsForCalcu[7]);
+//    printf("ttttttttttttttttttttttttttttttttu %f\n", tui);
+//
+//    ProcessRtkData(svsForCalcu);
+//    Vector3d xyzSingle = xyz;
+//
+//    int N = 0,xi=6,yi=0;
+//    for (int sys = 0; sys < Nsys-1; ++sys)N+=sysEachNum[sys];
+//    printf("N= %d,nsys=%d\n", N,sysCount);
+//    if(N-sysCount<5){
+//        printf("svs not enough %d,nsys %d\n", N,sysCount);
+//        return -1;
+//    }
+//    VectorXd x(N+6),y(2*(N-sysCount)),hx(2*(N-sysCount));
+//    MatrixXd P(N+6,N+6),Q(N+6,N+6),Ppred(N+6,N+6);
+//    MatrixXd Hx(2*(N-sysCount),N+6),R(2*(N-sysCount),2*(N-sysCount));
+//    double cp_rb[2],pr_rb[2],r_rb[2],B_rb[2];
+//    vector<double*>pB,pPB,pRc,pRp;
+//
+//    x.fill(0);y.fill(0);hx.fill(0);P.fill(0);Q.fill(0);Hx.fill(0);R.fill(0);
+//    x.head(6)<<xyzBackup,vxyz;
+//    P.block<6,6>(0,0)<<gnss->Pxv;
+//    Q.block<3,3>(0,0) = 1e5*Matrix3d::Identity();
+//
+//    Vector3d bxlla,xyzrtk;
+//    //各系统
+//    for (int sys = 0,yHead,n,n_; sys < Nsys-1; ++sys) {
+//        n = sysEachNum[sys];
+//        n_=n-1;
+//        if(0==n)continue;
+//        cout <<"sys="<< sys <<", n="<<n<<endl;
+//
+//        double lambdai = GetFreq((SysType)sys, sigInd, true);
+//        printf("lambdai %f\n", lambdai);
+//        MatrixXd E(n,3),D(n-1,n),Rci(n,n),Rpi(n,n);
+//        D.fill(0);Rci.fill(0);Rpi.fill(0);
+//        //各卫星
+//        VectorXd yp(n-1);
+//
+//        for (int i = 0,i_; i < n; ++i) {
+//            SV *sv = svsForCalcu[sys][i];
+//            Vector3d svPositionEarthRotate;
+//            EarthRotate(sv->position,svPositionEarthRotate,(sv->position - xyz).norm()/Light_speed);
+//            Vector3d e_sr = svPositionEarthRotate - xyz, e_sb = svPositionEarthRotate -base;
+//            E.block<1,3>(i,0)<<(e_sr/e_sr.norm()).transpose();
+//
+//            printf("xi,yi %d,%d,\t", xi,yi);
+//            printf("rtksv:%d,%02d:h:%d,pr=%lf---%lf,.,cp=%lf,%.1f---%lf,%.1f [%.2f]\telev=%lf\n",sv->type,sv->svId,sv->SatH1,
+//                   sv->prMes,sv->prInterp[sigInd],sv->cpMes*lambdai,sv->cpMes-sv->prMes/lambdai,sv->cpInterp[sigInd],
+//                   (sv->cpInterp[sigInd]-sv->prInterp[sigInd])/lambdai,sv->cpMes-sv->cpInterp[sigInd]/lambdai,sv->elevationAngle);
+//            //单差部分
+//            double *tempBi=&(gnss->cycle[sys][sv->svId]);     pB.push_back(tempBi);
+//            double *tempPB=&(gnss->PB[sys][sv->svId]);        pPB.push_back(tempPB);
+//            double *tempRci=&(gnss->sigmaCy[sys][sv->svId]);  pRc.push_back(tempRci);
+//            double *tempRpi=&(gnss->sigmaPr[sys][sv->svId]);  pRp.push_back(tempRpi);
+//
+////            if(sv->KalmanFirst){
+////                *tempBi = ((sv->cpMes*lambdai-sv->cpInterp[sigInd]) - (e_sr.norm()-e_sb.norm()) - tui)/lambdai;
+////                sv->KalmanFirst = 0;
+////            }
+//
+//            double rdiff = sv->cpMes*lambdai-sv->prMes;
+//            double bdiff = sv->cpInterp[sigInd]-sv->prInterp[sigInd];
+//            double pr_ = sv->cpMes*lambdai-sv->cpInterp[sigInd];
+//            double pr__ = pr_ - tui;
+//            double r_ =  e_sr.norm()-e_sb.norm();
+//            double Biii = (rdiff-bdiff)/lambdai;
+//            printf("-----------cp- r-,tui,bi = %.2f,%.2f,%.2f,%.2f, %.2f\n",pr_,pr__,r_,tui,Biii);
+//            double rr = e_sr.norm(),rb = e_sb.norm();
+//            double ts = sv->tsDelta*Light_speed;
+////            double tutemp = sv->prMes-rr+ts-sv->I-sv->T;
+//            double tub = sv->prInterp[sigInd]+ts-sv->I-sv->T-e_sb.norm();
+//            fprintf(gnss->logDebug,"%f,%f\n",tui,tub);
+//            double p_r_r = sv->prMes-rr-tui+ts;
+//            double p_r_b = sv->prInterp[sigInd] - rb - tub +ts;
+////            fprintf(gnss->logDebug,"%.6f,\n",tui);
+//            if(sv->svId==0){
+////                fprintf(gnss->logDebug,"%.6f,",sv->prInterp[sigInd]+sv->tsDelta*Light_speed-e_sb.norm());
+////                fprintf(gnss->logDebug,"%.6f,",tui);
+////                fprintf(gnss->logDebug,"%.6f,",sv->prMes+sv->tsDelta*Light_speed-e_sr.norm());
+////
+////                fprintf(gnss->logDebug,"%.6f,",Biii);
+////                fprintf(gnss->logDebug,"%.6f,",sv->cpInterp[sigInd]);
+//
+//                fprintf(gnss->logDebug,"%.6f,%.6f,",sv->I,sv->T);
+//                fprintf(gnss->logDebug,"%.6f,%.6f,",p_r_r,p_r_b);
+//                fprintf(gnss->logDebug,"%.6f,",tub);
+//                fprintf(gnss->logDebug,"%.6f,",tui);
+//                fprintf(gnss->logDebug,"%.6f,",rdiff);
+//                fprintf(gnss->logDebug,"%.6f,",bdiff);
+//                fprintf(gnss->logDebug,"%.6f,",(rdiff-bdiff)/lambdai);
+//                fprintf(gnss->logDebug,"\n");
+//            }
+//            //            *tempBi = Biii;
+//            x(xi) = *tempBi;
+//            P(xi,xi) = *tempPB;
+//            Rci(i,i) = 2*pow(*tempRci,2);
+//            Rpi(i,i) = 2*pow(*tempRpi,2);
+//
+//            xi++;
+//            cp_rb[1] = sv->cpMes*lambdai-sv->cpInterp[sigInd];
+//            pr_rb[1] = sv->prMes-sv->prInterp[sigInd];
+//            B_rb[1] = *tempBi;
+//            r_rb[1] = e_sr.norm()-e_sb.norm();
+//
+//            //双差部分
+//            if(0==i){
+//                cp_rb[0] = cp_rb[1];    pr_rb[0] = pr_rb[1];
+//                B_rb[0] = B_rb[1];      r_rb[0] = r_rb[1];
+//
+//                yHead = 2*yi;
+//                continue;
+//            }
+//            i_ = i-1;
+//            D(i_,0)=1;D(i_,i)=-1;
+//            y(yHead+i_)     = cp_rb[0] - cp_rb[1];
+//            y(yHead+n_+i_)  = pr_rb[0] - pr_rb[1];
+//            yp(i_) = y(yHead+n_+i_);
+//
+//            hx(yHead+i_)    = r_rb[0]-r_rb[1] + lambdai*(B_rb[0] - B_rb[1]);
+//            hx(yHead+n_+i_) = r_rb[0]-r_rb[1];
+//
+//            printf("yi comp [%.2f,%.2f]\n", y(yHead+i_), y(yHead+n_+i_));
+//            printf("hxi comp [%.2f,%.2f]\n", hx(yHead+i_), hx(yHead+n_+i_));
+//            printf("B0,bi %f --- %f\n", B_rb[0],*tempBi);
+//            yi++;
+//
+//            if(sv->svId==0){
+//                double rrb12 = r_rb[0]-r_rb[1];
+//                double prb12 = pr_rb[0]- pr_rb[1];
+//                fprintf(gnss->logDebug,"%f,%f,%f,%f\n",prb12,rrb12,prb12-rrb12,sv->tsDelta*Light_speed);
+//            }
+//        }
+//        Vector3d bx = (-D*E).colPivHouseholderQr().solve(yp);
+//        xyzrtk = bx+base;
+////        x.head(3) = xyzrtk;
+//        Solution pos00(rcvtow,xyzrtk,vxyz);
+//        pos00.Show("+++++xyz 111111 ");
+//
+////        cout<<D<<E<<endl;
+//        MatrixXd Dt = D.transpose();
+//        Hx.block(yHead,0,n-1,3)<<-D*E;
+//        Hx.block(yHead+n-1,0,n-1,3)<<-D*E;
+//        Hx.block(yHead,xi-n,n-1,n)<<lambdai*D;
+//        R.block(yHead,yHead,n-1,n-1)<<D*Rci*Dt;
+//        R.block(yHead+n-1,yHead+n-1,n-1,n-1)<<D*Rpi*Dt;
+//    }
+//    P = 1*MatrixXd::Identity(N+6,N+6)+P;
+////    P.block<3,3>(0,0) = P.block<3,3>(0,0)+0.1*Matrix3d::Identity();
+//
+//    MatrixXd Ht = Hx.transpose();
+//    MatrixXd Kk = P*Ht*((Hx*P*Ht+R).inverse());
+//    Ppred = (MatrixXd::Identity(N+6,N+6)-Kk*Hx)*P;
+//    VectorXd xyzPred = x + Kk*(y-hx);
+//
+//    cout <<"\nx\n"<<x.transpose() <<"\ny\n"<<y.transpose()<<"\nhx\n"<<hx.transpose()<<"\ny-hx\n"<<(y-hx).transpose()<<endl;
+////    cout<<"\nP\n"<<P <<"\nHx\n"<<Hx<<"\npPred\n"<<Ppred<<endl;
+////    cout <<"\nKk\n"<<Kk<<endl;
+////    cout <<"\nR\n"<<R<<endl<<;
+//    cout<<"\nxyzAdd\n"<<(Kk*(y-hx)).transpose() <<endl;
+//    cout<<"\nxyzPred\n"<<xyzPred.transpose() <<endl;
+//    //更新
+//    xyz = xyzPred.head(3);
+////    xyz = xyzrtk;
+//    vxyz = xyzPred.segment(3,3);
+//    for (int i = 0; i < pB.size(); ++i) {
+//        *pB[i] = xyzPred(6+i);
+//        *pPB[i] = Ppred(6+i,6+i);
+//    }
+//    gnss->Pxv = Ppred.block<6,6>(0,0);
+//        //    gnss->Pxv(0,0) = Ppred(0,0);
+//        //    gnss->Pxv(1,1) = Ppred(1,1);
+//    //    gnss->Pxv(2,2) = Ppred(2,2);
+//
+//        //显示
+//        gnss->isPositioned = true;
+//        Solution pos(rcvtow,xyz,vxyz);
+//        pos.Show("+++++++xyz-222222");
+//        gnss->AddPosRecord(pos);
+//        cout<<"++++xyzDiff single\n"<<-gnss->xyz00<<endl;
+//        cout<<"++++xyzDiff rtk\n"<<xyzrtk-gnss->xyz00<<endl;
+//        cout<<"++++xyzDiff rtk kalman\n"<<xyzPred.head(3)-gnss->xyz00<<endl;
+//
+//}
 

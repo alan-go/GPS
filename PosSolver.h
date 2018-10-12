@@ -6,20 +6,24 @@
 #include "CommonInclude.h"
 
 
+class GNSS;
 class PosSolver{
 public:
     SvAll svsBox;
     GNSS* gnss;
     NtripRTK *rtk;
     double PDOP;
-    GnssTime timeSolver;
-    Vector3d xyz, vxyz;
+
+    GnssTime timeSolver;//这个时间直接从接收机读出来的时间，有钟差
+    Vector3d xyz, vxyz, lla;
     Solution soltion;
     vector<SV*> svsForCalcu[Nsys];
 
     double tu[Nsys]={0};
     int numMeas;
+    Matrix<double,6,6> Pxv;
 public:
+    int InitKalman(GNSS *_gnss);
     PosSolver();
     PosSolver(SvAll svs, NtripRTK *rtk, GNSS *gnss);
     ~PosSolver();
@@ -39,15 +43,10 @@ public:
     int SolvePosition(vector<SV*>svsForCalcu);
     int SolvePositionBeiDouGPS(vector<SV*>svsForCalcu);
     int SolvePositionCalman();
-
-};
-
-class PosSolverKalman:private PosSolver{
-public:
-    VectorXd cyclS,Pii;
-    Matrix<double,6,6> Pxv;
-
     int PositionKalman(vector<SV*> _svsIn);
+
 };
+
+
 
 #endif

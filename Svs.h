@@ -57,7 +57,7 @@ public:
 
     double I,T;
 
-    Vector3d position,sLLA;
+    Vector3d xyz,lla,xyzR,llaR;//R:地球自传
     double tsv,tsDelta,tsReal;
 
     double elevationAngle,azimuthAngle;
@@ -67,6 +67,7 @@ public:
     deque<Measure*> measureDat;
     double prInterp[32], cpInterp[32];
     bool KalmanFirst{1};
+    char tip[128];
 public:
     SV();
     SV(int id);
@@ -75,15 +76,14 @@ public:
     bool MeasureGood();
     bool ElevGood();
     bool IsMaskOn();
-    bool CalcuECEF(double tow);
+    bool CalcuECEF(double ts0);
     bool CalcuTime(double tow);
-    bool AddMeasure(Measure* mesr);
-    template <typename FUN>
-    double DiffBase(FUN);
-    int CalcuelEvationAzimuth(Vector3d receiverPosition, Vector3d LLA);
+    bool AddMmeasure(Measure *mesr);
+
+    int CalcuelEvationAzimuth(Vector3d pos, Vector3d poslla);
     int CalcuTroposhphere(double elev,double azim);
     int CalcuInoshphere(double elev,double azim,Vector3d LLA,double time);
-    int CorrectIT(Vector3d pos,double time);
+    int CorrectIT(Vector3d xyz,Vector3d lla,double time);
     void PrintInfo(int printType);
     virtual int DecodeSubFrame(uint32_t* dwrds) = 0;
     double InterpRtkData(double time, int sigInd);
@@ -156,17 +156,22 @@ public:
         }
         return result;
     }
+    template <typename T>
+    int SetValue(T FUN,int sigId,VectorXd &val){
+        int N = table.size();
+        for (int i = 0; i < N; ++i) {
+            FUN(table[i],sigId) = val(i);
+        }
+        return 0;
+    }
     MatrixXd GetE(Vector3d &pos,VectorXd &rs){
         int N = table.size();
         double r,t;
         MatrixXd result_T(3,N);
-        Vector3d svRotate,ei;
+        Vector3d ei;
         for (int i = 0; i < N; ++i) {
             SV* sv = table[i];
-            r = (sv->position-pos).norm();
-            t = (r+sv->I+sv->T)/Light_speed;
-            EarthRotate(sv->position,svRotate,t);
-            ei = svRotate-pos;
+            ei = sv->xyzR-pos;
             rs(i) = ei.norm();
             result_T.block<3,1>(0,i)<<ei/rs(i);
         }
@@ -237,13 +242,5 @@ public:
 private:
 };
 
-bool SV::AddMeasure(Measure *mesr) {
-    if(!measureDat.empty()){
-        Measure* latest = measureDat.front();
-        mesr->cycle = latest->cycle;
-        if(mesr->time-latest->time>1.5)trackCount=0;
-        else trackCount++;
-    }
-    measureDat.push_front(mesr);
-}
+
 #endif

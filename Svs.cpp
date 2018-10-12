@@ -56,11 +56,11 @@ bool SV::IsEphemOK(int ephemType, GnssTime time) {
                 }
             }
             if(!bstEphem){
-                printf("___Frame not enough\n");
+                sprintf(tip,"___Frame not enough\n");
                 return false;
             }
             if(SatH1){
-                printf("___not Healthy\n");
+                sprintf(tip,"___not Healthy\n");
 
                 return false;
             }
@@ -68,12 +68,12 @@ bool SV::IsEphemOK(int ephemType, GnssTime time) {
         case 1:
             //todo
             if(ephemSp3== nullptr){
-                printf("_____no sp3 record \n");
+                sprintf(tip,"____no sp3 record \n");
                 return false;
             }
             timeperiod = ephemSp3->dt * 5;
             if((time-ephemSp3->timeHead<timeperiod)||(ephemSp3->timeEnd-time<timeperiod)){
-                printf("sp3 time  period not ok\n");
+                sprintf(tip,"sp3 time  period not ok\n");
                 return false;
             }
             break;
@@ -93,20 +93,29 @@ bool SV::CalcuTime(double tow) {
     return true;
 }
 
+bool SV::AddMmeasure(Measure *mesr) {
+    if(!measureDat.empty()){
+        Measure* latest = measureDat.front();
+        mesr->cycle = latest->cycle;
+        if(mesr->time-latest->time>1.5)trackCount=0;
+        else trackCount++;
+    }
+    measureDat.push_front(mesr);
+};
 
 void SV::PrintInfo(int printType) {
     //1:position and tsDelta
     //2:bst ephemeris
     switch (printType){
         case 0:
-            printf("type %d,id %d\n", type, svId);
+            printf("sv:%d,%02d  %s", type, svId,tip);
             break;
         case 1:
 //            cout<<"+++++++SvPosition:"<<type<<","<<svId<<endl;
 //            cout<<position<<endl;
-            printf("+++SvPosition:%d,%d === %10f,%10f,%10f\n",type,svId,position(0),position(1),position(2));
-            cout<<"norm="<<position.norm()<<endl;
-            printf("+++svLLA === %lf, %lf, %lf\n",sLLA(0)*180/GPS_PI,sLLA(1)*180/GPS_PI,sLLA(2));
+            printf("+++SvPosition:%d,%d === %10f,%10f,%10f\n",type,svId,xyz(0),xyz(1),xyz(2));
+            cout<<"norm="<<xyz.norm()<<endl;
+            printf("+++svLLA === %lf, %lf, %lf\n",lla(0)*180/GPS_PI,lla(1)*180/GPS_PI,lla(2));
             printf("+++TGD === %.3f\n",TGD1*1e9);
 
             cout<<"tsDelta === "<<tsDelta*Light_speed<<" ,a0"<<a0<<endl;
@@ -126,10 +135,10 @@ void SV::PrintInfo(int printType) {
     };
 }
 
-bool SV::CalcuECEF(double tow) {
+bool SV::CalcuECEF(double ts0) {
     double A = orbit.sqrtA*orbit.sqrtA;
     double n0 = sqrt(M_miu/(A*A*A));
-    double tk = tow - orbit.toe;
+    double tk = ts0 - orbit.toe;
     while(tk > 302400)tk-=604800;
     while(tk < -302400)tk+=604800;
     double n = n0 + orbit.dtn;
@@ -177,17 +186,17 @@ bool SV::CalcuECEF(double tow) {
         Matrix3d Rz,Rx;
         Rx<<1,0,0,0,cos(phyX),sin(phyX),0,-sin(phyX),cos(phyX);
         Rz<<cos(phyZ),sin(phyZ),0,-sin(phyZ),cos(phyZ),0,0,0,1;
-        position = Rz*Rx*xyzGK;
+        xyz = Rz*Rx*xyzGK;
     } else {
-        position = transfer*Vector2d(xk,yk);
+        xyz = transfer*Vector2d(xk,yk);
     }
-
+//todo why do tgd and relativity here?
 //TGD and relativity fix.
     double dtRelativity = 2.0*sqrt(M_miu)/(Light_speed*Light_speed)*Earth_ee*orbit.sqrtA*sin(Ek);
 //    printf("dtRelativity=%.10f\n",dtRelativity);
     tsDelta -= dtRelativity;
     tsDelta -= TGD1;
-    tsReal-=tsDelta;
+    tsReal= ts0-tsDelta;
 }
 
 void SvAll::UpdateEphemeris(char *subFrame) {
@@ -451,19 +460,17 @@ int BeiDouSV::DecodeD2Frame1(uint32_t *dwrds) {
     return 1;
 }
 
-int SV::CalcuelEvationAzimuth(Vector3d receiverPosition, Vector3d LLA) {
-    double x = receiverPosition(0);
-    double y = receiverPosition(1);
-    double z = receiverPosition(2);
-    double r = sqrt(x*x+y*y);
-    double sinB = y/r;
-    double cosB = x/r;
-    double sinA = sin(LLA(1));
-    double cosA = cos(LLA(1));
-    Matrix<double ,3,3>SS;
-    SS<<-sinB,cosB,0,-sinA*cosB,-sinA*sinB,cosA,cosA*cosB,cosA*sinB,sinA;
+int SV::CalcuelEvationAzimuth(Vector3d pos, Vector3d poslla) {
+    double sinl = sin(poslla(1));
+    double cosl = cos(poslla(1));
+    double sinp = sin(poslla(0));
+    double cosp = cos(poslla(0));
+    Matrix<double,3,3>SS;
+    SS<<-sinl,      cosl,       0,
+        -sinp*cosl, -sinp*sinl, cosp,
+        cosp*cosl,  cosp*sinl,  sinp;
 
-    Vector3d dtxyz = position - receiverPosition;
+    Vector3d dtxyz = xyz - pos;
     Vector3d dtenu = SS * dtxyz;
     elevationAngle = asin(dtenu(2)/dtenu.norm());
     azimuthAngle = atan(dtenu(0)/dtenu(1));
@@ -503,13 +510,11 @@ int SV::CalcuTroposhphere(double elev, double azim) {
     return 0;
 }
 
-int SV::CorrectIT(Vector3d pos,double time) {
-    Vector3d LLA;
-    XYZ2LLA(pos,LLA);
-    CalcuelEvationAzimuth(pos,LLA);
+int SV::CorrectIT(Vector3d xyz,Vector3d lla,double time) {
+    CalcuelEvationAzimuth(xyz,lla);
     printf("elevation = %lf, azim = %lf\n",elevationAngle,azimuthAngle);
     CalcuTroposhphere(elevationAngle,azimuthAngle);
-    CalcuInoshphere(elevationAngle,azimuthAngle,LLA,time);
+    CalcuInoshphere(elevationAngle,azimuthAngle,lla,time);
 }
 
 
@@ -519,7 +524,7 @@ bool SV::ElevGood() {
         return 1;
     elevGood = elevationAngle>0.17;
     if(!elevGood){
-        printf("\nelev angle bad sv:%d,%02d,angle:%lf\n",type,svId,elevationAngle);
+        sprintf(tip,"elev angle bad sv:%d,%02d,angle:%lf\n",type,svId,elevationAngle);
     }
     return elevGood;
 }
@@ -528,10 +533,10 @@ bool SV::MeasureGood() {
     Measure *temp = measureDat.front();
     measureGood = temp->prMes<45e6&&temp->prMes>15e6;
     if(!measureGood){
-        printf("\npr measure bad sv:%d,%02d,angle:%lf\n",type,svId,temp->prMes);
+        sprintf(tip,"pr measure bad sv:%d,%02d,angle:%lf\n",type,svId,temp->prMes);
     }
     if (trackCount<5) {
-        printf("trackingTime %d < 5\n", trackCount);
+        sprintf(tip,"trackingTime %d < 5\n", trackCount);
         return 0;
     }
 
@@ -543,18 +548,6 @@ double SV::InterpRtkData(double time, int sigInd) {
 
     auto ite = rtkData.begin();
     double distanse = 100;
-//    for (; ite<rtkData.end()-5 ; ite++) {
-//        int temp = abs((*ite)->rtktime-time);
-//        if(distanse>temp){
-//            distanse = temp;
-//        }
-//        if(distanse<0.5)break;
-//    }
-//    if(distanse>=0.5)
-//    {
-//        printf("rtk data num = %d, not enough,distanse=%lf\n",rtkData.size(),distanse);
-//        return 0;
-//    }
 
     for (; ite < rtkData.end() - 5; ite++) {
         distanse = time - (*ite)->rtktime;
@@ -562,10 +555,10 @@ double SV::InterpRtkData(double time, int sigInd) {
     }
     if(distanse>2)
     {
-        printf("rtk data num size = %d, not enough,closeest distanse=%lf\n",rtkData.size(),distanse);
+        sprintf(tip,"rtk data num size = %d, not enough,closeest distanse=%lf\n",rtkData.size(),distanse);
         return 0;
     }
-    printf("time: %lf,%lf\n", time,(*ite)->rtktime);
+//    printf("time: %lf,%lf\n", time,(*ite)->rtktime);
 
     vector<double> times, prMes, cpMes;
     for(int i=0;i<InterpLength;i++){
@@ -575,7 +568,7 @@ double SV::InterpRtkData(double time, int sigInd) {
             times.push_back(data->rtktime);
             prMes.push_back(cell->prMes);
             cpMes.push_back(cell->cpMes);
-            printf("t=%f,pr=%f,cp = %f\n",data->rtktime,cell->prMes,cell->cpMes);
+//            printf("t=%f,pr=%f,cp = %f\n",data->rtktime,cell->prMes,cell->cpMes);
         }
 
     }
@@ -586,7 +579,7 @@ double SV::InterpRtkData(double time, int sigInd) {
     }
     prInterp[sigInd] = InterpLine(time,times,prMes);
     cpInterp[sigInd] = InterpLine(time,times,cpMes);
-    printf("Interp:t=%f,pr=%f,cp = %f\n",time,prInterp[sigInd],cpInterp[sigInd]);
+//    printf("Interp:t=%f,pr=%f,cp = %f\n",time,prInterp[sigInd],cpInterp[sigInd]);
 
     return prInterp[sigInd];
 }
@@ -616,7 +609,4 @@ bool SV::IsMaskOn() {
 }
 
 
-template <typename FUN>
-double SV::DiffBase(FUN) {
 
-}

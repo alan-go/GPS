@@ -67,7 +67,7 @@ extern double GetFreq(SysType type, int sigInd, bool lambda = 0);
 extern double lagrange(double *x,double *y,double xx,int n);     /*拉格朗日插值算法*/
 extern double lineIntp(double *x,double *y,double xx,int n);
 
-extern int XYZ2LLA(Eigen::Vector3d XYZ, Eigen::Vector3d &LLA);
+extern int XYZ2LLA(Eigen::Vector3d &XYZ, Eigen::Vector3d &LLA);
 
 extern void deg2dms(double deg, double *dms);
 /* convert ddmm.mm in nmea format to deg -------------------------------------*/
@@ -108,10 +108,17 @@ public:
     Eigen::Vector3d xyz, vxyz, lla;
     double tu[Nsys]={0};
     Solution(){}
-    Solution(GnssTime time,Vector3d xyz,Vector3d vxyz):time(time),xyz(xyz),vxyz(vxyz){XYZ2LLA(xyz,lla);}
+    Solution(GnssTime time,Vector3d xyz,Vector3d vxyz,double* _tu):time(time),xyz(xyz),vxyz(vxyz){
+        XYZ2LLA(xyz,lla);
+        memcpy(tu,_tu,Nsys* sizeof(double));
+    }
     void Show(char *tip){
         printf("%s LLA: %.7f,%.7f,%.2f\t",tip,lla(0)*R2D,lla(1)*R2D,lla(2));
         printf("%s XYZ: %.7f,%.7f,%.7f\n",tip,xyz(0),lla(1),lla(2));
+        printf("tu: ");
+        for(int i=0;i<Nsys;i++)
+            printf("%.2f, ", tu[i]);
+        printf("\n");
     }
 };
 
