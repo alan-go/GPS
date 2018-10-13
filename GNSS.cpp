@@ -125,13 +125,13 @@ int GNSS::Test(vector<SV *> svs) {
     PosSolver solverSingle(svsManager, &rtkManager, this);
 
     if(0==solverSingle.PositionSingle(svs)){
-        solverSingle.soltion.Show("sssssssssssingle solution:::");
+        solverSingle.soltion.Show("###Single###");
         AddPosRecord(solverSingle.soltion);
     }
 
     PosSolver solverRtk(svsManager, &rtkManager, this);
     if(0== solverRtk.PositionRtk(svs))
-        solverRtk.soltion.Show("rrrrrrrrrrrrrtk pr solution:::");
+        solverRtk.soltion.Show("###RTK###");
 
 //    if(0== kalmanSolver.PositionKalman(svs)){
 //        solverRtk.soltion.Show("Kalman solution:::");

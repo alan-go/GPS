@@ -39,7 +39,7 @@ public:
 
     EphemSp3 *ephemSp3;
     int trackCount;
-    bool temp = 1;
+//    bool temp = 1;
     int8_t bstEphemOK[10];
     bool isBeiDouGEO;
     bool open, measureGood, elevGood;
@@ -132,9 +132,46 @@ public:
     SysType type;
     vector<SV*> table;
     double tu;
+    MatrixXd dataDebug;
+    int xhead{0};
+    char title[256];
     SvSys(SysType _type):type(_type){};
     void OpenClose(bool state){
         for(SV* sv:table)sv->open=state;
+    }
+    void MakeDebug(int s){
+        int Ni = table.size();
+        dataDebug = MatrixXd(Ni,16);
+        dataDebug.fill(0);
+        xhead = 0;
+        switch (s){
+            case 3:
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->prMes;}
+                xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->cpMes;}
+                xhead++;
+            case 2:
+               for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->I;}
+                xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->T;}
+                xhead++;
+            case 1:
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->elevationAngle;}
+                xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->azimuthAngle;}
+                xhead++;
+            case 0:
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->type;}
+                xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->svId;}
+                xhead++;
+        }
+    }
+    void AddAnaData(VectorXd &v){
+        dataDebug.col(xhead++)=v;
+    }
+    void Show(){
+        cout<<dataDebug<<endl;
     }
 
     template <typename T>
@@ -180,6 +217,7 @@ public:
     MatrixXd GetD(){
         int N = table.size();
         MatrixXd D(N-1,N);
+        D.fill(0);
         for (int i =1; i <N; ++i) {
             D(i-1,i) =-1;
             D(i-1,0) = 1;

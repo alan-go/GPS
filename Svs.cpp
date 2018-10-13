@@ -56,11 +56,11 @@ bool SV::IsEphemOK(int ephemType, GnssTime time) {
                 }
             }
             if(!bstEphem){
-                sprintf(tip,"___Frame not enough\n");
+                sprintf(tip,"LackFrame");
                 return false;
             }
             if(SatH1){
-                sprintf(tip,"___not Healthy\n");
+                sprintf(tip,"noHeal");
 
                 return false;
             }
@@ -68,12 +68,12 @@ bool SV::IsEphemOK(int ephemType, GnssTime time) {
         case 1:
             //todo
             if(ephemSp3== nullptr){
-                sprintf(tip,"____no sp3 record \n");
+                sprintf(tip,"noSp3Data");
                 return false;
             }
             timeperiod = ephemSp3->dt * 5;
             if((time-ephemSp3->timeHead<timeperiod)||(ephemSp3->timeEnd-time<timeperiod)){
-                sprintf(tip,"sp3 time  period not ok\n");
+                sprintf(tip,"sp3TimeError");
                 return false;
             }
             break;
@@ -461,28 +461,26 @@ int BeiDouSV::DecodeD2Frame1(uint32_t *dwrds) {
 }
 
 int SV::CalcuelEvationAzimuth(Vector3d pos, Vector3d poslla) {
-    double sinl = sin(poslla(1));
-    double cosl = cos(poslla(1));
-    double sinp = sin(poslla(0));
-    double cosp = cos(poslla(0));
-    Matrix<double,3,3>SS;
-    SS<<-sinl,      cosl,       0,
-        -sinp*cosl, -sinp*sinl, cosp,
-        cosp*cosl,  cosp*sinl,  sinp;
-
-    Vector3d dtxyz = xyz - pos;
-    Vector3d dtenu = SS * dtxyz;
+    Vector3d dtenu,dtxyz = xyzR - pos;
+    XYZ2ENU(dtxyz,poslla,dtenu);
     elevationAngle = asin(dtenu(2)/dtenu.norm());
-    azimuthAngle = atan(dtenu(0)/dtenu(1));
+    azimuthAngle = atan2(dtenu(0),dtenu(1));
+    if(azimuthAngle<0)azimuthAngle+=2*GPS_PI;
 }
 
 int SV::CalcuInoshphere(double elev, double azim,Vector3d LLA,double time) {
-    double temp = Earth_a/(Earth_a+375000);
-    double phy = GPS_PI/2 - elev - asin(temp*cos(elev));
-    double phyM = asin(sin(LLA(1))*cos(phy) + cos(LLA(0))*sin(phy)*cos(azim));
-    double lambdaM = LLA(0)+asin(sin(phy)*sin(azim)/cos(phyM));
+    double temp0 = Earth_a/(Earth_a+375000);
+    double temp1 = temp0*cos(elev);
+    double psi = GPS_PI/2 - elev - asin(temp1);
+    printf("***************psi =  %.2f\n", psi);
+    double phyM = asin(sin(LLA(0))*cos(psi) + cos(LLA(0))*sin(psi)*cos(azim));
+    printf("***************phyM =  %.2f\n", phyM);
+    double lambdaM = LLA(1)+asin(sin(psi)*sin(azim)/cos(phyM));
+    printf("***************lambdaM =  %.2f\n", lambdaM);
     double t = time + lambdaM*43200/GPS_PI;
+    printf("***************t0 =  %.2f\n", t);
     t = fmod(t,86400);
+    printf("***************t =  %.2f\n",t);
     if(t<0)t+=86400;
 
     double phyMpi = phyM/GPS_PI;
@@ -496,7 +494,7 @@ int SV::CalcuInoshphere(double elev, double azim,Vector3d LLA,double time) {
     if(abs(t - 50400) < A4/4)
         Iz_ += A2*cos(2*GPS_PI*(t-50400)/A4);
 
-    I = Iz_ / sqrt(1 - temp*temp);
+    I = Iz_ / sqrt(1 - temp1*temp1);
     I *= Light_speed;
 
     return 0;
@@ -524,7 +522,7 @@ bool SV::ElevGood() {
         return 1;
     elevGood = elevationAngle>0.17;
     if(!elevGood){
-        sprintf(tip,"elev angle bad sv:%d,%02d,angle:%lf\n",type,svId,elevationAngle);
+        sprintf(tip,"elevTooLow:%.1f",elevationAngle);
     }
     return elevGood;
 }
@@ -533,10 +531,10 @@ bool SV::MeasureGood() {
     Measure *temp = measureDat.front();
     measureGood = temp->prMes<45e6&&temp->prMes>15e6;
     if(!measureGood){
-        sprintf(tip,"pr measure bad sv:%d,%02d,angle:%lf\n",type,svId,temp->prMes);
+        sprintf(tip,"prError:%.1f",temp->prMes);
     }
     if (trackCount<5) {
-        sprintf(tip,"trackingTime %d < 5\n", trackCount);
+        sprintf(tip,"track %d<5", trackCount);
         return 0;
     }
 
@@ -555,7 +553,7 @@ double SV::InterpRtkData(double time, int sigInd) {
     }
     if(distanse>2)
     {
-        sprintf(tip,"rtk data num size = %d, not enough,closeest distanse=%lf\n",rtkData.size(),distanse);
+        sprintf(tip," %drtk,cloest=%.1f",rtkData.size(),distanse);
         return 0;
     }
 //    printf("time: %lf,%lf\n", time,(*ite)->rtktime);

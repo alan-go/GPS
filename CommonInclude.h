@@ -68,7 +68,15 @@ extern double lagrange(double *x,double *y,double xx,int n);     /*拉格朗日�
 extern double lineIntp(double *x,double *y,double xx,int n);
 
 extern int XYZ2LLA(Eigen::Vector3d &XYZ, Eigen::Vector3d &LLA);
-
+/* transform geodetic to ecef position -----------------------------------------
+* transform geodetic position to ecef position
+* args   : double *pos      I   geodetic position {lat,lon,h} (rad,m)
+*          double *r        O   ecef position {x,y,z} (m)
+* return : none
+* notes  : WGS84, ellipsoidal height
+*-----------------------------------------------------------------------------*/
+extern void LLA2XYZ(const Eigen::Vector3d &lla,Eigen::Vector3d &xyz );
+extern void XYZ2ENU(const Eigen::Vector3d &xyz,const Eigen::Vector3d &lla,Eigen::Vector3d &enu);
 extern void deg2dms(double deg, double *dms);
 /* convert ddmm.mm in nmea format to deg -------------------------------------*/
 static double dmm2deg(double dmm)
@@ -78,14 +86,7 @@ static double dmm2deg(double dmm)
 
 extern void EarthRotate(Eigen::Vector3d in, Eigen::Vector3d &out, double dt);
 
-/* transform geodetic to ecef position -----------------------------------------
-* transform geodetic position to ecef position
-* args   : double *pos      I   geodetic position {lat,lon,h} (rad,m)
-*          double *r        O   ecef position {x,y,z} (m)
-* return : none
-* notes  : WGS84, ellipsoidal height
-*-----------------------------------------------------------------------------*/
-extern void LLA2XYZ(const Eigen::Vector3d &lla,Eigen::Vector3d &xyz );
+
 
 
 

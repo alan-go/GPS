@@ -138,3 +138,11 @@ void LLA2XYZ(const Eigen::Vector3d &lla,Eigen::Vector3d &xyz )
     xyz(2)=(v*(1.0-e2)+lla(2))*sinp;
 }
 
+void XYZ2ENU(const Eigen::Vector3d &xyz,const Eigen::Vector3d &lla,Eigen::Vector3d &enu){
+    double sinp=sin(lla[0]),cosp=cos(lla[0]),sinl=sin(lla[1]),cosl=cos(lla[1]);
+    Eigen::Matrix3d SS;
+    SS<<-sinl,      cosl,   0,
+    -sinp*cosl, -sinp*sinl, cosp,
+    cosp*cosl,  cosp*sinl,  sinp;
+    enu = SS*xyz;
+}

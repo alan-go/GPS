@@ -74,11 +74,10 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
             MatrixXd Ei = sys->GetE(xyz,rr);
             pci = sys->DiffZero(CalcuPc,1);
             bi = pci-rr-tu[sys->type]*(VectorXd::Ones(Ni));
-            data.block(yhead,0,Ni,1)<<pci;
-            data.block(yhead,1,Ni,1)<<sys->DiffZero(CalcuI,1);
-            data.block(yhead,2,Ni,1)<<sys->DiffZero(CalcuT,1);
-            data.block(yhead,3,Ni,1)<<bi;
-            data.block(yhead,4,Ni,1)<<sys->DiffZero(Calcue,1);
+
+            sys->MakeDebug(2);
+            sys->AddAnaData(bi);
+            sys->Show();
 
             b.segment(yhead,Ni)<<bi;
             G.block(yhead,0,Ni,3)<<-Ei;
@@ -91,9 +90,9 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
         dt_xyz_tu = H*Gt*b;
         xyz+=dt_xyz_tu.head(3);
         cout<<"dt = "<<endl<<dt_xyz_tu<<endl;
-        cout<<"b = "<<endl<<b<<endl;
+//        cout<<"b = "<<endl<<b<<endl;
         cout<<"G= "<<endl<<G<<endl;
-        cout<<"data = "<<endl<<data<<endl;
+//        cout<<"data = "<<endl<<data<<endl;
 
         i=3;
         //todo:sysused:
@@ -118,7 +117,7 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
 
         //1,is used?
         if(!sv->open){
-            sprintf(sv->tip,"____closed\n");
+            sprintf(sv->tip,"closed");
             continue;
         }
         //2,judge ephemeric
@@ -137,7 +136,7 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
 
 
         svsBox.AddToUsed(sv);
-       sprintf(sv->tip,"++ok\n");
+       sprintf(sv->tip,"++ok");
     }
     for(SV* sv:all) sv->PrintInfo(0);
     nSat = svsBox.svUsedAll.size();
@@ -491,15 +490,28 @@ int PosSolver::PositionRtk(vector<SV *> _svsIn) {
     int yhead = 0;
 
     for(SvSys* sys:svsBox.sysUsed){
+//        sys->Show();
         int Ni = sys->table.size();
-        VectorXd rs(Ni);
-        pr_rb.head(Ni-1)<<sys->DiffDouble(Diff_Pr_rb,sigInd);
-        MatrixXd Ei = sys->GetE(base,rs);
+        VectorXd rr(Ni),pr_rbi(Ni-1);
+        pr_rbi<<sys->DiffDouble(Diff_Pr_rb,sigInd);
+        MatrixXd Ei = sys->GetE(base,rr);
         MatrixXd Di = sys->GetD();
         G.block(yhead,0,Ni-1,3)<<-Di*Ei;
+        pr_rb.segment(yhead,Ni-1)<<pr_rbi;
         yhead+=Ni-1;
+
+        VectorXd dtbi = (-Di*Ei).colPivHouseholderQr().solve(pr_rbi);
+        cout<<"Gi= "<<endl<<-Di*Ei<<endl;
+        cout<<"Di= "<<endl<<Di<<endl;
+        cout<<"Ei= "<<endl<<Ei<<endl;
+        cout<<"prrb_i= "<<endl<<pr_rbi<<endl;
+        cout<<"dtbi"<<endl<<dtbi<<endl;
+        cout<<"delta "<<endl<<pr_rbi-(-Di*Ei*dtbi);
     }
+    cout<<"G= "<<endl<<G<<endl;
+    cout<<"prrb= "<<endl<<pr_rb<<endl;
     dtb = G.colPivHouseholderQr().solve(pr_rb);
+    cout<<"dtb= "<<endl<<dtb<<endl;
     xyz = base+dtb;
     soltion = Solution(timeSolver,xyz,vxyz,tu);
 }
