@@ -1,7 +1,7 @@
 #include "GNSS.h"
 #include "EphemSp3.h"
 
-GNSS::GNSS() :useGPS(1),useBeiDou(1),useQianXun(1),isPositioned(false),ephemType(0),logOpen(0){
+GNSS::GNSS() :useGPS(1),useBeiDou(1),useQianXun(1),ephemType(0),logOpen(0){
     rtkManager.gnss = this;
     rtkManager.serverIP_ = "60.205.8.49";
     rtkManager.port_ = 8002;
@@ -34,6 +34,7 @@ int GNSS::Init(int ephem, bool qianXun, bool bds, bool gps) {
     }
 
     kalmanSolver.InitKalman(this);
+    solver.Init(this);
 
 }
 
@@ -99,19 +100,29 @@ int GNSS::ParseRawData(char *message, int len) {
     if(0==numMeas)return -1;
 
     for(u_int8_t n = 0;n<numMeas;n++){
+        Measure *mes = new Measure();
+        mes->time=rTime;
         int n32 = n*32;
         uint8_t gnssId = *(uint8_t *)(raw+36+n32);
         uint8_t svId = *(uint8_t *)(raw+37+n32);
-        double prMes = *(double*)(raw+16+n32);
-        double cpMes = *(double*)(raw+24+n32);
-        double doMes = *(float *)(raw+32+n32);
-        cpMes *= GetFreq(SysType(gnssId),sigId,1);
         SV* sv = svsManager.GetSv(SysType(gnssId),svId);
         if(sv== nullptr){
             printf("Wrong sv Id! %d,%d\n", gnssId, svId);
             continue;
         }
-        sv->AddMmeasure(new Measure(rTime, prMes, cpMes, doMes));
+
+        double lambda = GetFreq(SysType(gnssId),sigId,1);
+        mes->prMes = *(double*)(raw+16+n32);
+        mes->cpMes = *(double*)(raw+24+n32)*lambda;
+        mes->doMes = *(float *)(raw+32+n32);
+        mes->lockTime = *(uint16_t*)(raw+40+n32);
+        mes->cno = *(uint8_t *)(raw+42+n32);
+        mes->stdevPr = 0.01 *pow(2, *(uint8_t *)(raw+43+n32));
+        mes->stdevCp = 0.004*lambda*(*(uint8_t *)(raw+44+n32));
+        mes->stdevDo = 0.002*pow(2, *(uint8_t *)(raw+45+n32));
+        mes->trkStat = *(uint8_t *)(raw+46+n32);
+
+        sv->AddMmeasure(mes);
         svsVisable.push_back(sv);
     }
 
@@ -121,21 +132,24 @@ int GNSS::ParseRawData(char *message, int len) {
 
 int GNSS::Test(vector<SV *> svs) {
     printf("coutnt %d\n", count);
-    if(++count<100) return -1;
-    PosSolver solverSingle(svsManager, &rtkManager, this);
+    solver.AnaData(svs);
+    return 0;
 
-    if(0==solverSingle.PositionSingle(svs)){
-        solverSingle.soltion.Show("###Single###");
-        AddPosRecord(solverSingle.soltion);
+    if(++count<100) return -1;
+//    PosSolver solverSingle(svsManager, &rtkManager, this);
+
+    if(0==solver.PositionSingle(svs)){
+        solver.soltion.Show("###Single###");
+        AddPosRecord(solver.soltion);
     }
 
-    PosSolver solverRtk(svsManager, &rtkManager, this);
-    if(0== solverRtk.PositionRtk(svs))
-        solverRtk.soltion.Show("###RTK###");
+//    PosSolver solverRtk(svsManager, &rtkManager, this);
+    if(0== solver.PositionRtk(svs))
+        solver.soltion.Show("###RTK###");
 
-//    if(0== kalmanSolver.PositionKalman(svs)){
-//        solverRtk.soltion.Show("Kalman solution:::");
-//    }
+    if(0== kalmanSolver.PositionKalman(svs)){
+        kalmanSolver.soltion.Show("###Kalman###");
+    }
 
 }
 int GNSS::Peform(vector<SV *> svs) {

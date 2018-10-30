@@ -96,9 +96,12 @@ class Measure{
 public:
     GnssTime time;
     double prMes,cpMes,doMes;
-    double cycle{40},cycleP{100};
-    double sigmaPr{1.0},sigmaCp{0.05};
+    double cycle{400},cycleP{1e9};
+    double stdevPr{1.5},stdevCp{1e-4},stdevDo;
     int track{0};
+    double lockTime,cno;
+    int trkStat;
+    Measure(){};
     Measure(GnssTime _time,double _pr,double _cp,double _doplr = 0)
         : time(_time),prMes(_pr),cpMes(_cp),doMes(_doplr){};
     void Show(char* tip){ printf("%s: %.3f,%.3f,%.1f\n", prMes,cpMes,cycle);}
@@ -115,7 +118,7 @@ public:
     }
     void Show(char *tip){
         printf("%s LLA: %.7f,%.7f,%.2f\t",tip,lla(0)*R2D,lla(1)*R2D,lla(2));
-        printf("%s XYZ: %.7f,%.7f,%.7f\n",tip,xyz(0),lla(1),lla(2));
+        printf("%s XYZ: %.7f,%.7f,%.7f\n",tip,xyz(0),xyz(1),xyz(2));
         printf("tu: ");
         for(int i=0;i<Nsys;i++)
             printf("%.2f, ", tu[i]);

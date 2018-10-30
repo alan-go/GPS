@@ -44,7 +44,7 @@ public:
     bool isBeiDouGEO;
     bool open, measureGood, elevGood;
     SysType type;
-    int svId;
+    int svId;///1,2,3...
     uint32_t SatH1,URAI;
     uint32_t SOW,WN;
     ionosphere ino;

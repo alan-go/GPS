@@ -111,7 +111,7 @@ int main()
 {
     GNSS *gnss = new GNSS();
     gnss->AddSerial(0,0,"/dev/ttyUSB0",115200,true,true);
-    gnss->AddSerial(1,1,"/dev/ttyUSB1",115200,true, false);
+    gnss->AddSerial(1,1,"/dev/ttyUSB1",115200,true,false);
 //    test(gnss);
 //    return 0;
     for (int i = 0; i < 5; ++i) gnss->svMaskBds[i]=0;
@@ -126,8 +126,8 @@ int main()
 
 
     printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
-//    char command = getchar();
-    char command = 'd';
+    char command = getchar();
+//    char command = 'd';
     if('d'==command) {
         FILE *fp;
         char name[128],dat[512],temp[256],tempc;

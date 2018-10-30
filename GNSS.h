@@ -26,14 +26,14 @@ public:
     bool useBeiDou,useGPS,useQianXun;
     int svMaskBds[Nbds], svMaskGps[Ngps];
     int ephemType;//0:broadcast,1:sp3
-    bool isPositioned;
+//    bool isPositioned;
     int count{0};
 //    char logFile[64];
     bool logOpen;
     std::FILE *log,*logRTK,*logDebug;
     struct tm *utcTime;
     char timeName[128];
-    PosSolver kalmanSolver;
+    PosSolver kalmanSolver,solver;
 
 public:
     GNSS();

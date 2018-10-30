@@ -97,6 +97,7 @@ bool SV::AddMmeasure(Measure *mesr) {
     if(!measureDat.empty()){
         Measure* latest = measureDat.front();
         mesr->cycle = latest->cycle;
+        mesr->cycleP = latest->cycleP;
         if(mesr->time-latest->time>1.5)trackCount=0;
         else trackCount++;
     }
@@ -471,16 +472,12 @@ int SV::CalcuelEvationAzimuth(Vector3d pos, Vector3d poslla) {
 int SV::CalcuInoshphere(double elev, double azim,Vector3d LLA,double time) {
     double temp0 = Earth_a/(Earth_a+375000);
     double temp1 = temp0*cos(elev);
+//    printf("ai,bi %e,%ef,%ef,%ef,\t %e,%e,%e,%e,\n",ino.a0,ino.a1,ino.a2,ino.a3,ino.b0,ino.b1,ino.b2,ino.b3 );
     double psi = GPS_PI/2 - elev - asin(temp1);
-    printf("***************psi =  %.2f\n", psi);
     double phyM = asin(sin(LLA(0))*cos(psi) + cos(LLA(0))*sin(psi)*cos(azim));
-    printf("***************phyM =  %.2f\n", phyM);
     double lambdaM = LLA(1)+asin(sin(psi)*sin(azim)/cos(phyM));
-    printf("***************lambdaM =  %.2f\n", lambdaM);
     double t = time + lambdaM*43200/GPS_PI;
-    printf("***************t0 =  %.2f\n", t);
     t = fmod(t,86400);
-    printf("***************t =  %.2f\n",t);
     if(t<0)t+=86400;
 
     double phyMpi = phyM/GPS_PI;
@@ -510,7 +507,7 @@ int SV::CalcuTroposhphere(double elev, double azim) {
 
 int SV::CorrectIT(Vector3d xyz,Vector3d lla,double time) {
     CalcuelEvationAzimuth(xyz,lla);
-    printf("elevation = %lf, azim = %lf\n",elevationAngle,azimuthAngle);
+//    printf("%d,%d..elevation = %lf, azim = %lf\n",type,svId,elevationAngle,azimuthAngle);
     CalcuTroposhphere(elevationAngle,azimuthAngle);
     CalcuInoshphere(elevationAngle,azimuthAngle,lla,time);
 }

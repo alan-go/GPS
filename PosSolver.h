@@ -24,6 +24,7 @@ public:
     Matrix<double,6,6> Pxv;
 public:
     int InitKalman(GNSS *_gnss);
+    int Init(GNSS *_gnss);
     PosSolver();
     PosSolver(SvAll svs, NtripRTK *rtk, GNSS *gnss);
     ~PosSolver();
@@ -44,6 +45,8 @@ public:
     int SolvePositionBeiDouGPS(vector<SV*>svsForCalcu);
     int SolvePositionCalman();
     int PositionKalman(vector<SV*> _svsIn);
+    int AnaData(vector<SV*> _svsIn);
+
 
 };
 
