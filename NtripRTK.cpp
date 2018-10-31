@@ -65,7 +65,7 @@ void NtripRTK::RecvThread() {
     printf("in recv thread\n");
     FILE *fp;
     sprintf(saveName,"../data/%s.rtk",gnss->timeName);
-    if(gnss->logOpen)fp = fopen(saveName, "wb");
+    if(logOpen)fp = fopen(saveName, "wb");
     while(!stopRTK) {
         auto recvLength = recv(sock_, bufferRecv, sizeof(bufferRecv), 0);
         if(recvLength < 0) {
@@ -76,7 +76,7 @@ void NtripRTK::RecvThread() {
         }
         if(recvLength >= 0) {
             ParaseRTK(bufferRecv,recvLength);
-            if(gnss->logOpen)fwrite(bufferRecv, recvLength, 1, fp);
+            if(logOpen)fwrite(bufferRecv, recvLength, 1, fp);
         }
     }
     fclose(fp);

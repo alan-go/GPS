@@ -21,9 +21,10 @@ public:
     boost::asio::serial_port *sp_;
     unsigned int baudRate;
     bool stopCapture{0};
-    bool showData{0},logOpen{0},paraseDara{0};
+    bool showData{0},logOpen{1},paraseDara{0};
     char saveName[128];
     pthread_t thread;
+    std::deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> solRaw;
     GNSS* gnss;
 
 public:

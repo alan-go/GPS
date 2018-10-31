@@ -43,6 +43,7 @@ public:
     std::string serverIP_;
     unsigned short port_;
     int sock_;
+    bool logOpen{1};
     //vector<MSM4data*>里面是不同时刻的数据，0是最近的记录
 //    vector<MSM4data*> rtkDataGps[Ngps],rtkDataBeiDou[Nbds];
     uint32_t refStationId;

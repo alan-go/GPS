@@ -110,22 +110,22 @@ void test(GNSS *gnss){
 int main()
 {
     GNSS *gnss = new GNSS();
-    gnss->AddSerial(0,0,"/dev/ttyUSB0",115200,true,true);
+    gnss->AddSerial(0,0,"/dev/ttyUSB0",115200,true,false);
     gnss->AddSerial(1,1,"/dev/ttyUSB1",115200,true,false);
+    gnss->rtkManager.logOpen=1;
 //    test(gnss);
 //    return 0;
     for (int i = 0; i < 5; ++i) gnss->svMaskBds[i]=0;
     gnss->log = fopen("../log/log.txt","w");
     gnss->logDebug = fopen("../log/logDebug.txt","w");
-
-    gnss->useQianXun = false;
+    gnss->useQianXun = true;
     //ephem,qianxun,bds,gps
-    gnss->Init(0,0,1,1);
+    gnss->Init(0,1,1,1);
 //    gnss->Init(0,0,1,0);
 //    gnss->Init(0,0,0,1);
 
 
-    printf("command:\nl : log data.\nd : from data.\nr : from receiver.\n");
+    printf("command:\nw : write serial.\nd : from data.\nr : from receiver.\n");
     char command = getchar();
 //    char command = 'd';
     if('d'==command) {
@@ -169,19 +169,14 @@ int main()
         if('x'==getchar()){
             cout<<"stop capture."<<endl;
         }
-    }else if('l'==command){
-        printf("start write file %s",saveDataName);
-        pthread_t logThread = 0;
-        pthread_create(&logThread, nullptr,LogData,saveDataName);
-
-        while (command=getchar()){
-            if('x'==command){
-                stopLog = 1;
-                pthread_join(logThread, nullptr);
-                printf("stopLogging");
-                break;
-            }
-        }
+    }else if('w'==command){
+        boost::asio::serial_port* sp = gnss->GetSerial(0)->sp_ ;
+        char bssUbx[64]="BSS-UBX-115200-5HZ-PVT-RHXZ-D1/r/n";
+        boost::asio::io_service ios;
+        sp = new boost::asio::serial_port(ios, serialPort);
+        sp->set_option ( boost::asio::serial_port::baud_rate ( 115200 ) );
+//        sp->write_some(bssUbx);
+        boost::asio::write(*sp, boost::asio::buffer(bssUbx, strlen(bssUbx)+2));
 
     }
     fclose(gnss->log);

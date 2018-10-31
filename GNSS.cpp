@@ -132,8 +132,8 @@ int GNSS::ParseRawData(char *message, int len) {
 
 int GNSS::Test(vector<SV *> svs) {
     printf("coutnt %d\n", count);
-    solver.AnaData(svs);
-    return 0;
+//    solver.AnaData(svs);
+//    return 0;
 
     if(++count<100) return -1;
 //    PosSolver solverSingle(svsManager, &rtkManager, this);
@@ -147,6 +147,7 @@ int GNSS::Test(vector<SV *> svs) {
     if(0== solver.PositionRtk(svs))
         solver.soltion.Show("###RTK###");
 
+    return 0;
     if(0== kalmanSolver.PositionKalman(svs)){
         kalmanSolver.soltion.Show("###Kalman###");
     }

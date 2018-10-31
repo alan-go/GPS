@@ -12,6 +12,7 @@ int main(){
     printf("\nin testing\n");
     GNSS *gnss = new GNSS();
     gnss->AddSerial(0,0,"/dev/ttyUSB0",115200,true,true);
+    gnss->AddSerial(1,0,"/dev/ttyUSB1",115200,true,true);
     gnss->log = fopen("../log/log.txt","w");
     gnss->logDebug = fopen("../log/logDebug.txt","w");
 
@@ -24,8 +25,8 @@ int main(){
 
     FILE *fp;
     char name[128],dat[512],temp[256],tempc;
-    string ss = "0921_13_02";
-//        string ss = "0802-1";
+//    string ss = "0921_13_02";
+        string ss = "1030_02_47";
 //        string ss = "0708-2.data";
 //        string ss = "0823";
 //        string ss = "0815-2";//soho novatal
@@ -33,7 +34,8 @@ int main(){
 
 
 
-    string ssData = "../data/" + ss + ".data";
+    string ssData0 = "../data/device0_" + ss + ".data";
+    string ssData1 = "../data/device1_" + ss + ".data";
     string ssRTK = "../data/" + ss + ".rtk";
     printf("open file name:%s\n",ssRTK.data());
     //ReadRTK data
@@ -52,8 +54,15 @@ int main(){
         fclose(fp);
     } else printf("open rtk data failed \n");
 
-    //Reac raw measure data(ubx)
-    if(fp = fopen(ssData.data(),"rb")){
+    //Reac raw1 measure data(ubx)
+     if(fp = fopen(ssData1.data(),"rb")){
+        while (128==fread(dat,1,128,fp)){
+            gnss->GetSerial(1)->ScanSerialData(dat,128);
+        }
+        fclose(fp);
+    } else printf("open data failed \n");
+    //Reac raw0 measure data(ubx)
+    if(fp = fopen(ssData0.data(),"rb")){
         while (128==fread(dat,1,128,fp)){
             gnss->GetSerial(0)->ScanSerialData(dat,128);
         }

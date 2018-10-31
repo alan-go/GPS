@@ -49,6 +49,13 @@ int SerialData::ParaseGGA( char* gga){
         printf("invalid nmea gpgga format,%c,%c\n",ns,ew);
         return 0;
     }
+    int week = gnss->utcTime->tm_wday;
+    int hour = floor(tod/10000.0);
+    tod-=hour*10000.0;
+    int min = floor(tod/100.0);
+    tod-=min*100.0;
+    double tow = 86400.0*week+3600*hour+60*min+tod;
+
 //    if (sol->time.time==0.0) {
 //        trace(2,"no date info for nmea gpgga\n");
 //        return 0;
@@ -58,8 +65,11 @@ int SerialData::ParaseGGA( char* gga){
 //    pos(2)=alt+msl;
     pos(2)=alt;
     //<6> GPS状态， 0初始化， 1单点定位， 2码差分， 3无效PPS， 4固定解， 5浮点解， 6正在估算 7，人工输入固定值， 8模拟模式， 9WAAS差分
-    printf("GGA  =  %.7f,%.7f,%.2f,,,quality = %d, n of svs=%d\n", pos(0)*R2D, pos(1)*R2D, pos(2),solq,nrcv);
     LLA2XYZ(pos,gnss->xyz00);
+    Solution sol(GnssTime(0,tow),pos);
+    solRaw.push_front(sol);
+    printf("tod,tow %f,%f\n",tod,tow);
+    printf("GGA  =  %.7f,%.7f,%.2f,,,quality = %d, n of svs=%d\n", pos(0)*R2D, pos(1)*R2D, pos(2),solq,nrcv);
 
 //    time2epoch(sol->time,ep);
 //    septime(tod,ep+3,ep+4,ep+5);

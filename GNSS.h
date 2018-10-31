@@ -29,7 +29,7 @@ public:
 //    bool isPositioned;
     int count{0};
 //    char logFile[64];
-    bool logOpen;
+    bool logOpen{1};
     std::FILE *log,*logRTK,*logDebug;
     struct tm *utcTime;
     char timeName[128];
