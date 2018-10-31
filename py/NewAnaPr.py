@@ -4,7 +4,16 @@ from mpl_toolkits.mplot3d import Axes3D
 
 data=[]
 
+def Data_zero():
+    for eachCol in data:
+        dfirst = eachCol[0]
+        for eachEle in eachCol:
+            eachCol-=dfirst
 
+def Data_proc():
+    for eachClo in data:
+        for eachEle in eachClo:
+            eachEle=-eachEle
 
 def Plt3(data,indx,indy,indz,color,ax):
     x0,y0,z0 = [],[],[]
@@ -44,9 +53,9 @@ def ReadData(path, colNum,begin):
 
 
 if __name__=="__main__":
-    ReadData("../log/logDebug.txt",11,1)
+    ReadData("../log/xyzOf1030_08_44KAL.txt",4,1)
     plt.figure("ana")
-    plt.plot(data[0],data[1])
+    plt.plot(data[2],data[1])
     # plt.plot(data[0],data[2])
     # plt.plot(data[0],data[3])
     # plt.plot(data[0],data[4])

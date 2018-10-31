@@ -111,6 +111,7 @@ int main()
 {
     GNSS *gnss = new GNSS();
     gnss->AddSerial(0,0,"/dev/ttyUSB0",115200,true,false);
+    gnss->GetSerial(0)->sendGGA=1;
     gnss->AddSerial(1,1,"/dev/ttyUSB1",115200,true,false);
     gnss->rtkManager.logOpen=1;
 //    test(gnss);

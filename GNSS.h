@@ -15,6 +15,7 @@ public:
     Eigen::Vector3d xyzDefault, llaDefault;
     Eigen::Vector3d xyz00;
     deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> records;
+    deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> solSingle,solRTK,solKalman;
     double cycle[Nsys-1][Nxxs],PB[Nsys-1][Nxxs],sigmaCy[Nsys-1][Nxxs],sigmaPr[Nsys-1][Nxxs];
     Matrix<double,6,6> Pxv;
 //    Matrix<double,Ngps,1> cycleGPS,sigmaGPSCy,sigmaGPSPr;

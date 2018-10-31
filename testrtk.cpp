@@ -7,6 +7,16 @@
 using namespace std;
 using namespace Eigen;
 
+void WriteSols(SolutionDeque sols,string saveName){
+    string path = "../log/"+saveName+".txt";
+    FILE *fp = fopen(path.data(),"w");
+    for(Solution sl:sols){
+//       fprintf(fp,"%.4f,%.4f,%.4f,%.4f\n",sl.time.tow,sl.xyz(0),sl.xyz(1),sl.xyz(2));
+        fprintf(fp,"%.4f,%.8f,%.8f,%.8f\n",sl.time.tod,sl.lla(0)*R2D,sl.lla(1)*R2D,sl.lla(2));
+    }
+    fclose(fp);
+}
+
 
 int main(){
     printf("\nin testing\n");
@@ -18,15 +28,15 @@ int main(){
 
     gnss->useQianXun = false;
     //ephem,qianxun,bds,gps
-    gnss->Init(0,0,1,1);
-//    gnss->Init(0,0,1,0);
 //    gnss->Init(0,0,0,1);
+//    gnss->Init(0,0,1,0);
+    gnss->Init(0,0,1,1);
 
 
     FILE *fp;
     char name[128],dat[512],temp[256],tempc;
 //    string ss = "0921_13_02";
-        string ss = "1030_02_47";
+        string ss = "1030_08_44";
 //        string ss = "0708-2.data";
 //        string ss = "0823";
 //        string ss = "0815-2";//soho novatal
@@ -55,18 +65,25 @@ int main(){
     } else printf("open rtk data failed \n");
 
     //Reac raw1 measure data(ubx)
-     if(fp = fopen(ssData1.data(),"rb")){
+    if(fp = fopen(ssData1.data(),"rb")){
         while (128==fread(dat,1,128,fp)){
             gnss->GetSerial(1)->ScanSerialData(dat,128);
         }
         fclose(fp);
+        WriteSols(gnss->GetSerial(1)->solRaw,"xyzOf1030_08_44RAC");
     } else printf("open data failed \n");
     //Reac raw0 measure data(ubx)
     if(fp = fopen(ssData0.data(),"rb")){
         while (128==fread(dat,1,128,fp)){
+
             gnss->GetSerial(0)->ScanSerialData(dat,128);
         }
         fclose(fp);
+        WriteSols(gnss->GetSerial(0)->solRaw,"xyzOf1030_08_44UBX");
+        WriteSols(gnss->solKalman,"xyzOf1030_08_44KAL");
+        WriteSols(gnss->solRTK,"xyzOf1030_08_44RTK");
+        WriteSols(gnss->solSingle,"xyzOf1030_08_44SIG");
+
     } else printf("open data failed \n");
 
     getchar();

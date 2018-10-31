@@ -156,9 +156,11 @@ public:
                 for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->T;}
                 xhead++;
             case 1:
-                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->elevationAngle;}
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->elevationAngle*R2D;}
                 xhead++;
-                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->azimuthAngle;}
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->azimuthAngle*R2D;}
+                xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->cno;}
                 xhead++;
             case 0:
                 for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->type;}
@@ -167,8 +169,9 @@ public:
                 xhead++;
         }
     }
-    void AddAnaData(VectorXd &v){
-        dataDebug.col(xhead++)=v;
+    void AddAnaData(VectorXd &v,int k=0){
+        dataDebug.block(k,xhead++,v.rows(),1)=v;
+//        dataDebug.col(xhead++)=v;
     }
     void Show(){
         cout<<dataDebug<<endl;

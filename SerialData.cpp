@@ -7,6 +7,9 @@
 
 int SerialData::ParaseGGA( char* gga){
     printf("GGA: %s\n", gga);
+    if(sendGGA){
+        gnss->rtkManager.SentGGA(gga,strlen(gga));
+    }
     vector<string> val;
     auto split = []( char* str,char c,vector<string> &result){
         char temp[16],*p = str;
@@ -54,7 +57,7 @@ int SerialData::ParaseGGA( char* gga){
     tod-=hour*10000.0;
     int min = floor(tod/100.0);
     tod-=min*100.0;
-    double tow = 86400.0*week+3600*hour+60*min+tod;
+    double secoday = 3600.0*hour+60.0*min+tod;
 
 //    if (sol->time.time==0.0) {
 //        trace(2,"no date info for nmea gpgga\n");
@@ -65,12 +68,11 @@ int SerialData::ParaseGGA( char* gga){
 //    pos(2)=alt+msl;
     pos(2)=alt;
     //<6> GPS状态， 0初始化， 1单点定位， 2码差分， 3无效PPS， 4固定解， 5浮点解， 6正在估算 7，人工输入固定值， 8模拟模式， 9WAAS差分
-    LLA2XYZ(pos,gnss->xyz00);
-    Solution sol(GnssTime(0,tow),pos);
+//    LLA2XYZ(pos,gnss->xyz00);
+    Solution sol(GnssTime(secoday),pos);
     solRaw.push_front(sol);
-    printf("tod,tow %f,%f\n",tod,tow);
-    printf("GGA  =  %.7f,%.7f,%.2f,,,quality = %d, n of svs=%d\n", pos(0)*R2D, pos(1)*R2D, pos(2),solq,nrcv);
-
+    printf("tod,tod %f,%f\n",tod,secoday);
+    sol.Show("###GGA###");
 //    time2epoch(sol->time,ep);
 //    septime(tod,ep+3,ep+4,ep+5);
 //    time=utc2gpst(epoch2time(ep));
@@ -154,7 +156,8 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
             }
             lengthUBX++;
         }
-        if(('\n'==tmp[i]||'\r'==tmp[i])&&1==flag){
+        if(('\n'==tmp[i])&&1==flag){
+//            if(('\n'==tmp[i]||'\r'==tmp[i])&&1==flag){
 //            printf("Got a NMEA,l = %d.:",lengthNMEA);
             if(!memcmp(bufferNMEA+3,"GGA",3))ParaseGGA(bufferNMEA);
             if (showData)

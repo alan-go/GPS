@@ -205,17 +205,20 @@ int PosSolver::MakeGGA(char *gga, Vector3d lla, GnssTime gpsTime) {
 int PosSolver::ProcessRtkData() {
     int sigInd = 1;
     nSat=nSys=0;
-//    SvAll tempAll = gnss->svsManager;
+    SvAll tempAll =svsBox;
     svsBox.svUsedAll.clear();
+    svsBox.sysUsed.clear();
 
-    for(SvSys* sys:svsBox.sysUsed){
+    for(SvSys* sys:tempAll.sysUsed){
+
         double elevMax = -5;
         int svCentreInd = -2;
         SV* svCectre;
-        vector<SV*> temp,temp0;
-        temp.swap(sys->table);
-        int n = temp.size(),nRtk = 0;
-        for(SV* sv:temp){
+        vector<SV*> temp0;
+//        temp.swap(sys->table);
+//        int n = temp.size();
+        int nRtk = 0;
+        for(SV* sv:sys->table){
             double time = timeSolver.tow - tu[sv->type]/Light_speed;
             if(sv->type==SYS_BDS)time-=14;
 
@@ -234,8 +237,12 @@ int PosSolver::ProcessRtkData() {
             temp0.erase(temp0.begin()+svCentreInd);
             svsBox.AddToUsed(svCectre);
             for(SV* svv:temp0)svsBox.AddToUsed(svv);
+//            printf("nsati %d\n", svsBox.svUsedAll.size());
+        } else{
+            printf("nothing\n");
         }
     }
+//    printf("nsat %d\n", svsBox.svUsedAll.size());
     nSat = svsBox.svUsedAll.size();
     nSys = svsBox.sysUsed.size();
 }
@@ -256,7 +263,6 @@ int PosSolver::PositionRtk(vector<SV *> _svsIn) {
     int yhead = 0;
 
     for(SvSys* sys:svsBox.sysUsed){
-//        sys->Show();
         int Ni = sys->table.size();
         VectorXd rr(Ni),pr_rbi(Ni-1);
         pr_rbi<<sys->DiffDouble(Diff_Pr_rb,sigInd);
@@ -272,12 +278,17 @@ int PosSolver::PositionRtk(vector<SV *> _svsIn) {
 //        cout<<"dtbi"<<endl<<dtbi<<endl;
 //        cout<<"delta "<<endl<<pr_rbi-(-Di*Ei*dtbi);
         sys->MakeDebug(2);
-//        sys->Show();
+//        sys->AddAnaData(pr_rbi-)
+        sys->Show();
     }
 //    cout<<"G= "<<endl<<G<<endl;
 //    cout<<"prrb= "<<endl<<pr_rb<<endl;
     dtb = G.colPivHouseholderQr().solve(pr_rb);
     cout<<"dtb= "<<endl<<dtb<<endl;
+
+//    cout<<"rtk_pr_rb= "<<endl<<pr_rb<<endl;
+//    cout<<"rtk_G*dtb= "<<endl<<G*dtb<<endl;
+    cout<<"rtk_res= "<<endl<<pr_rb-G*dtb<<endl<<endl;
     xyz = base+dtb;
     soltion = Solution(timeSolver,xyz,vxyz,tu);
 }
@@ -346,7 +357,6 @@ int PosSolver::PositionKalman(vector<SV *> _svsIn) {
         R.block(yhead+Ni-1,yhead+Ni-1,Ni-1,Ni-1)<<Di*Rpri.asDiagonal()*DiT;
 
         yhead+=2*(Ni-1);xhead+=Ni;
-
 
         sys->MakeDebug(2);
         sys->Show();

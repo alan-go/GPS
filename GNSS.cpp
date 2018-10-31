@@ -135,21 +135,25 @@ int GNSS::Test(vector<SV *> svs) {
 //    solver.AnaData(svs);
 //    return 0;
 
-    if(++count<100) return -1;
+    if(++count<120) return -1;
 //    PosSolver solverSingle(svsManager, &rtkManager, this);
 
     if(0==solver.PositionSingle(svs)){
         solver.soltion.Show("###Single###");
         AddPosRecord(solver.soltion);
+        solSingle.push_front(solver.soltion);
     }
 
 //    PosSolver solverRtk(svsManager, &rtkManager, this);
-    if(0== solver.PositionRtk(svs))
+    if(0== solver.PositionRtk(svs)){
         solver.soltion.Show("###RTK###");
+        solRTK.push_front(solver.soltion);
+    }
 
-    return 0;
+//    return 0;
     if(0== kalmanSolver.PositionKalman(svs)){
         kalmanSolver.soltion.Show("###Kalman###");
+        solKalman.push_front(kalmanSolver.soltion);
     }
 
 }

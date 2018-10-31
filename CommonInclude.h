@@ -112,7 +112,7 @@ public:
     Eigen::Vector3d xyz, vxyz, lla;
     double tu[Nsys]={0};
     Solution(){}
-    Solution(GnssTime time,Vector3d lla):lla(lla){LLA2XYZ(lla,xyz);}
+    Solution(GnssTime time,Vector3d lla):time(time),lla(lla){LLA2XYZ(lla,xyz);}
     Solution(GnssTime time,Vector3d xyz,Vector3d vxyz,double* _tu):time(time),xyz(xyz),vxyz(vxyz){
         XYZ2LLA(xyz,lla);
         memcpy(tu,_tu,Nsys* sizeof(double));
@@ -127,5 +127,6 @@ public:
     }
 };
 
+typedef std::deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> SolutionDeque;
 
 #endif //GPS_COMMONINCLUDE_H
