@@ -10,6 +10,12 @@ using namespace Eigen;
 class GNSS;
 class MSM4data;
 class EphemSp3;
+class SvAll;
+   struct ionosphere{
+        double a0,a1,a2,a3;
+        double b0,b1,b2,b3;
+        ionosphere():a0(0),a1(0),a2(0),a3(0),b0(0),b1(0),b2(0),b3(0){}
+    };
 class SV{
 public:
     struct Orbit{
@@ -31,11 +37,6 @@ public:
         Orbit():toe(0),sqrtA(0),e(0),i0(0),Omega0(0),M0(0), Cus(0),Cuc(0),Cis(0),Cic(0),Crs(0),Crc(0),dtn(0),omega(0),
                 IDOT(0),OmegaDot(0){}
     };
-    struct ionosphere{
-        double a0,a1,a2,a3;
-        double b0,b1,b2,b3;
-        ionosphere():a0(0),a1(0),a2(0),a3(0),b0(0),b1(0),b2(0),b3(0){}
-    };
 
     EphemSp3 *ephemSp3;
     int trackCount;
@@ -47,15 +48,15 @@ public:
     int svId;///1,2,3...
     uint32_t SatH1,URAI;
     uint32_t SOW,WN;
-    ionosphere ino;
     uint32_t AODC;//SYS_BDS
     uint32_t IODC;//SYS_GPS
     double toc,a0,a1,a2,a3;
     uint32_t a1High,a1Low;
     double TGD1,TGD2;
     Orbit orbit;
-
+    ionosphere *ion;
     double I,T;
+    FILE* fpLog{NULL};
 
     Vector3d xyz,lla,xyzR,llaR;//R:地球自传
     double tsv,tsDelta,tsReal;
@@ -85,8 +86,10 @@ public:
     int CalcuInoshphere(double elev,double azim,Vector3d LLA,double time);
     int CorrectIT(Vector3d xyz,Vector3d lla,double time);
     void PrintInfo(int printType);
+    void FPrintInfo(int printType);
     virtual int DecodeSubFrame(uint32_t* dwrds) = 0;
     double InterpRtkData(double time, int sigInd);
+    double InterpMeasere(int len,int power,int begin=0);
 
     //head 指32bit()中的头bit（范围：1-32）
     inline uint32_t Read1Word(uint32_t word, int length, int head, bool isInt = false);
@@ -139,6 +142,10 @@ public:
     void OpenClose(bool state){
         for(SV* sv:table)sv->open=state;
     }
+    void sortElev(string tag){
+        if("elev"==tag)
+        sort(table.begin(),table.end(),[](SV* left,SV* right)->bool{ return left->elevationAngle>right->elevationAngle;});
+    }
     void MakeDebug(int s){
         int Ni = table.size();
         dataDebug = MatrixXd(Ni,16);
@@ -162,6 +169,12 @@ public:
                 xhead++;
                 for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->cno;}
                 xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->stdevPr;}
+                xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->stdevCp;}
+                xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->trkStat;}
+                xhead++;
             case 0:
                 for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->type;}
                 xhead++;
@@ -171,7 +184,6 @@ public:
     }
     void AddAnaData(VectorXd &v,int k=0){
         dataDebug.block(k,xhead++,v.rows(),1)=v;
-//        dataDebug.col(xhead++)=v;
     }
     void Show(){
         cout<<dataDebug<<endl;
@@ -232,14 +244,13 @@ public:
 class SvAll{
 public:
     GNSS* gnss;
+    ionosphere ionKlob;
 //    SvSys* collect[Nsys];
 //    vector<int> sysIds;
 
     vector<SvSys*> sysAll,sysUsed;
     vector<SV*> svUsedAll;
 
-//    GpsSV svGpss[Ngps];
-//    BeiDouSV svBeiDous[Nbds];
 public:
     SvAll();
     void SetOpen(bool bds,bool gps);
@@ -247,6 +258,19 @@ public:
     ~SvAll();
     void InitAlloc();
     void UpdateEphemeris(char * subFrame);
+    int UpdateSVs(string tag="NULL"){
+       int count=0;
+       vector<SV*> result;
+       for(SvSys* sys:sysUsed){
+           if("elev"==tag)sys->sortElev(tag);
+           for(SV* sv:sys->table){
+               result.push_back(sv);
+               count++;
+           }
+       }
+       svUsedAll.swap(result);
+        return count;
+    }
     SV* GetSv(SysType type, int id){
         SvSys *sys =GetSys(type);
         if(id>sys->table.size()){

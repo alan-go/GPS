@@ -25,6 +25,7 @@ int main(){
     gnss->AddSerial(1,0,"/dev/ttyUSB1",115200,true,true);
     gnss->log = fopen("../log/log.txt","w");
     gnss->logDebug = fopen("../log/logDebug.txt","w");
+    gnss->logTu = fopen("../log/logtu.txt","w");
 
     gnss->useQianXun = false;
     //ephem,qianxun,bds,gps
@@ -36,7 +37,8 @@ int main(){
     FILE *fp;
     char name[128],dat[512],temp[256],tempc;
 //    string ss = "0921_13_02";
-        string ss = "1030_08_44";
+    string ss = "1030_08_44";
+//    string ss = "1030_02_47";
 //        string ss = "0708-2.data";
 //        string ss = "0823";
 //        string ss = "0815-2";//soho novatal
@@ -70,23 +72,23 @@ int main(){
             gnss->GetSerial(1)->ScanSerialData(dat,128);
         }
         fclose(fp);
-        WriteSols(gnss->GetSerial(1)->solRaw,"xyzOf1030_08_44RAC");
+//        WriteSols(gnss->GetSerial(1)->solRaw,"xyzOf1030_08_44RAC");
     } else printf("open data failed \n");
     //Reac raw0 measure data(ubx)
     if(fp = fopen(ssData0.data(),"rb")){
         while (128==fread(dat,1,128,fp)){
-
             gnss->GetSerial(0)->ScanSerialData(dat,128);
         }
         fclose(fp);
-        WriteSols(gnss->GetSerial(0)->solRaw,"xyzOf1030_08_44UBX");
-        WriteSols(gnss->solKalman,"xyzOf1030_08_44KAL");
-        WriteSols(gnss->solRTK,"xyzOf1030_08_44RTK");
-        WriteSols(gnss->solSingle,"xyzOf1030_08_44SIG");
+//        WriteSols(gnss->GetSerial(0)->solRaw,"xyzOf1030_08_44UBX");
+        WriteSols(gnss->solKalmans,"xyzOf1030_08_44KAL");
+        WriteSols(gnss->solRTKs,"xyzOf1030_08_44RTK");
+        WriteSols(gnss->solSingles,"xyzOf1030_08_44SIG");
 
     } else printf("open data failed \n");
+//    gnss->svsManager.GetSv(SYS_GPS,20)
 
-    getchar();
+//    getchar();
 
     return 0;
 }

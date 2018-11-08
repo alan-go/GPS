@@ -146,3 +146,12 @@ void XYZ2ENU(const Eigen::Vector3d &xyz,const Eigen::Vector3d &lla,Eigen::Vector
     cosp*cosl,  cosp*sinl,  sinp;
     enu = SS*xyz;
 }
+Solution FindSol(SolutionDeque &sols, double t,double dt,std::string tag )
+{
+    if(tag=="tod"){
+        for(Solution sol:sols){
+            if(abs(sol.time.tod-t)<dt)
+                return sol;
+        }
+    }
+}

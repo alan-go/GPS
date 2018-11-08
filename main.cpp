@@ -171,12 +171,12 @@ int main()
             cout<<"stop capture."<<endl;
         }
     }else if('w'==command){
-        boost::asio::serial_port* sp = gnss->GetSerial(0)->sp_ ;
-        char bssUbx[64]="BSS-UBX-115200-5HZ-PVT-RHXZ-D1/r/n";
+        boost::asio::serial_port* sp;
+//        char bssUbx[64]="BSS-UBX-115200-5HZ-PVT-RHXZ-D1/r/n";
+        char bssUbx[64]="BSS-UBX-115200-5HZ-PVT-RHXZ-D1\r\n";
         boost::asio::io_service ios;
         sp = new boost::asio::serial_port(ios, serialPort);
         sp->set_option ( boost::asio::serial_port::baud_rate ( 115200 ) );
-//        sp->write_some(bssUbx);
         boost::asio::write(*sp, boost::asio::buffer(bssUbx, strlen(bssUbx)+2));
 
     }

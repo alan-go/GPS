@@ -71,7 +71,7 @@ int SerialData::ParaseGGA( char* gga){
 //    LLA2XYZ(pos,gnss->xyz00);
     Solution sol(GnssTime(secoday),pos);
     solRaw.push_front(sol);
-    printf("tod,tod %f,%f\n",tod,secoday);
+    printf("tod,tod %f,%f\n",tod,GnssTime(secoday).tod);
     sol.Show("###GGA###");
 //    time2epoch(sol->time,ep);
 //    septime(tod,ep+3,ep+4,ep+5);

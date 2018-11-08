@@ -26,11 +26,14 @@ void SvAll::InitAlloc() {
         SV* sv = new BeiDouSV(i+1);
         sBds->table.push_back(sv);
         sv->isBeiDouGEO = i<5?true:false;
+        sv->ion = &ionKlob;
     }
     sysAll.push_back(sBds);
 
     for(int i=0;i<Ngps;i++){
-        sGps->table.push_back(new GpsSV(i+1));
+        SV* sv = new GpsSV(i+1);
+        sGps->table.push_back(sv);
+        sv->ion = &ionKlob;
     }
     sysAll.push_back(sGps);
 }
@@ -136,6 +139,30 @@ void SV::PrintInfo(int printType) {
     };
 }
 
+void SV::FPrintInfo(int printType){
+    if(NULL==fpLog){
+    char name[32];
+    sprintf(name,"../log/SV/%d_%02d.txt",type,svId);
+    fpLog = fopen(name,"w");
+    }
+    Measure *ms = measureDat.front();
+    Measure *ms1 = measureDat[1];
+    double dt = ms->time.tow-(ms1->time.tow);
+    switch(printType){
+        case 0:
+
+            break;
+        case 1:
+            fprintf(fpLog,"%.4f,\t%.4f,%.4f,\t",ms->time.tow,ms->prMes,ms->stdevPr);//1,2
+            fprintf(fpLog,"%.4f,%.4f,\t",ms->cpMes,ms->stdevCp);//3,4
+            fprintf(fpLog,"%.4f,%.4f,\t",ms->doMes,ms->stdevDo);//5,6
+            fprintf(fpLog,"%.4f,%d,\t",ms->lockTime/1000,ms->trkStat);//7,8
+            fprintf(fpLog,"%.4f,%.4f,%.4f\n",ms->prMes-ms->cpMes,(ms->prMes-ms1->prMes)/dt,(ms->cpMes-ms1->cpMes)/dt);//9,10,11
+            break;
+        case 2:
+            break;
+    }
+}
 bool SV::CalcuECEF(double ts0) {
     double A = orbit.sqrtA*orbit.sqrtA;
     double n0 = sqrt(M_miu/(A*A*A));
@@ -318,14 +345,14 @@ int BeiDouSV::DecodeD1(uint32_t *dwrds) {
             URAI = Read1Word(dwrds[1],4,20);
             if(URAI)printf("\n\n\nUARI not ok = %d\n\n\n",URAI);
             WN = Read1Word(dwrds[2],13,2);
-            ino.a0 = ((int32_t) Read1Word(dwrds[4],8,8,true))*pow(2,-30);
-            ino.a1 = ((int32_t) Read1Word(dwrds[4],8,16,true))*pow(2,-27);
-            ino.a2 = ((int32_t) Read1Word(dwrds[5],8,2,true))*pow(2,-24);
-            ino.a3 = ((int32_t) Read1Word(dwrds[5],8,10,true))*pow(2,-24);
-            ino.b0 = ((int32_t) Read2Word(dwrds[5],6,18,dwrds[6],2,2,true))*pow(2,11);
-            ino.b1 = ((int32_t) Read1Word(dwrds[6],8,4,true))*pow(2,14);
-            ino.b2 = ((int32_t) Read1Word(dwrds[6],8,12,true))*pow(2,16);
-            ino.b3 = ((int32_t) Read2Word(dwrds[6],4,20,dwrds[7],4,2,true))*pow(2,16);
+            ion->a0 = ((int32_t) Read1Word(dwrds[4],8,8,true))*pow(2,-30);
+            ion->a1 = ((int32_t) Read1Word(dwrds[4],8,16,true))*pow(2,-27)/GPS_PI;
+            ion->a2 = ((int32_t) Read1Word(dwrds[5],8,2,true))*pow(2,-24)/GPS_PI2;
+            ion->a3 = ((int32_t) Read1Word(dwrds[5],8,10,true))*pow(2,-24)/GPS_PI3;
+            ion->b0 = ((int32_t) Read2Word(dwrds[5],6,18,dwrds[6],2,2,true))*pow(2,11);
+            ion->b1 = ((int32_t) Read1Word(dwrds[6],8,4,true))*pow(2,14)/GPS_PI;
+            ion->b2 = ((int32_t) Read1Word(dwrds[6],8,12,true))*pow(2,16)/GPS_PI2;
+            ion->b3 = ((int32_t) Read2Word(dwrds[6],4,20,dwrds[7],4,2,true))*pow(2,16)/GPS_PI3;
 
             AODC = Read1Word(dwrds[1],5,15);
 
@@ -389,14 +416,14 @@ int BeiDouSV::DecodeD2Frame1(uint32_t *dwrds) {
             TGD2 = (int32_t)Read1Word(dwrds[4],10,2,true)*1e-10;
             break;
         case 2:
-            ino.a0 = ((int32_t) Read2Word(dwrds[1],6,18,dwrds[2],2,2,true))*pow(2,-30);
-            ino.a1 = ((int32_t) Read1Word(dwrds[2],8,4,true))*pow(2,-27);
-            ino.a2 = ((int32_t) Read1Word(dwrds[2],8,12,true))*pow(2,-24);
-            ino.a3 = ((int32_t) Read2Word(dwrds[2],4,20,dwrds[3],4,2,true))*pow(2,-24);
-            ino.b0 = ((int32_t) Read1Word(dwrds[3],8,6,true))*pow(2,11);
-            ino.b1 = ((int32_t) Read1Word(dwrds[3],8,14,true))*pow(2,14);
-            ino.b2 = ((int32_t) Read2Word(dwrds[3],2,22,dwrds[4],6,2,true))*pow(2,16);
-            ino.b3 = ((int32_t) Read1Word(dwrds[4],8,8,true))*pow(2,16);
+            ion->a0 = ((int32_t) Read2Word(dwrds[1],6,18,dwrds[2],2,2,true))*pow(2,-30);
+            ion->a1 = ((int32_t) Read1Word(dwrds[2],8,4,true))*pow(2,-27)/GPS_PI;
+            ion->a2 = ((int32_t) Read1Word(dwrds[2],8,12,true))*pow(2,-24)/GPS_PI2;
+            ion->a3 = ((int32_t) Read2Word(dwrds[2],4,20,dwrds[3],4,2,true))*pow(2,-24)/GPS_PI3;
+            ion->b0 = ((int32_t) Read1Word(dwrds[3],8,6,true))*pow(2,11);
+            ion->b1 = ((int32_t) Read1Word(dwrds[3],8,14,true))*pow(2,14)/GPS_PI;
+            ion->b2 = ((int32_t) Read2Word(dwrds[3],2,22,dwrds[4],6,2,true))*pow(2,16)/GPS_PI2;
+            ion->b3 = ((int32_t) Read1Word(dwrds[4],8,8,true))*pow(2,16)/GPS_PI3;
             break;
         case 3:
             a0 = (int32_t)Read2Word(dwrds[3],12,12,dwrds[4],12,2,true)*pow(2,-33);
@@ -472,7 +499,7 @@ int SV::CalcuelEvationAzimuth(Vector3d pos, Vector3d poslla) {
 int SV::CalcuInoshphere(double elev, double azim,Vector3d LLA,double time) {
     double temp0 = Earth_a/(Earth_a+375000);
     double temp1 = temp0*cos(elev);
-//    printf("ai,bi %e,%ef,%ef,%ef,\t %e,%e,%e,%e,\n",ino.a0,ino.a1,ino.a2,ino.a3,ino.b0,ino.b1,ino.b2,ino.b3 );
+//    printf("ai,bi %e,%ef,%ef,%ef,\t %e,%e,%e,%e,\n",ion->a0,ino.a1,ino.a2,ino.a3,ino.b0,ino.b1,ino.b2,ino.b3 );
     double psi = GPS_PI/2 - elev - asin(temp1);
     double phyM = asin(sin(LLA(0))*cos(psi) + cos(LLA(0))*sin(psi)*cos(azim));
     double lambdaM = LLA(1)+asin(sin(psi)*sin(azim)/cos(phyM));
@@ -481,9 +508,9 @@ int SV::CalcuInoshphere(double elev, double azim,Vector3d LLA,double time) {
     if(t<0)t+=86400;
 
     double phyMpi = phyM/GPS_PI;
-    double A2 = ino.a0 + phyMpi * (ino.a1 + phyMpi * (ino.a2 + phyMpi * ino.a3));
+    double A2 = ion->a0 + phyMpi * (ion->a1 + phyMpi * (ion->a2 + phyMpi * ion->a3));
     if(A2<0)A2 = 0;
-    double A4 = ino.b0 + phyMpi * (ino.b1 + phyMpi * (ino.b2 + phyMpi * ino.b3));
+    double A4 = ion->b0 + phyMpi * (ion->b1 + phyMpi * (ion->b2 + phyMpi * ion->b3));
     if(A4<72000)A4 = 72000;
     if(A4>172800)A4 = 172800;
 
@@ -493,7 +520,6 @@ int SV::CalcuInoshphere(double elev, double azim,Vector3d LLA,double time) {
 
     I = Iz_ / sqrt(1 - temp1*temp1);
     I *= Light_speed;
-
     return 0;
 }
 
@@ -530,10 +556,10 @@ bool SV::MeasureGood() {
     if(!measureGood){
         sprintf(tip,"prError:%.1f",temp->prMes);
     }
-    if (trackCount<5) {
-        sprintf(tip,"track %d<5", trackCount);
-        return 0;
-    }
+//    if (trackCount<5) {
+//        sprintf(tip,"track %d<5", trackCount);
+//        return 0;
+//    }
 
     return measureGood;
 }
@@ -603,5 +629,49 @@ bool SV::IsMaskOn() {
     }
 }
 
+double SV::InterpMeasere(int len, int power, int begin) {
+    if(measureDat.size()<(len+begin))
+        return -1;
+    MatrixXd G(len,power+1),W(len,len);
+    VectorXd Ai(power+1),b(len);
+    W.fill(0);
+    double t0 = measureDat[begin]->time.tow;
+    double dt1 = t0-measureDat[begin+1]->time.tow;
+    if(dt1>3){
+//        measureDat[0]->cycle=0;
+        return -1;
+    }
+    for(int i=begin;i<begin+len;i++){
+        Measure* ms = measureDat[i];
+        double dt = t0-ms->time.tow;
+        for(int n=0;n<=power;n++)G(i,n)=pow(dt,n);
+        W(i,i)=1/pow(ms->stdevDo,2);
+        b(i)=ms->doMes;
+    }
+    MatrixXd WG = W*G;
+//    MatrixXd WGT = WG.transpose();
+    Ai = WG.colPivHouseholderQr().solve(W*b);
+    //积分
+    double dDopler =0;
+    for(int n=0;n<=power;n++){
+        dDopler+=Ai(n)*pow(dt1,n+1)/(n+1);
+    }
+
+
+    /////////////debug
+    double lambda = GetFreq(type,1,1);
+    Measure* ms0 = measureDat[begin];
+    Measure* ms1 = measureDat[begin+1];
+    double dcp = ms0->cpMes-ms1->cpMes;
+    if(abs(dcp)>1000)  {
+        return -1;
+    }
+    double dCycle = fmod(dcp-dDopler,lambda);
+    double temp = dcp-dDopler-dCycle;
+    ms0->cycle+=(temp)/lambda;
+    double pr_cpC = ms0->prMes-ms0->cpMes-(ms0->cycle)*lambda;
+    fprintf(fpLog,"%.4f,\t",ms0->time.tow);//0,
+    fprintf(fpLog,"%f,%f,%f,%f,%f\n",ms0->cpMes,dcp/dt1,dDopler/dt1,dCycle,pr_cpC);//1234
+}
 
 

@@ -95,7 +95,7 @@ int GNSS::ParseRawData(char *message, int len) {
     double rcvtow = *(double*)raw;
     int week = *(uint16_t*)(raw+8);
     int numMeas = *(u_int8_t*)(raw+11);
-    GnssTime rTime(week,rcvtow);
+    rTime = GnssTime(week,rcvtow);
     printf("prepare rawdata ,len = %d numMesa=%d\n",len,numMeas);
     if(0==numMeas)return -1;
 
@@ -112,14 +112,17 @@ int GNSS::ParseRawData(char *message, int len) {
         }
 
         double lambda = GetFreq(SysType(gnssId),sigId,1);
+//        double freq = GetFreq(SysType(gnssId),sigId,0);
+
         mes->prMes = *(double*)(raw+16+n32);
         mes->cpMes = *(double*)(raw+24+n32)*lambda;
-        mes->doMes = *(float *)(raw+32+n32);
+        mes->doMes = -(*(float *)(raw+32+n32))*lambda;
+
         mes->lockTime = *(uint16_t*)(raw+40+n32);
         mes->cno = *(uint8_t *)(raw+42+n32);
         mes->stdevPr = 0.01 *pow(2, *(uint8_t *)(raw+43+n32));
         mes->stdevCp = 0.004*lambda*(*(uint8_t *)(raw+44+n32));
-        mes->stdevDo = 0.002*pow(2, *(uint8_t *)(raw+45+n32));
+        mes->stdevDo = 0.002*pow(2, *(uint8_t *)(raw+45+n32))*lambda;
         mes->trkStat = *(uint8_t *)(raw+46+n32);
 
         sv->AddMmeasure(mes);
@@ -131,29 +134,47 @@ int GNSS::ParseRawData(char *message, int len) {
 }
 
 int GNSS::Test(vector<SV *> svs) {
-    printf("coutnt %d\n", count);
-//    solver.AnaData(svs);
-//    return 0;
+    printf("coutnt %d\n", ++count);
+    if(count<120) return -1;
+    for(SV*sv:svs){
+        sv->FPrintInfo(0);
+        sv->InterpMeasere(15,4);
+    }
+    return 0;
 
-    if(++count<120) return -1;
-//    PosSolver solverSingle(svsManager, &rtkManager, this);
+    double tod = fmod(rTime.tow,86400.0);
+    double tu_s=solver.soltion.tu[SYS_GPS]/Light_speed;
+//    fprintf(logTu,"%f,%.10f\n",rTime.tow,tu_s*Light_speed);
+    solRAC = FindSol(GetSerial(1)->solRaw,tod-tu_s,0.1,"tod");
+    xyzRAC=solRAC.xyz;
+    solUBX = FindSol(GetSerial(0)->solRaw,tod-tu_s,1,"tod");
+    solUBX.Show("###UBX###");
+    (solUBX-solRAC).Show("###UBX-RAC###",1);
+    solRAC.Show("###RAC###");
+    printf("tow,tod insolution= %f,%f\n", rTime.tow,tod-tu_s);
+    solver.PrepareSVsData(svs);
+    kalmanSolver.PrepareSVsData(svs);
+
 
     if(0==solver.PositionSingle(svs)){
         solver.soltion.Show("###Single###");
+        (solver.soltion-solRAC).Show("###SIG-RAC###",1);
         AddPosRecord(solver.soltion);
-        solSingle.push_front(solver.soltion);
+        solSingles.push_front(solver.soltion);
     }
 
 //    PosSolver solverRtk(svsManager, &rtkManager, this);
     if(0== solver.PositionRtk(svs)){
         solver.soltion.Show("###RTK###");
-        solRTK.push_front(solver.soltion);
+        (solver.soltion-solRAC).Show("###RTK-RAC###",1);
+        solRTKs.push_front(solver.soltion);
     }
 
 //    return 0;
     if(0== kalmanSolver.PositionKalman(svs)){
         kalmanSolver.soltion.Show("###Kalman###");
-        solKalman.push_front(kalmanSolver.soltion);
+        (solver.soltion-solRAC).Show("###KAL-RAC###",1);
+        solKalmans.push_front(kalmanSolver.soltion);
     }
 
 }

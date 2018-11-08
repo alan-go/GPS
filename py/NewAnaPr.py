@@ -47,15 +47,28 @@ def ReadData(path, colNum,begin):
         k+=1
         if(k<begin):continue
         dataN = each.split(',')
+        if(len(dataN)<colNum):
+            continue
 
         for ind in range(colNum):
             data[ind].append(float(dataN[ind]))
 
 
 if __name__=="__main__":
-    ReadData("../log/xyzOf1030_08_44KAL.txt",4,1)
+    # ReadData("../log/logtu.txt",2,121)
+    # ReadData("../log/xyzOf1030_08_44RAC.txt",4,1)
+    # ReadData("../log/xyzOf1030_08_44SIG.txt",4,1)
+    # ReadData("../log/xyzOf1030_08_44RTK.txt",4,1)
+    # ReadData("../log/xyzOf1030_08_44KAL.txt",4,1)
+    ReadData("../log/SV/0_20.txt",6,1)
     plt.figure("ana")
-    plt.plot(data[2],data[1])
+    # plt.scatter(data[0],data[10])
+    # plt.scatter(data[0],data[11])
+    # plt.plot(data[0],data[5],"g")
+    plt.scatter(data[0],data[5])
+    # plt.scatter(data[0],data[3])
+    # plt.scatter(data[0],data[6])
+    # plt.plot(data[2],data[1])
     # plt.plot(data[0],data[2])
     # plt.plot(data[0],data[3])
     # plt.plot(data[0],data[4])

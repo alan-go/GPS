@@ -37,6 +37,8 @@ using Eigen::Vector3d;
 constexpr static double RE_WGS84 =   6378137.0 ;          /* earth semimajor axis (WGS84) (m) */
 constexpr static double FE_WGS84 =   (1.0/298.257223563); /* earth flattening (WGS84) */
 constexpr static double GPS_PI = 3.1415926535898;
+constexpr static double GPS_PI2 = GPS_PI*GPS_PI;
+constexpr static double GPS_PI3 = GPS_PI*GPS_PI*GPS_PI;
 constexpr static double M_miu = 3.986004418e14;
 constexpr static double Omega_e = 7.2921150e-005;//SYS_GPS?Beidou
 constexpr static double Light_speed = 299792358.0;
@@ -96,11 +98,11 @@ class Measure{
 public:
     GnssTime time;
     double prMes,cpMes,doMes;
-    double cycle{400},cycleP{1e9};
+    double cycle{0.0},cycleP{1e9};
     double stdevPr{1.5},stdevCp{1e-4},stdevDo;
     int track{0};
     double lockTime,cno;
-    int trkStat;
+    int trkStat{0};
     Measure(){};
     Measure(GnssTime _time,double _pr,double _cp,double _doplr = 0)
         : time(_time),prMes(_pr),cpMes(_cp),doMes(_doplr){};
@@ -117,16 +119,27 @@ public:
         XYZ2LLA(xyz,lla);
         memcpy(tu,_tu,Nsys* sizeof(double));
     }
-    void Show(char *tip){
-        printf("%s LLA: %.7f,%.7f,%.2f\t",tip,lla(0)*R2D,lla(1)*R2D,lla(2));
+    Solution operator-(Solution &right){
+        Solution result=*this;
+        result.xyz-=right.xyz;
+        result.lla-=right.lla;
+        result.vxyz-=right.vxyz;
+        return result;
+    }
+    void Show(char *tip,int t=0){
         printf("%s XYZ: %.7f,%.7f,%.7f\n",tip,xyz(0),xyz(1),xyz(2));
+        if(1==t)return;
+        printf("%s LLA: %.7f,%.7f,%.2f\n",tip,lla(0)*R2D,lla(1)*R2D,lla(2));
+
         printf("tu: ");
         for(int i=0;i<Nsys;i++)
             printf("%.2f, ", tu[i]);
-        printf("tow=%.4f\n",time.tow);
+        printf("tow=%.4f,tod=%.4f\n",time.tow,time.tod);
     }
 };
 
 typedef std::deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> SolutionDeque;
+
+Solution FindSol(SolutionDeque &sols, double t,double dt,std::string tag );
 
 #endif //GPS_COMMONINCLUDE_H

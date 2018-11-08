@@ -13,9 +13,10 @@ class GNSS{
 public:
 
     Eigen::Vector3d xyzDefault, llaDefault;
-    Eigen::Vector3d xyz00;
+    Eigen::Vector3d xyz00,xyzUBX,xyzRAC;
     deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> records;
-    deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> solSingle,solRTK,solKalman;
+    deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> solSingles,solRTKs,solKalmans;
+    Solution solSingle,solRTK,solKalman,solUBX,solRAC;
     double cycle[Nsys-1][Nxxs],PB[Nsys-1][Nxxs],sigmaCy[Nsys-1][Nxxs],sigmaPr[Nsys-1][Nxxs];
     Matrix<double,6,6> Pxv;
 //    Matrix<double,Ngps,1> cycleGPS,sigmaGPSCy,sigmaGPSPr;
@@ -31,10 +32,11 @@ public:
     int count{0};
 //    char logFile[64];
     bool logOpen{1};
-    std::FILE *log,*logRTK,*logDebug;
+    std::FILE *log,*logRTK,*logDebug,*logTu;
     struct tm *utcTime;
     char timeName[128];
     PosSolver kalmanSolver,solver;
+    GnssTime rTime;
 
 public:
     GNSS();

@@ -16,7 +16,7 @@ public:
 
     GnssTime timeSolver;//这个时间直接从接收机读出来的时间，有钟差
     Vector3d xyz, vxyz, lla;
-    Solution soltion;
+    Solution soltion0,soltion;
     vector<SV*> svsForCalcu[Nsys];
 
     double tu[Nsys]={0};
