@@ -95,6 +95,8 @@ int GNSS::ParseRawData(char *message, int len) {
     double rcvtow = *(double*)raw;
     int week = *(uint16_t*)(raw+8);
     int numMeas = *(u_int8_t*)(raw+11);
+    int tracStat = *(uint8_t *)(raw+12);
+    fprintf(logTu,"%f,%d\n",rcvtow,tracStat);
     rTime = GnssTime(week,rcvtow);
     printf("prepare rawdata ,len = %d numMesa=%d\n",len,numMeas);
     if(0==numMeas)return -1;

@@ -37,8 +37,8 @@ int main(){
     FILE *fp;
     char name[128],dat[512],temp[256],tempc;
 //    string ss = "0921_13_02";
-    string ss = "1030_08_44";
-//    string ss = "1030_02_47";
+//    string ss = "1030_08_44";
+    string ss = "1110_11_28";
 //        string ss = "0708-2.data";
 //        string ss = "0823";
 //        string ss = "0815-2";//soho novatal

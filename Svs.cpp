@@ -663,15 +663,20 @@ double SV::InterpMeasere(int len, int power, int begin) {
     Measure* ms0 = measureDat[begin];
     Measure* ms1 = measureDat[begin+1];
     double dcp = ms0->cpMes-ms1->cpMes;
-    if(abs(dcp)>1000)  {
+    double dpr = ms0->prMes-ms1->prMes;
+    dDopler = (ms0->doMes+ms1->doMes)*dt1/2;
+    if(abs(dcp-dDopler)>5)  {
         return -1;
     }
-    double dCycle = fmod(dcp-dDopler,lambda);
+    double dCycle = ((dcp-dDopler)/lambda+1e6);
+    dCycle = fmod(dCycle,1);
+    if(dCycle>0.5)dCycle-=1;
     double temp = dcp-dDopler-dCycle;
     ms0->cycle+=(temp)/lambda;
     double pr_cpC = ms0->prMes-ms0->cpMes-(ms0->cycle)*lambda;
     fprintf(fpLog,"%.4f,\t",ms0->time.tow);//0,
-    fprintf(fpLog,"%f,%f,%f,%f,%f\n",ms0->cpMes,dcp/dt1,dDopler/dt1,dCycle,pr_cpC);//1234
+    fprintf(fpLog,"%f,%f,%f,%f,    ",dpr,dcp,dDopler,dCycle);//1234
+    fprintf(fpLog,"%f,%f,%f,%f,%f\n",(dpr-dDopler)/dt1,(dpr-dcp)/dt1,(dcp-dDopler)/dt1);//567
 }
 
 
