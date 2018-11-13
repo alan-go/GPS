@@ -60,12 +60,23 @@ if __name__=="__main__":
     # ReadData("../log/xyzOf1030_08_44SIG.txt",4,1)
     # ReadData("../log/xyzOf1030_08_44RTK.txt",4,1)
     # ReadData("../log/xyzOf1030_08_44KAL.txt",4,1)
-    ReadData("../log/SV/0_22.txt",8,1)
+    # ReadData("../log/SV/0_22.txt",13,1)
+    ReadData("../log/SV/3_30.txt",13,1)
     plt.figure("ana")
-    plt.plot(data[0],data[4])
+    # plt.scatter(data[0],data[4])
     # plt.scatter(data[0],data[5])
-    # plt.scatter(data[0],data[6])
+    plt.plot(data[0],data[6])
     # plt.scatter(data[0],data[7])
+    plt.plot(data[0],data[8])
+    plt.figure("ana2")
+    plt.scatter(data[0],data[7])
+
+
+
+    # plt.scatter(data[0],data[9])
+    # plt.scatter(data[0],data[10])
+    # plt.scatter(data[0],data[11])
+
     # plt.plot(data[0],data[1],"r")
     # plt.plot(data[0],data[2],"g")
     # plt.plot(data[0],data[4],"b")

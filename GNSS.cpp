@@ -140,7 +140,7 @@ int GNSS::Test(vector<SV *> svs) {
     if(count<120) return -1;
     for(SV*sv:svs){
         sv->FPrintInfo(0);
-        sv->InterpMeasere(15,4);
+        sv->InterpMeasere(25,2);
     }
     return 0;
 

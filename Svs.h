@@ -90,6 +90,7 @@ public:
     virtual int DecodeSubFrame(uint32_t* dwrds) = 0;
     double InterpRtkData(double time, int sigInd);
     double InterpMeasere(int len,int power,int begin=0);
+    double SmoothPr(int len,int begin=0);
 
     //head 指32bit()中的头bit（范围：1-32）
     inline uint32_t Read1Word(uint32_t word, int length, int head, bool isInt = false);

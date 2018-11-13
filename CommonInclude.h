@@ -98,9 +98,10 @@ class Measure{
 public:
     GnssTime time;
     double prMes,cpMes,doMes;
+    double cycleSlip{0},cycleRes{1};
     double cycle{0.0},cycleP{1e9};
     double stdevPr{1.5},stdevCp{1e-4},stdevDo;
-    int track{0};
+    int trackCount{0},trackTime{0};
     double lockTime,cno;
     int trkStat{0};
     Measure(){};

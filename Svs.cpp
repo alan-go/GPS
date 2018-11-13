@@ -557,7 +557,7 @@ bool SV::MeasureGood() {
         sprintf(tip,"prError:%.1f",temp->prMes);
     }
 //    if (trackCount<5) {
-//        sprintf(tip,"track %d<5", trackCount);
+//        sprintf(tip,"trackCount %d<5", trackCount);
 //        return 0;
 //    }
 
@@ -664,19 +664,60 @@ double SV::InterpMeasere(int len, int power, int begin) {
     Measure* ms1 = measureDat[begin+1];
     double dcp = ms0->cpMes-ms1->cpMes;
     double dpr = ms0->prMes-ms1->prMes;
-    dDopler = (ms0->doMes+ms1->doMes)*dt1/2;
-    if(abs(dcp-dDopler)>5)  {
-        return -1;
-    }
-    double dCycle = ((dcp-dDopler)/lambda+1e6);
-    dCycle = fmod(dCycle,1);
+//    dDopler = (ms0->doMes+ms1->doMes)*dt1/2;
+//    if(abs(dcp-dDopler)>500)  {
+//        return -1;
+//    }
+    double Cycle = ((dcp-dDopler)/lambda);
+    double dCycle = fmod(Cycle+1e6,1);
     if(dCycle>0.5)dCycle-=1;
-    double temp = dcp-dDopler-dCycle;
-    ms0->cycle+=(temp)/lambda;
-    double pr_cpC = ms0->prMes-ms0->cpMes-(ms0->cycle)*lambda;
+    double temp = (Cycle-dCycle);
+    ms0->cycle+=temp;
+    double pr_cpC0 = ms0->prMes-ms0->cpMes;
+    double pr_cpC_ = ms0->prMes-ms0->cpMes-(ms0->cycle)*lambda;
+    double pr_cpC1 = ms0->prMes-ms0->cpMes+(ms0->cycle)*lambda;
     fprintf(fpLog,"%.4f,\t",ms0->time.tow);//0,
-    fprintf(fpLog,"%f,%f,%f,%f,    ",dpr,dcp,dDopler,dCycle);//1234
-    fprintf(fpLog,"%f,%f,%f,%f,%f\n",(dpr-dDopler)/dt1,(dpr-dcp)/dt1,(dcp-dDopler)/dt1);//567
+    fprintf(fpLog,"%f,%f,%f,%f,%f,    ",dpr,dcp,dDopler,Cycle,dCycle);//12345
+    fprintf(fpLog,"%f,%f,%f,   ",(dpr)/dt1,ms0->stdevDo,(dDopler)/dt1);//678
+//    fprintf(fpLog,"%f,%f,%f,   ",(dpr-dDopler)/dt1,(dpr-dcp)/dt1,(dcp-dDopler)/dt1);//678
+    fprintf(fpLog,"%f,%f,%f,%f,%f\n",pr_cpC0,pr_cpC_,pr_cpC1);//9 10 11
 }
 
+double SV::SmoothPr(int len, int begin) {
+    double lambda = GetFreq(type,1,1);
+    Measure* ms0 = measureDat[begin];
+    Measure* ms1 = measureDat[begin+1];
+    double t0 = ms0->time.tow,t1 = ms1->time.tow;
+    double weight0 = 1/pow(ms0->stdevDo,2),weight1 = 1/pow(ms1->stdevDo,2);
+    double dt01 = t0-t1;
+    if(dt01<1){ms0->trackTime=ms1->trackTime+dt01;}
+    else { return -1;}
+
+    double dDoppler = (weight0*ms0->doMes+weight1*ms1->doMes)/(weight0+weight1)*dt01;
+    double dcp = ms0->cpMes-ms1->cpMes;
+    double dDoCp = dcp-dDoppler;
+    ms0->cycleSlip = round(dDoCp/lambda);
+    ms0->cycleRes = dDoCp/lambda-ms0->cycleSlip;
+
+    int N = 0;
+    double cycleTemp=0,diffSum=0,diffMean=0;
+    for(int i=begin;;i++,N++){
+        Measure* ms = measureDat[i];
+        if(0==ms->trackTime||ms->stdevDo>0.5)break;
+        if(t0-ms->time.tow>len)break;
+        cycleTemp+=ms->cycleSlip;
+        double diff = ms->cpMes-ms->prMes-cycleTemp*lambda;
+        diffMean = (diff+diffMean*N)/(N+1);
+    }
+
+    double stdSum=0;
+    for(int i=begin;i<N;i++){
+        Measure* ms = measureDat[i];
+        cycleTemp+=ms->cycleSlip;
+        double diff = ms->cpMes-ms->prMes-cycleTemp*lambda;
+        double std = pow(diff-diffMean,2);
+        stdSum+=std;
+    }
+
+}
 
