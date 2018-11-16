@@ -29,6 +29,7 @@ public:
     PosSolver(SvAll svs, NtripRTK *rtk, GNSS *gnss);
     ~PosSolver();
     int PositionSingle(vector<SV*> _svsIn);
+    int PositionSingleNew(vector<SV*> _svsIn);
     int PositionRtk();
     int PositionRtk(vector<SV*> _svsIn);
     int PositionRtk2();

@@ -140,9 +140,12 @@ int GNSS::Test(vector<SV *> svs) {
     if(count<120) return -1;
     for(SV*sv:svs){
         sv->FPrintInfo(0);
-        sv->InterpMeasere(25,2);
+
+//        sv->SmoothKalman0();
+//        sv->SmoothKalman(1);
+//        sv->InterpMeasere(25,2);
     }
-    return 0;
+//    return 0;
 
     double tod = fmod(rTime.tow,86400.0);
     double tu_s=solver.soltion.tu[SYS_GPS]/Light_speed;

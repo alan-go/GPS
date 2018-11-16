@@ -19,6 +19,7 @@ void WriteSols(SolutionDeque sols,string saveName){
 
 
 int main(){
+
     printf("\nin testing\n");
     GNSS *gnss = new GNSS();
     gnss->AddSerial(0,0,"/dev/ttyUSB0",115200,true,true);

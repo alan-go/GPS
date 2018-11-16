@@ -4,6 +4,7 @@
 
 SV::SV(int id):svId(id),SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsDelta(0),ephemSp3(nullptr),trackCount(0){
     memset(bstEphemOK,0,10 * sizeof(int8_t));
+    kal = SvKalman(30,29,0);
 }
 SV::SV(){}
 SV::~SV(){}
@@ -678,9 +679,8 @@ double SV::InterpMeasere(int len, int power, int begin) {
     double pr_cpC1 = ms0->prMes-ms0->cpMes+(ms0->cycle)*lambda;
     fprintf(fpLog,"%.4f,\t",ms0->time.tow);//0,
     fprintf(fpLog,"%f,%f,%f,%f,%f,    ",dpr,dcp,dDopler,Cycle,dCycle);//12345
-    fprintf(fpLog,"%f,%f,%f,   ",(dpr)/dt1,ms0->stdevDo,(dDopler)/dt1);//678
-//    fprintf(fpLog,"%f,%f,%f,   ",(dpr-dDopler)/dt1,(dpr-dcp)/dt1,(dcp-dDopler)/dt1);//678
-    fprintf(fpLog,"%f,%f,%f,%f,%f\n",pr_cpC0,pr_cpC_,pr_cpC1);//9 10 11
+    fprintf(fpLog,"%f,%f,%f,%f,   ",(dpr)/dt1,(dDopler)/dt1,ms0->stdevPr,ms0->stdevDo);//6789
+    fprintf(fpLog,"%f,%f,%f\n",pr_cpC0,pr_cpC_,pr_cpC1);//10 11
 }
 
 double SV::SmoothPr(int len, int begin) {
@@ -721,3 +721,101 @@ double SV::SmoothPr(int len, int begin) {
 
 }
 
+
+double SV::SmoothKalman(int len, int begin) {
+    Measure* ms0 = measureDat[begin];
+    Measure* ms1 = measureDat[begin+1];
+    double t0 = ms0->time.tow,t1 = ms1->time.tow;
+    double dt01 = t0-t1;
+
+    if(dt01>1.5){
+        kal.state=0;
+        return -1;
+    }
+    double weight0 = 1/pow(ms0->stdevDo,2),weight1 = 1/pow(ms1->stdevDo,2);
+    if(dt01<1){ms0->trackTime=ms1->trackTime+dt01;}
+    else { return -1;}
+    ms0->dDoppler = (weight0*ms0->doMes+weight1*ms1->doMes)/(weight0+weight1)*dt01;
+
+    kal.state++;
+    int N = kal.N,M=kal.M;
+    if(kal.state<kal.N)return -2;
+    if(kal.state==kal.N){
+        kal.Init();
+        for(int ni=0;ni<N;ni++)kal.x(ni)=measureDat[ni]->prMes;
+    }
+
+    for(int ni=0;ni<N;ni++){
+        Measure* msi = measureDat[ni];
+        kal.y(ni)=msi->prMes;
+        kal.Rmm(ni,ni) = pow(msi->stdevPr,2);
+        if(N-1==ni)continue;
+        kal.y(ni+N)=msi->dDoppler;
+        kal.Rmm(ni+N,ni+N)=pow(msi->stdevDo,2);
+    }
+
+    kal.x.tail(N-1)=kal.x.head(N-1);
+    kal.x(0)+=ms0->dDoppler;
+    kal.Hmn.fill(0);
+    kal.Hmn.block(0,0,N,N)=MatrixXd::Identity(N,N);
+    kal.Hmn.block(N,0,N-1,N-1)+=MatrixXd::Identity(N-1,N-1);
+    kal.Hmn.block(N,1,N-1,N-1)-=MatrixXd::Identity(N-1,N-1);
+//    cout<<"Rn:"<<endl<<kal.Rmm<<endl;
+//    cout<<"P:"<<endl<<kal.Pnn<<endl;
+
+    fprintf(fpLog,"%.4f,\t %.10f",ms0->time.tow,ms0->prMes);//0,
+//    fprintf(fpLog,"%.4f,\t %.10f",ms0->time.tow,kal.x(0));//0,
+
+    kal.Forword();
+    fprintf(fpLog,",%.10f,%.10f,%.10f,%.10f,%.10f,%.10f\n",kal.x(0),(kal.x(0)-kal.x(1))/dt01,ms0->dDoppler/dt01);//0,
+}
+
+double SV::SmoothKalman0() {
+    Measure* ms0 = measureDat[0];
+    ms0->prCor = ms0->prMes;
+    ms0->stdPrCor = ms0->stdevPr;
+    if(measureDat.size()<10)
+        return -1;
+    Measure* ms1 = measureDat[1];
+    double t0 = ms0->time.tow,t1 = ms1->time.tow;
+    double dt01 = t0-t1;
+
+    if(dt01>1.5){
+        kal.state=0;
+        return -1;
+    }
+    double weight0 = 1/pow(ms0->stdevDo,2),weight1 = 1/pow(ms1->stdevDo,2);
+    if(dt01<1){ms0->trackTime=ms1->trackTime+dt01;}
+    else { return -1;}
+    ms0->dDoppler = (weight0*ms0->doMes+weight1*ms1->doMes)/(weight0+weight1)*dt01;
+
+    kal.state++;
+    int N = kal.N,M=kal.M;
+    if(kal.state<kal.N)return -2;
+
+    kal.Pnn.fill(0);
+    for(int ni=0;ni<N;ni++){
+        Measure* msi = measureDat[ni];
+        kal.x(ni)=msi->prMes;
+        kal.Pnn(ni,ni)=pow(msi->stdevPr,2);
+
+        if(N-1==ni)continue;
+        kal.y(ni)=msi->dDoppler;
+        kal.Rmm(ni,ni)=pow(msi->stdevDo,2);
+    }
+
+
+    kal.Hmn.fill(0);
+    kal.Hmn.block(0,0,N-1,N-1)+=MatrixXd::Identity(N-1,N-1);
+    kal.Hmn.block(0,1,N-1,N-1)-=MatrixXd::Identity(N-1,N-1);
+//    cout<<"Rn:"<<endl<<kal.Rmm<<endl;
+//    cout<<"P:"<<endl<<kal.Pnn<<endl;
+
+    fprintf(fpLog,"%.4f,\t %.10f",ms0->time.tow,ms0->prMes);//0,
+
+    kal.Forword();
+    ms0->prCor = kal.x(0);
+    ms0->stdPrCor = sqrt(kal.Pnn(0,0));
+//    cout<<"Pafter:"<<endl<<kal.Pnn<<endl;
+    fprintf(fpLog,",%.10f,%.10f,%.10f,%.10f,%.10f,%.10f\n",kal.x(0),ms0->stdPrCor,ms0->prMes-kal.x(0));//0,
+}

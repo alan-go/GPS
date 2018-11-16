@@ -153,6 +153,7 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
         //2,judge ephemeric
         if(!sv->IsEphemOK(gnss->ephemType,timeSolver))continue;
         //3,measure
+        sv->SmoothKalman0();
         if(!sv->MeasureGood())continue;
         //4,elevtion angle
 //        if(!sv->ElevGood())continue;
@@ -436,4 +437,75 @@ int PosSolver::AnaData(vector<SV *> _svsIn) {
             fprintf(gnss->logDebug,"%f,%f,%f,%f,%f,%d\n",mes->stdevPr,mes->stdevCp,mes->stdevDo,mes->cycle,mes->cycleP,mes->trkStat);
         }
     }
+}
+
+int PosSolver::PositionSingleNew(vector<SV *> _svsIn) {
+    printf("single sinlel========== count=%d,nSat=%d,nSys=%d\n", gnss->count,nSat,nSys);
+
+    soltion = Solution(timeSolver,xyz,vxyz,tu);
+    soltion.Show("0000000before");
+    if(nSat-nSys<4){
+        printf("Not enough svs nSat,nSys=%d,%d\n",nSat,nSys);
+        return -1;
+    }
+    double threshold = 0.1;
+    VectorXd dt_xyz_tu(3+nSys),b(nSat);
+    MatrixXd H(3+nSys,3+nSys);
+    MatrixXd data(nSat,5);
+    dt_xyz_tu.fill(1);
+    int i =0,count =0;
+
+    auto CalcuPc = [](SV* sv,int sigId)->double{
+        return sv->measureDat.front()->prCor + Light_speed * sv->tsDelta - sv->I - sv->T;
+    };
+    auto CalcuWi = [](SV* sv,int sigId)->double{ return  1/pow(sv->measureDat[0]->stdPrCor,2); };
+    auto CalcuI = [](SV* sv,int sigId)->double{ return  sv->I; };
+    auto CalcuT = [](SV* sv,int sigId)->double{ return  sv->T; };
+    auto Calcue = [](SV* sv,int sigId)->double{ return  sv->elevationAngle; };
+
+    while (dt_xyz_tu.norm()>threshold){
+        int yhead=0,xhead=3;
+        MatrixXd G(nSat,3+nSys),Gt(3+nSys,nSat),W(nSat,nSat);
+        G.fill(0);
+        for(SvSys* sys:svsBox.sysUsed){
+            int Ni = sys->table.size();
+            if(0==Ni)continue;
+            VectorXd rr(Ni),bi(Ni),wi,pci;
+            MatrixXd Ei = sys->GetE(xyz,rr);
+            pci = sys->DiffZero(CalcuPc,1);
+            wi = sys->DiffZero(CalcuWi,1);
+            bi = pci-rr-tu[sys->type]*(VectorXd::Ones(Ni));
+//
+            sys->MakeDebug(2);
+            sys->AddAnaData(bi);
+            sys->Show();
+
+            b.segment(yhead,Ni)<<bi;
+            G.block(yhead,0,Ni,3)<<-Ei;
+            G.block(yhead,xhead,Ni,1)<<VectorXd::Ones(Ni);
+            W.block(yhead,yhead,Ni,Ni)=wi.asDiagonal();
+            yhead+=Ni;xhead++;
+        }
+//        dt_xyz_tu =  G.colPivHouseholderQr().solve(b);
+        MatrixXd WG = W*G;
+        VectorXd Wb = W*b;
+        MatrixXd WGT = WG.transpose();
+        H = (WGT*WG).inverse();
+        dt_xyz_tu = H*WGT*Wb;
+        xyz+=dt_xyz_tu.head(3);
+//        cout<<"dt = "<<endl<<dt_xyz_tu<<endl;
+//        cout<<"b = "<<endl<<b<<endl;
+//        cout<<"G= "<<endl<<G<<endl;
+//        cout<<"data = "<<endl<<data<<endl;
+
+        i=3;
+        //todo:sysused:
+        for(SvSys* sys:svsBox.sysUsed)
+            if(!sys->table.empty())
+                tu[sys->type]+=dt_xyz_tu(i++);
+        if(++count>10)return -1;
+    }
+    PDOP = sqrt(H(0,0)+H(1,1)+H(2,2));
+    soltion = Solution(timeSolver,xyz,vxyz,tu);
+    return 0;
 }

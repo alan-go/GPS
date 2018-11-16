@@ -16,6 +16,39 @@ class SvAll;
         double b0,b1,b2,b3;
         ionosphere():a0(0),a1(0),a2(0),a3(0),b0(0),b1(0),b2(0),b3(0){}
     };
+class SvKalman{
+public:
+    int state{0};//0:uninitialized
+    int N,M,L;
+    VectorXd x,y,xPred;
+    MatrixXd Pnn,Hmn,Rmm;
+    MatrixXd Ann,Qnn;
+    SvKalman(){};
+    SvKalman(int n,int m,int l):N(n),M(m),L(l){
+        x=VectorXd(N);
+        y=VectorXd(M);
+        Pnn=MatrixXd(N,N);
+        Hmn=MatrixXd(M,N);
+        Rmm=MatrixXd(M,M);
+        Ann=MatrixXd(N,N);
+        Qnn=10000*MatrixXd::Identity(N,N);
+        Qnn(0,0)=50000;
+    };
+    int Init(){
+        Pnn = 10000*MatrixXd::Identity(N,N);
+    };
+    int Forword(){
+//        Pnn+=Qnn;
+        MatrixXd Ht=Hmn.transpose();
+        MatrixXd Kk=Pnn*Ht*(Hmn*Pnn*Ht+Rmm).inverse();
+
+        cout<<"x:  "<<x.transpose()<<endl;
+        VectorXd xadd = Kk*(y-Hmn*x);
+        x=x+xadd;
+        cout<<"xadd:  "<<xadd.transpose()<<endl;
+        Pnn = (MatrixXd::Identity(N,N)-Kk*Hmn)*Pnn;
+    };
+};
 class SV{
 public:
     struct Orbit{
@@ -56,6 +89,7 @@ public:
     Orbit orbit;
     ionosphere *ion;
     double I,T;
+    SvKalman kal;
     FILE* fpLog{NULL};
 
     Vector3d xyz,lla,xyzR,llaR;//R:地球自传
@@ -91,6 +125,8 @@ public:
     double InterpRtkData(double time, int sigInd);
     double InterpMeasere(int len,int power,int begin=0);
     double SmoothPr(int len,int begin=0);
+    double SmoothKalman(int len,int begin=0);
+    double SmoothKalman0();
 
     //head 指32bit()中的头bit（范围：1-32）
     inline uint32_t Read1Word(uint32_t word, int length, int head, bool isInt = false);
