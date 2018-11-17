@@ -42,10 +42,10 @@ public:
         MatrixXd Ht=Hmn.transpose();
         MatrixXd Kk=Pnn*Ht*(Hmn*Pnn*Ht+Rmm).inverse();
 
-        cout<<"x:  "<<x.transpose()<<endl;
+//        cout<<"x:  "<<x.transpose()<<endl;
         VectorXd xadd = Kk*(y-Hmn*x);
         x=x+xadd;
-        cout<<"xadd:  "<<xadd.transpose()<<endl;
+//        cout<<"xadd:  "<<xadd.transpose()<<endl;
         Pnn = (MatrixXd::Identity(N,N)-Kk*Hmn)*Pnn;
     };
 };

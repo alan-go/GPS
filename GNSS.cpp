@@ -137,7 +137,7 @@ int GNSS::ParseRawData(char *message, int len) {
 
 int GNSS::Test(vector<SV *> svs) {
     printf("coutnt %d\n", ++count);
-    if(count<120) return -1;
+    if(count<1000) return -1;
     for(SV*sv:svs){
         sv->FPrintInfo(0);
 
@@ -150,7 +150,7 @@ int GNSS::Test(vector<SV *> svs) {
     double tod = fmod(rTime.tow,86400.0);
     double tu_s=solver.soltion.tu[SYS_GPS]/Light_speed;
 //    fprintf(logTu,"%f,%.10f\n",rTime.tow,tu_s*Light_speed);
-    solRAC = FindSol(GetSerial(1)->solRaw,tod-tu_s,0.1,"tod");
+    solRAC = FindSol(GetSerial(1)->solRaw,tod-tu_s,0.2,"tod");
     xyzRAC=solRAC.xyz;
     solUBX = FindSol(GetSerial(0)->solRaw,tod-tu_s,1,"tod");
     solUBX.Show("###UBX###");
@@ -166,6 +166,14 @@ int GNSS::Test(vector<SV *> svs) {
         (solver.soltion-solRAC).Show("###SIG-RAC###",1);
         AddPosRecord(solver.soltion);
         solSingles.push_front(solver.soltion);
+//        solver.soltion.printXYZ2log(logSingle);
+    }
+
+    if(0==solver.PositionSingleNew(svs)){
+        solver.soltion.Show("###SingleNew###");
+        (solver.soltion-solRAC).Show("###SIGNew-RAC###",1);
+//        solver.soltion.printXYZ2log(logSingleNew);
+        solSingleNew.push_front(solver.soltion);
     }
 
 //    PosSolver solverRtk(svsManager, &rtkManager, this);

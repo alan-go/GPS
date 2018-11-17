@@ -129,6 +129,9 @@ public:
         result.vxyz-=right.vxyz;
         return result;
     }
+    void printXYZ2log(FILE* fp){
+        fprintf(fp,"   %.4d,%.4d,%.4d,   %.4d,%.4d,%.4d\n",time.tow,xyz(0),xyz(1),xyz(2),lla(0),lla(1),lla(2));
+    }
     void Show(char *tip,int t=0){
         printf("%s XYZ: %.7f,%.7f,%.7f\n",tip,xyz(0),xyz(1),xyz(2));
         if(1==t)return;

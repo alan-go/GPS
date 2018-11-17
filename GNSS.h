@@ -15,7 +15,7 @@ public:
     Eigen::Vector3d xyzDefault, llaDefault;
     Eigen::Vector3d xyz00,xyzUBX,xyzRAC;
     deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> records;
-    deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> solSingles,solRTKs,solKalmans;
+    deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> solSingleNew,solSingles,solRTKs,solKalmans;
     Solution solSingle,solRTK,solKalman,solUBX,solRAC;
     double cycle[Nsys-1][Nxxs],PB[Nsys-1][Nxxs],sigmaCy[Nsys-1][Nxxs],sigmaPr[Nsys-1][Nxxs];
     Matrix<double,6,6> Pxv;
@@ -33,6 +33,7 @@ public:
 //    char logFile[64];
     bool logOpen{1};
     std::FILE *log,*logRTK,*logDebug,*logTu;
+    std::FILE *logSingle,*logSingleNew,*logKalman;
     struct tm *utcTime;
     char timeName[128];
     PosSolver kalmanSolver,solver;

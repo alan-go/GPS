@@ -788,6 +788,12 @@ double SV::SmoothKalman0() {
     if(dt01<1){ms0->trackTime=ms1->trackTime+dt01;}
     else { return -1;}
     ms0->dDoppler = (weight0*ms0->doMes+weight1*ms1->doMes)/(weight0+weight1)*dt01;
+    double dcp = ms0->cpMes-ms1->cpMes;
+
+    double lambda = GetFreq(type,1,1);
+    double dDoCp = dcp-ms0->dDoppler;
+    ms0->cycleSlip = round(dDoCp/lambda);
+    ms0->cycleRes = dDoCp/lambda-ms0->cycleSlip;
 
     kal.state++;
     int N = kal.N,M=kal.M;

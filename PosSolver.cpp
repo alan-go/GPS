@@ -154,6 +154,7 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
         if(!sv->IsEphemOK(gnss->ephemType,timeSolver))continue;
         //3,measure
         sv->SmoothKalman0();
+        if(sv->kal.state<30)continue;
         if(!sv->MeasureGood())continue;
         //4,elevtion angle
 //        if(!sv->ElevGood())continue;
@@ -458,7 +459,8 @@ int PosSolver::PositionSingleNew(vector<SV *> _svsIn) {
     auto CalcuPc = [](SV* sv,int sigId)->double{
         return sv->measureDat.front()->prCor + Light_speed * sv->tsDelta - sv->I - sv->T;
     };
-    auto CalcuWi = [](SV* sv,int sigId)->double{ return  1/pow(sv->measureDat[0]->stdPrCor,2); };
+//    auto CalcuWi = [](SV* sv,int sigId)->double{ return  1/pow(sv->measureDat[0]->stdPrCor,2); };
+    auto CalcuWi = [](SV* sv,int sigId)->double{ return  1; };
     auto CalcuI = [](SV* sv,int sigId)->double{ return  sv->I; };
     auto CalcuT = [](SV* sv,int sigId)->double{ return  sv->T; };
     auto Calcue = [](SV* sv,int sigId)->double{ return  sv->elevationAngle; };
@@ -478,6 +480,7 @@ int PosSolver::PositionSingleNew(vector<SV *> _svsIn) {
 //
             sys->MakeDebug(2);
             sys->AddAnaData(bi);
+            sys->AddAnaData(wi);
             sys->Show();
 
             b.segment(yhead,Ni)<<bi;

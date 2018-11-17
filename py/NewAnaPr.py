@@ -53,22 +53,15 @@ def ReadData(path, colNum,begin):
         for ind in range(colNum):
             data[ind].append(float(dataN[ind]))
 
-
-if __name__=="__main__":
-    # ReadData("../log/logtu.txt",2,121)
-    # ReadData("../log/xyzOf1030_08_44RAC.txt",4,1)
-    # ReadData("../log/xyzOf1030_08_44SIG.txt",4,1)
-    # ReadData("../log/xyzOf1030_08_44RTK.txt",4,1)
-    # ReadData("../log/xyzOf1030_08_44KAL.txt",4,1)
-    # ReadData("../log/SV/0_22.txt",13,1)
-    ReadData("../log/SV/3_30.txt",5,1)
+def AnaSv(file,colNum,begin):
+    ReadData(file,colNum,begin)
     plt.figure("anaPr")
-    plt.scatter(data[0],data[1])
-    plt.scatter(data[0],data[2])
+    plt.scatter(data[0], data[1])
+    plt.scatter(data[0], data[2])
 
     plt.figure("anadiff")
-    plt.scatter(data[0],data[3])
-    plt.scatter(data[0],data[4])
+    plt.scatter(data[0], data[3])
+    plt.scatter(data[0], data[4])
 
     # plt.figure("anaAdd")
     # plt.plot(data[0],data[6])
@@ -78,4 +71,33 @@ if __name__=="__main__":
     # plt.scatter(data[0],data[9])
 
     plt.show()
+
+def Anaxyz(file,colNum,begin):
+    ReadData(file,colNum,begin)
+    # plt.figure("anaXyz")
+    # plt.scatter(data[0], data[1])
+    # plt.scatter(data[0], data[2])
+
+    plt.figure("file")
+    plt.scatter(data[2], data[1])
+
+
+    data.clear()
+
+
+if __name__=="__main__":
+    # AnaSv("../log/SV/3_30.txt",5,1)
+    #
+    # Anaxyz("../log/xyzSIG.txt",4,1)
+    # Anaxyz("../log/xyzSIGNew.txt",4,1)
+    Anaxyz("../log/xyzRTK.txt",4,1)
+    Anaxyz("../log/xyzKAL.txt",4,1)
+    # Anaxyz("../log/xyzBX.txt",4,1)
+    Anaxyz("../log/xyzRAC.txt",4,1)
+    plt.show()
+
+
+
+
+
 

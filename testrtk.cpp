@@ -27,19 +27,22 @@ int main(){
     gnss->log = fopen("../log/log.txt","w");
     gnss->logDebug = fopen("../log/logDebug.txt","w");
     gnss->logTu = fopen("../log/logtu.txt","w");
+    gnss->logSingle = fopen("../log/logSingle.txt","w");
+    gnss->logSingleNew = fopen("../log/logSingleNew.txt","w");
 
     gnss->useQianXun = false;
     //ephem,qianxun,bds,gps
-//    gnss->Init(0,0,0,1);
+    gnss->Init(0,0,0,1);
 //    gnss->Init(0,0,1,0);
-    gnss->Init(0,0,1,1);
+//    gnss->Init(0,0,1,1);
 
 
     FILE *fp;
     char name[128],dat[512],temp[256],tempc;
 //    string ss = "0921_13_02";
 //    string ss = "1030_08_44";
-    string ss = "1110_11_28";
+//    string ss = "1110_11_28";
+    string ss = "1113_09_09";
 //    string ss = "1110_13_07";
 //        string ss = "0708-2.data";
 //        string ss = "0823";
@@ -82,10 +85,12 @@ int main(){
             gnss->GetSerial(0)->ScanSerialData(dat,128);
         }
         fclose(fp);
-//        WriteSols(gnss->GetSerial(0)->solRaw,"xyzOf1030_08_44UBX");
-        WriteSols(gnss->solKalmans,"xyzOf1030_08_44KAL");
-        WriteSols(gnss->solRTKs,"xyzOf1030_08_44RTK");
-        WriteSols(gnss->solSingles,"xyzOf1030_08_44SIG");
+        WriteSols(gnss->GetSerial(0)->solRaw,"xyzBX");
+        WriteSols(gnss->GetSerial(1)->solRaw,"xyzRAC");
+        WriteSols(gnss->solKalmans,"xyzKAL");
+        WriteSols(gnss->solRTKs,"xyzRTK");
+        WriteSols(gnss->solSingles,"xyzSIG");
+        WriteSols(gnss->solSingleNew,"xyzSIGNew");
 
     } else printf("open data failed \n");
 //    gnss->svsManager.GetSv(SYS_GPS,20)
