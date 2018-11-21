@@ -32,9 +32,9 @@ int main(){
 
     gnss->useQianXun = false;
     //ephem,qianxun,bds,gps
-    gnss->Init(0,0,0,1);
+//    gnss->Init(0,0,0,1);
 //    gnss->Init(0,0,1,0);
-//    gnss->Init(0,0,1,1);
+    gnss->Init(0,0,1,1);
 
 
     FILE *fp;

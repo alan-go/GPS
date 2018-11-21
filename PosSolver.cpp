@@ -7,7 +7,11 @@ auto Diff_Vec = [](VectorXd x,int n)->VectorXd { return x(0)*VectorXd::Ones(n-1)
 
 auto Diff_Pr_rb = [](SV* sv,int sigId)->double { return sv->measureDat.front()->prMes-sv->prInterp[sigId];};
 auto Diff_Cp_rb = [](SV* sv,int sigId)->double { return sv->measureDat.front()->cpMes-sv->cpInterp[sigId];};
-auto Diff_Cyc_0 = [](SV* sv,int sigId)->double& { return sv->measureDat.front()->cycle;};
+auto Diff_Cyc_0 = [](SV* sv,int sigId)->double& {
+    Measure* ms = sv->measureDat[0];
+//    ms->cycle+=ms->cycleSlip;
+    return ms->cycle;
+};
 auto Diff_cyP_0 = [](SV* sv,int sigId)->double& { return sv->measureDat.front()->cycleP;};
 auto Diff_Rcp_0 = [](SV* sv,int sigId)->double { return 2*pow(sv->measureDat.front()->stdevCp,2);};
 auto Diff_Rpr_0 = [](SV* sv,int sigId)->double { return 2*pow(sv->measureDat.front()->stdevPr,2);};
@@ -154,7 +158,7 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
         if(!sv->IsEphemOK(gnss->ephemType,timeSolver))continue;
         //3,measure
         sv->SmoothKalman0();
-        if(sv->kal.state<30)continue;
+//        if(sv->kal.state<30)continue;
         if(!sv->MeasureGood())continue;
         //4,elevtion angle
 //        if(!sv->ElevGood())continue;
@@ -203,6 +207,7 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
 
         double tt = ((sv->xyz-xyz).norm()+sv->I+sv->T)/Light_speed;
         EarthRotate(sv->xyz,sv->xyzR,tt);
+        EarthRotate(sv->vxyz,sv->vxyzR,tt);
         XYZ2LLA(sv->xyz,sv->lla);
         XYZ2LLA(sv->xyzR,sv->llaR);
         sv->CorrectIT(xyz,lla,timeForECEF);
@@ -310,6 +315,8 @@ int PosSolver::PositionKalman(vector<SV *> _svsIn) {
     int sigInd = 1;
 //    svsBox = gnss->svsManager;
 //    PrepareSVsData(_svsIn);
+    double lastTime = gnss->solKalmans[0].time.tow;
+    double dt = timeSolver.tow-lastTime;
     ProcessRtkData();
 
     printf("Kalman Info========= count=%d,nSat=%d,nSys=%d\n", gnss->count,nSat,nSys);
@@ -329,13 +336,28 @@ int PosSolver::PositionKalman(vector<SV *> _svsIn) {
     x.head(6)<<xyz,vxyz;
     P.block<6,6>(0,0)<<Pxv;
     Q = MatrixXd::Identity(nx,nx);
+    Q.block(0,0,3,3)*=pow(10*dt,2);
+    Q.block(6,6,nSat,nSat)*=0.5;
 //    Q.block<3,3>(0,0) = 1e5*Matrix3d::Identity();
 //    准备数据
     for(SvSys* sys:svsBox.sysUsed){
         double lambdai = GetFreq(sys->type,sigInd,1);
         int Ni = sys->table.size();
         VectorXd rr(Ni),rb(Ni),Bi(Ni);
-        Bi = sys->DiffZero(Diff_Cyc_0,sigInd);
+//        Bi = sys->DiffZero(Diff_Cyc_0,sigInd);
+        for(int i=0;i<Ni;i++){
+            Measure* ms0 = sys->table[i]->measureDat[0];
+            Measure* ms1 = sys->table[i]->measureDat[1];
+            double dt01 = ms0->time.tow-ms1->time.tow;
+            ms0->cycle+=ms0->cycleSlip;
+            if(ms0->trackTime<1){
+                ms0->cycleP += pow(500*dt01,2);
+                if(abs(ms0->cycleRes)>0.15)ms0->cycleP+=1000;
+            }
+            Bi(i) = ms0->cycle;
+        }
+
+
         sys->GetE(base,rb);
 
         MatrixXd Di = sys->GetD();

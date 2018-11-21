@@ -4,7 +4,7 @@
 
 SV::SV(int id):svId(id),SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsDelta(0),ephemSp3(nullptr),trackCount(0){
     memset(bstEphemOK,0,10 * sizeof(int8_t));
-    kal = SvKalman(30,29,0);
+    kal = Kalman(30,29,0);
 }
 SV::SV(){}
 SV::~SV(){}
@@ -166,6 +166,7 @@ void SV::FPrintInfo(int printType){
 }
 bool SV::CalcuECEF(double ts0) {
     double A = orbit.sqrtA*orbit.sqrtA;
+    double sqt1_e2 = sqrt(1-orbit.e*orbit.e);
     double n0 = sqrt(M_miu/(A*A*A));
     double tk = ts0 - orbit.toe;
     while(tk > 302400)tk-=604800;
@@ -182,9 +183,10 @@ bool SV::CalcuECEF(double ts0) {
     //todo:
     //Make Ek within (0-2pi)?????
 //    cout<<"EK:"<<Ek<<endl;
-    double rsinvk = (sqrt(1-orbit.e*orbit.e)*sin(Ek));
-    double rcosvk = cos(Ek)-orbit.e;
-    double rvk = 1-cos(Ek)*orbit.e;
+    double cosEk=cos(Ek),sinEk=sin(Ek);
+    double rsinvk = sqt1_e2*sinEk;
+    double rcosvk = cosEk-orbit.e;
+    double rvk = 1-cosEk*orbit.e;
     double sinvk = rsinvk/rvk;
     double cosvk = rcosvk/rvk;
 //    double tanvk = rsinvk/rcosvk;
@@ -202,23 +204,53 @@ bool SV::CalcuECEF(double ts0) {
     double rk = A*rvk + dtrk;
 //    printf("rk=%.10f\n",rk);
     double ik = orbit.i0 + orbit.IDOT*tk + dtik;
-    double xk = rk * cos(uk);
-    double yk = rk * sin(uk);
-    double Omegak = orbit.Omega0 + (orbit.OmegaDot - (isBeiDouGEO?0:Omega_e))*tk - Omega_e*orbit.toe;
+    double xk_ = rk * cos(uk);
+    double yk_ = rk * sin(uk);
+    double Omega_e_ = isBeiDouGEO?0:Omega_e;
+    double Omegak = orbit.Omega0 + (orbit.OmegaDot - Omega_e_)*tk - Omega_e*orbit.toe;
     MatrixXd transfer(3,2);
-    transfer<<cos(Omegak),-cos(ik)*sin(Omegak),sin(Omegak),cos(ik)*cos(Omegak),0,sin(ik);
+    double cosik=cos(ik),sinik=sin(ik),cosOmk=cos(Omegak),sinOmk=sin(Omegak);
+    transfer<<cosOmk,-cosik*sinOmk,sinOmk,cosik*cosOmk,0,sinik;
+    Vector3d xyzGK = transfer*Vector2d(xk_,yk_);
 
+    //calcu SV rate(according to book page64)
+    //step12
+    double EkDot = n/(1-orbit.e*cosEk);
+    double phyKDot = sqt1_e2*EkDot/(1-orbit.e*cosEk);
+
+    double dtukDot = 2*phyKDot*(orbit.Cus*cos2phy-orbit.Cuc*sin2phy);
+    double dtrkDot = 2*phyKDot*(orbit.Crs*cos2phy-orbit.Crc*sin2phy);
+    double dtikDot = 2*phyKDot*(orbit.Cis*cos2phy-orbit.Cic*sin2phy);
+
+    double ukDot = phyKDot + dtukDot;
+    double rkDot = A*orbit.e*EkDot*sinEk + dtrkDot;
+    double ikDot = orbit.IDOT + dtikDot;
+    double OmegakDot = orbit.OmegaDot - Omega_e_;
+
+    double xkDot_ = rkDot*cos(uk)-rk*ukDot*sin(uk);
+    double ykDot_ = rkDot*sin(uk)+rk*ukDot*cos(uk);
+
+    double xDot = -xyzGK(1)*OmegakDot-(ykDot_*cosik-xyzGK(2)*ikDot)*sinOmk+xkDot_*cosOmk;
+    double yDot = xyzGK(0)*OmegakDot+(ykDot_*cosik-xyzGK(2)*ikDot)*cosOmk+xkDot_*sinOmk;
+    double zDot = ykDot_*sinik+yk_*ikDot*cosik;
+    Vector3d vxyzGK(xDot,yDot,zDot);
     if(isBeiDouGEO){
-        Vector3d xyzGK = transfer*Vector2d(xk,yk);
-        double phyX = -5.0/180.0*GPS_PI;
-        double phyZ = Omega_e * tk;
-        Matrix3d Rz,Rx;
-        Rx<<1,0,0,0,cos(phyX),sin(phyX),0,-sin(phyX),cos(phyX);
-        Rz<<cos(phyZ),sin(phyZ),0,-sin(phyZ),cos(phyZ),0,0,0,1;
+        Matrix3d Rz,Rx,Rz_,S;
+        double phyX, phyZ;
+        phyX = -5.0/180.0*GPS_PI;
+        phyZ = Omega_e * tk;
+        double cosphyX = cos(phyX),sinphyX=sin(phyX),cosphyZ=cos(phyZ),sinphyZ=sin(phyZ);
+        Rx<<1,0,0,0,cosphyX,sinphyX,0,-sinphyX,cosphyX;
+        Rz<<cosphyZ,sinphyZ,0,-sinphyZ,cosphyZ,0,0,0,1;
+        Rz_<<-Omega_e*sinphyZ,Omega_e*cosphyZ,0,-Omega_e*cosphyZ,-Omega_e*sinphyZ,0,0,0,0;
         xyz = Rz*Rx*xyzGK;
-    } else {
-        xyz = transfer*Vector2d(xk,yk);
+        vxyz = Rz_*Rx*xyzGK+Rz*Rx*vxyzGK;
+
+    } else{
+        xyz=xyzGK;
+        vxyz=vxyzGK;
     }
+
 //todo why do tgd and relativity here?
 //TGD and relativity fix.
     double dtRelativity = 2.0*sqrt(M_miu)/(Light_speed*Light_speed)*Earth_ee*orbit.sqrtA*sin(Ek);

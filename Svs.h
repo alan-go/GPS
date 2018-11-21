@@ -16,15 +16,15 @@ class SvAll;
         double b0,b1,b2,b3;
         ionosphere():a0(0),a1(0),a2(0),a3(0),b0(0),b1(0),b2(0),b3(0){}
     };
-class SvKalman{
+class Kalman{
 public:
     int state{0};//0:uninitialized
     int N,M,L;
     VectorXd x,y,xPred;
     MatrixXd Pnn,Hmn,Rmm;
     MatrixXd Ann,Qnn;
-    SvKalman(){};
-    SvKalman(int n,int m,int l):N(n),M(m),L(l){
+    Kalman(){};
+    Kalman(int n,int m,int l):N(n),M(m),L(l){
         x=VectorXd(N);
         y=VectorXd(M);
         Pnn=MatrixXd(N,N);
@@ -89,10 +89,11 @@ public:
     Orbit orbit;
     ionosphere *ion;
     double I,T;
-    SvKalman kal;
+    Kalman kal;
     FILE* fpLog{NULL};
 
     Vector3d xyz,lla,xyzR,llaR;//R:地球自传
+    Vector3d vxyz,vxyzR;
     double tsv,tsDelta,tsReal;
 
     double elevationAngle,azimuthAngle;

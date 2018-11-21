@@ -79,7 +79,7 @@ def Anaxyz(file,colNum,begin):
     # plt.scatter(data[0], data[2])
 
     plt.figure("file")
-    plt.scatter(data[2], data[1])
+    plt.plot(data[2], data[1])
 
 
     data.clear()
