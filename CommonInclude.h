@@ -99,7 +99,7 @@ public:
     GnssTime time;
     double prCor{0},stdPrCor{0};
     double prMes,cpMes,doMes;
-    double cycleSlip{0},cycleRes{1};
+    double cycleSlip{0},cycleRes{1},cycleSlipQ{1};
     double cycle{0.0},cycleP{1e9};
     double stdevPr{1.5},stdevCp{1e-4},stdevDo;
     int trackCount{0},trackTime{0};

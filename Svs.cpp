@@ -798,7 +798,7 @@ double SV::SmoothKalman(int len, int begin) {
     fprintf(fpLog,"%.4f,\t %.10f",ms0->time.tow,ms0->prMes);//0,
 //    fprintf(fpLog,"%.4f,\t %.10f",ms0->time.tow,kal.x(0));//0,
 
-    kal.Forword();
+    kal.Rectify();
     fprintf(fpLog,",%.10f,%.10f,%.10f,%.10f,%.10f,%.10f\n",kal.x(0),(kal.x(0)-kal.x(1))/dt01,ms0->dDoppler/dt01);//0,
 }
 
@@ -851,9 +851,34 @@ double SV::SmoothKalman0() {
 
     fprintf(fpLog,"%.4f,\t %.10f",ms0->time.tow,ms0->prMes);//0,
 
-    kal.Forword();
+    kal.Rectify();
     ms0->prCor = kal.x(0);
     ms0->stdPrCor = sqrt(kal.Pnn(0,0));
 //    cout<<"Pafter:"<<endl<<kal.Pnn<<endl;
     fprintf(fpLog,",%.10f,%.10f,%.10f,%.10f,%.10f,%.10f\n",kal.x(0),ms0->stdPrCor,ms0->prMes-kal.x(0));//0,
+}
+double SV::DetectCycleSlip() {
+    if(measureDat.size()<2)
+        return -1;
+    Measure* ms0 = measureDat[0];
+    Measure* ms1 = measureDat[1];
+    double t0 = ms0->time.tow,t1 = ms1->time.tow;
+    double dt01 = t0-t1;
+
+    if(dt01>1.2){
+        ms0->trackTime=0;
+        return -1;
+    } else{
+        ms0->trackTime=ms1->trackTime+dt01;
+    }
+    double weight0 = 1/pow(ms0->stdevDo,2),weight1 = 1/pow(ms1->stdevDo,2);
+    ms0->dDoppler = (weight0*ms0->doMes+weight1*ms1->doMes)/(weight0+weight1)*dt01;
+    double dcp = ms0->cpMes-ms1->cpMes;
+
+    double lambda = GetFreq(type,1,1);
+    double dDoCp = dcp-ms0->dDoppler;
+    ms0->cycleSlip = round(dDoCp/lambda);
+    ms0->cycleRes = dDoCp/lambda-ms0->cycleSlip;
+    //调参？
+    ms0->cycleSlipQ = pow(10*dt01*dt01/lambda,2);
 }

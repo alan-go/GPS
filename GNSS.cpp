@@ -148,7 +148,7 @@ int GNSS::Test(vector<SV *> svs) {
 //    return 0;
 
     double tod = fmod(rTime.tow,86400.0);
-    double tu_s=solver.soltion.tu[SYS_GPS]/Light_speed;
+    double tu_s=solver.solSingle.tu[SYS_GPS]/Light_speed;
 //    fprintf(logTu,"%f,%.10f\n",rTime.tow,tu_s*Light_speed);
     solRAC = FindSol(GetSerial(1)->solRaw,tod-tu_s,0.2,"tod");
     xyzRAC=solRAC.xyz;
@@ -162,32 +162,32 @@ int GNSS::Test(vector<SV *> svs) {
 
 
     if(0==solver.PositionSingle(svs)){
-        solver.soltion.Show("###Single###");
-        (solver.soltion-solRAC).Show("###SIG-RAC###",1);
-        AddPosRecord(solver.soltion);
-        solSingles.push_front(solver.soltion);
-//        solver.soltion.printXYZ2log(logSingle);
+        solver.solSingle.Show("###Single###");
+        (solver.solSingle-solRAC).Show("###SIG-RAC###",1);
+        AddPosRecord(solver.solSingle);
+        solSingles.push_front(solver.solSingle);
+//        solver.solSingle.printXYZ2log(logSingle);
     }
 
     if(0==solver.PositionSingleNew(svs)){
-        solver.soltion.Show("###SingleNew###");
-        (solver.soltion-solRAC).Show("###SIGNew-RAC###",1);
-//        solver.soltion.printXYZ2log(logSingleNew);
-        solSingleNew.push_front(solver.soltion);
+        solver.solSingle.Show("###SingleNew###");
+        (solver.solSingle-solRAC).Show("###SIGNew-RAC###",1);
+//        solver.solSingle.printXYZ2log(logSingleNew);
+        solSingleNew.push_front(solver.solSingle);
     }
 
 //    PosSolver solverRtk(svsManager, &rtkManager, this);
     if(0== solver.PositionRtk(svs)){
-        solver.soltion.Show("###RTK###");
-        (solver.soltion-solRAC).Show("###RTK-RAC###",1);
-        solRTKs.push_front(solver.soltion);
+        solver.solSingle.Show("###RTK###");
+        (solver.solSingle-solRAC).Show("###RTK-RAC###",1);
+        solRTKs.push_front(solver.solSingle);
     }
 
 //    return 0;
     if(0== kalmanSolver.PositionKalman(svs)){
-        kalmanSolver.soltion.Show("###Kalman###");
-        (solver.soltion-solRAC).Show("###KAL-RAC###",1);
-        solKalmans.push_front(kalmanSolver.soltion);
+        kalmanSolver.solSingle.Show("###Kalman###");
+        (solver.solSingle-solRAC).Show("###KAL-RAC###",1);
+        solKalmans.push_front(kalmanSolver.solSingle);
     }
 
 }

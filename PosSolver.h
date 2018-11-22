@@ -13,15 +13,19 @@ public:
     GNSS* gnss;
     NtripRTK *rtk;
     double PDOP;
+    double tu[Nsys],tuf;
 
-    GnssTime timeSolver;//这个时间直接从接收机读出来的时间，有钟差
+    GnssTime timeSol,timeSolLast;//这个时间直接从接收机读出来的时间，有钟差
     Vector3d xyz, vxyz, lla;
-    Solution soltion0,soltion;
+    Solution soltion0,solSingle,solKalSigle;
     vector<SV*> svsForCalcu[Nsys];
 
-    double tu[Nsys]={0};
+//    double tu[Nsys]={0};
+    int nSat,nSys;
+
     int numMeas;
     Matrix<double,6,6> Pxv;
+    Kalman kalSingle,kalRtk;
 public:
     int InitKalman(GNSS *_gnss);
     int Init(GNSS *_gnss);
@@ -36,7 +40,6 @@ public:
     int PositionRtkKalman();
     int MakeGGA(char *gga,Vector3d lla,GnssTime gpsTime);
 
-    int nSat,nSys;
 
     int PrepareSVsData(vector<SV*> &_svsIn);
     int SelectSvsFromVisible(vector<SV*> &all);
@@ -48,6 +51,8 @@ public:
     int PositionKalman(vector<SV*> _svsIn);
     int AnaData(vector<SV*> _svsIn);
 
+    int ResetKalSingle(int N,int M,vector<SV*> &svsIn,int L=0);
+    int PosKalSng(vector<SV *> _svsIn);
 
 };
 

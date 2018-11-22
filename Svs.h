@@ -20,30 +20,41 @@ class Kalman{
 public:
     int state{0};//0:uninitialized
     int N,M,L;
-    VectorXd x,y,xPred;
+    VectorXd x,y,hx;
     MatrixXd Pnn,Hmn,Rmm;
-    MatrixXd Ann,Qnn;
+    MatrixXd Ann,AnnAdd,Qnn;
     Kalman(){};
-    Kalman(int n,int m,int l):N(n),M(m),L(l){
-        x=VectorXd(N);
-        y=VectorXd(M);
-        Pnn=MatrixXd(N,N);
-        Hmn=MatrixXd(M,N);
-        Rmm=MatrixXd(M,M);
-        Ann=MatrixXd(N,N);
-        Qnn=10000*MatrixXd::Identity(N,N);
-        Qnn(0,0)=50000;
+    Kalman(int n,int m,int l){
+        Alloc(n,m,l);
+//        Qnn(0,0)=50000;
     };
+    int Alloc(int n,int m,int l){
+        N=n;M=m;L=l;
+        x=VectorXd(N);x.fill(0);
+        y=VectorXd(M);y.fill(0);
+        hx=VectorXd(M);hx.fill(0);
+        Pnn=MatrixXd(N,N);Pnn.fill(0);
+        Hmn=MatrixXd(M,N);Hmn.fill(0);
+        Rmm=MatrixXd(M,M);Rmm.fill(0);
+        AnnAdd=MatrixXd(N,N);AnnAdd.fill(0);
+        Ann=MatrixXd::Identity(N,N);
+        Qnn=MatrixXd::Identity(N,N);Qnn.fill(0);
+    }
     int Init(){
         Pnn = 10000*MatrixXd::Identity(N,N);
     };
-    int Forword(){
+    int Predict(double t){
+        Ann+=t*AnnAdd;
+        x=Ann*x;
+        Pnn=Ann*Pnn*Ann.transpose()+Qnn;
+    }
+    int Rectify(){
 //        Pnn+=Qnn;
         MatrixXd Ht=Hmn.transpose();
         MatrixXd Kk=Pnn*Ht*(Hmn*Pnn*Ht+Rmm).inverse();
 
 //        cout<<"x:  "<<x.transpose()<<endl;
-        VectorXd xadd = Kk*(y-Hmn*x);
+        VectorXd xadd = Kk*(y-hx);
         x=x+xadd;
 //        cout<<"xadd:  "<<xadd.transpose()<<endl;
         Pnn = (MatrixXd::Identity(N,N)-Kk*Hmn)*Pnn;
@@ -103,6 +114,8 @@ public:
     deque<Measure*> measureDat;
     double prInterp[32], cpInterp[32];
     bool KalmanFirst{1};
+    //电离层估计
+    double Ii{0},IiP;
     char tip[128];
 public:
     SV();
@@ -128,6 +141,7 @@ public:
     double SmoothPr(int len,int begin=0);
     double SmoothKalman(int len,int begin=0);
     double SmoothKalman0();
+    double DetectCycleSlip();
 
     //head 指32bit()中的头bit（范围：1-32）
     inline uint32_t Read1Word(uint32_t word, int length, int head, bool isInt = false);
