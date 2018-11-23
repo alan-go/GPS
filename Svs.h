@@ -22,8 +22,10 @@ public:
     int N,M,L;
     VectorXd x,y,hx;
     MatrixXd Pnn,Hmn,Rmm;
-    MatrixXd Ann,AnnAdd,Qnn;
-    Kalman(){};
+    MatrixXd Ann,AnnAdd99,Qnn;
+    Kalman(){
+        AnnAdd99=MatrixXd(9,9);AnnAdd99.fill(0);
+    };
     Kalman(int n,int m,int l){
         Alloc(n,m,l);
 //        Qnn(0,0)=50000;
@@ -36,7 +38,7 @@ public:
         Pnn=MatrixXd(N,N);Pnn.fill(0);
         Hmn=MatrixXd(M,N);Hmn.fill(0);
         Rmm=MatrixXd(M,M);Rmm.fill(0);
-        AnnAdd=MatrixXd(N,N);AnnAdd.fill(0);
+
         Ann=MatrixXd::Identity(N,N);
         Qnn=MatrixXd::Identity(N,N);Qnn.fill(0);
     }
@@ -44,20 +46,37 @@ public:
         Pnn = 10000*MatrixXd::Identity(N,N);
     };
     int Predict(double t){
-        Ann+=t*AnnAdd;
+        cout<<"x:  "<<endl<<x.transpose()<<endl;
+        Ann.block(0,0,9,9)+=t*AnnAdd99;
         x=Ann*x;
         Pnn=Ann*Pnn*Ann.transpose()+Qnn;
+
+        cout<<"xPredict:  "<<endl<<x.transpose()<<endl;
+//        cout<<"Ann:  "<<endl<<Ann<<endl;
+//        cout<<"Qnn:  "<<endl<<Qnn<<endl;
+//        cout<<"Pnn:  "<<endl<<Pnn<<endl;
     }
     int Rectify(){
-//        Pnn+=Qnn;
+        cout<<"Pnn:  "<<endl<<Pnn<<endl;
+        cout<<"Hmn:  "<<endl<<Hmn<<endl;
+//        cout<<"Rmm:  "<<endl<<Rmm<<endl;
         MatrixXd Ht=Hmn.transpose();
         MatrixXd Kk=Pnn*Ht*(Hmn*Pnn*Ht+Rmm).inverse();
 
-//        cout<<"x:  "<<x.transpose()<<endl;
+//        cout<<"Kk00:  "<<endl<<Hmn*Pnn*Ht+Rmm<<endl;
+//        cout<<"Kk:  "<<endl<<Kk<<endl;
+
+
+        cout<<"   x:  "<<x.transpose()<<endl;
         VectorXd xadd = Kk*(y-hx);
         x=x+xadd;
-//        cout<<"xadd:  "<<xadd.transpose()<<endl;
         Pnn = (MatrixXd::Identity(N,N)-Kk*Hmn)*Pnn;
+
+        cout<<"xadd:  "<<xadd.transpose()<<endl;
+        cout<<"   x:  "<<x.transpose()<<endl;
+        cout<<"   y:  "<<y.transpose()<<endl;
+        cout<<"  hx:  "<<(hx).transpose()<<endl;
+        cout<<"y-hx:  "<<(y-hx).transpose()<<endl;
     };
 };
 class SV{
@@ -101,6 +120,7 @@ public:
     ionosphere *ion;
     double I,T;
     Kalman kal;
+    int kalState{0};
     FILE* fpLog{NULL};
 
     Vector3d xyz,lla,xyzR,llaR;//R:地球自传

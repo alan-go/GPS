@@ -16,6 +16,7 @@ public:
     double tu[Nsys],tuf;
 
     GnssTime timeSol,timeSolLast;//这个时间直接从接收机读出来的时间，有钟差
+    double dts{0};
     Vector3d xyz, vxyz, lla;
     Solution soltion0,solSingle,solKalSigle;
     vector<SV*> svsForCalcu[Nsys];
@@ -24,7 +25,8 @@ public:
     int nSat,nSys;
 
     int numMeas;
-    Matrix<double,6,6> Pxv;
+    Matrix<double,6,6> P66;
+    Matrix<double,9,9> P99;
     Kalman kalSingle,kalRtk;
 public:
     int InitKalman(GNSS *_gnss);

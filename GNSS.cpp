@@ -157,9 +157,11 @@ int GNSS::Test(vector<SV *> svs) {
     (solUBX-solRAC).Show("###UBX-RAC###",1);
     solRAC.Show("###RAC###");
     printf("tow,tod insolution= %f,%f\n", rTime.tow,tod-tu_s);
-    solver.PrepareSVsData(svs);
-    kalmanSolver.PrepareSVsData(svs);
-
+    if(solver.PrepareSVsData(svs))return -1;
+//    kalmanSolver.PrepareSVsData(svs);
+    printf("mamamaha\n");
+    printf("mamamaha\n");
+    printf("mamamaha\n");
 
     if(0==solver.PositionSingle(svs)){
         solver.solSingle.Show("###Single###");
@@ -167,7 +169,16 @@ int GNSS::Test(vector<SV *> svs) {
         AddPosRecord(solver.solSingle);
         solSingles.push_front(solver.solSingle);
 //        solver.solSingle.printXYZ2log(logSingle);
+    } else{ printf("PositionSingle failed %d\n",count );}
+
+    if(1){
+        solver.PosKalSng(svs);
+        solver.solKalSigle.Show("###PosKalSng###");
+        (solver.solKalSigle-solRAC).Show("###KalSIG-RAC###",1);
+        solSigKals.push_front(solver.solSingle);
     }
+    return 0;
+
 
     if(0==solver.PositionSingleNew(svs)){
         solver.solSingle.Show("###SingleNew###");

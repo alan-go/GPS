@@ -15,7 +15,7 @@ public:
     Eigen::Vector3d xyzDefault, llaDefault;
     Eigen::Vector3d xyz00,xyzUBX,xyzRAC;
     deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> records;
-    deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> solSingleNew,solSingles,solRTKs,solKalmans;
+    deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> solSingleNew,solSingles,solRTKs,solKalmans,solSigKals;
     Solution solSingle,solRTK,solKalman,solUBX,solRAC;
     double cycle[Nsys-1][Nxxs],PB[Nsys-1][Nxxs],sigmaCy[Nsys-1][Nxxs],sigmaPr[Nsys-1][Nxxs];
     Matrix<double,6,6> Pxv;
