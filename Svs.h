@@ -20,7 +20,7 @@ class Kalman{
 public:
     int state{0};//0:uninitialized
     int N,M,L;
-    VectorXd x,y,hx;
+    VectorXd x,y,hx,Ri;
     MatrixXd Pnn,Hmn,Rmm;
     MatrixXd Ann,AnnAdd99,Qnn;
     Kalman(){
@@ -34,6 +34,7 @@ public:
         N=n;M=m;L=l;
         x=VectorXd(N);x.fill(0);
         y=VectorXd(M);y.fill(0);
+        Ri=VectorXd(M);Ri.fill(0);
         hx=VectorXd(M);hx.fill(0);
         Pnn=MatrixXd(N,N);Pnn.fill(0);
         Hmn=MatrixXd(M,N);Hmn.fill(0);
@@ -57,6 +58,7 @@ public:
 //        cout<<"Pnn:  "<<endl<<Pnn<<endl;
     }
     int Rectify(){
+        static int n=0;
         cout<<"Pnn:  "<<endl<<Pnn<<endl;
         cout<<"Hmn:  "<<endl<<Hmn<<endl;
 //        cout<<"Rmm:  "<<endl<<Rmm<<endl;
@@ -74,6 +76,7 @@ public:
 
         cout<<"xadd:  "<<xadd.transpose()<<endl;
         cout<<"   x:  "<<x.transpose()<<endl;
+        cout<<"  Ri:  "<<Ri.transpose()<<endl;
         cout<<"   y:  "<<y.transpose()<<endl;
         cout<<"  hx:  "<<(hx).transpose()<<endl;
         cout<<"y-hx:  "<<(y-hx).transpose()<<endl;
@@ -340,7 +343,7 @@ public:
                count++;
            }
        }
-       svUsedAll.swap(result);
+        svUsedAll.swap(result);
         return count;
     }
     SV* GetSv(SysType type, int id){

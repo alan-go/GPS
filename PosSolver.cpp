@@ -38,8 +38,9 @@ int PosSolver::PrepareSVsData(vector<SV*> &svsIn) {
 //    svsBox = gnss->svsManager;
     cout<<"---Prepare Data\n"<<endl;
     svsBox=SvAll();
-    xyz=gnss->xyzRAC;
+//    xyz=gnss->xyzRAC;
     XYZ2LLA(xyz,lla);
+    cout<<"xyz"<<endl<<xyz<<endl;
     SelectSvsFromVisible(svsIn);
     if(svsBox.svUsedAll.empty()){
         cout<<"---Warning: Empty sv lists\n"<<endl;
@@ -163,7 +164,7 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
         //2,judge ephemeric
         if(!sv->IsEphemOK(gnss->ephemType,timeSol))continue;
         //3,measure
-        sv->SmoothKalman0();
+//        sv->SmoothKalman0();
 //        if(sv->kal.state<30)continue;
         if(!sv->MeasureGood())continue;
         //4,elevtion angle
@@ -540,6 +541,8 @@ int PosSolver::PositionSingleNew(vector<SV *> _svsIn) {
 }
 
 int PosSolver::ResetKalSingle(int N, int M, vector<SV *> &svsIn, int L) {
+    static int n=0;
+    cout<<"ResetKalSingle  "<<n++<<endl;
     kalSingle.Alloc(N, M, L);
     if (kalSingle.state == 0) {
         dts=0;
@@ -625,7 +628,8 @@ int PosSolver::PosKalSng(vector<SV *> _svsIn) {
             double dt01 = ms0->time.tow - ms1->time.tow;
             kalSingle.y(yhead+i)=ms0->cpMes;
             kalSingle.hx(yhead+i)=ri+kalSingle.x(tui)-sv->tsDelta*Light_speed-sv->Ii+sv->T+lambdai*ms0->cycle;
-            kalSingle.Rmm(yhead+i,yhead+i)=pow(0.4+ms0->stdevCp,2);
+            kalSingle.Rmm(yhead+i,yhead+i)=pow(ms0->stdevCp,2);
+            kalSingle.Ri(yhead+i)=ms0->stdevCp;
             kalSingle.Hmn.block(yhead+i,0,1,3)=-ei.transpose();
             kalSingle.Hmn(yhead+i,tui)=1;
             kalSingle.Hmn(yhead+i,xhead+i)=lambdai;
@@ -633,13 +637,15 @@ int PosSolver::PosKalSng(vector<SV *> _svsIn) {
 
             kalSingle.y(yhead+i+Ni)=ms0->cpMes-ms0->prMes;
             kalSingle.hx(yhead+i+Ni)=-2*sv->Ii+lambdai*ms0->cycle;
-            kalSingle.Rmm(yhead+i+Ni,yhead+i+Ni)=pow(1.4+ms0->stdevPr,2);
+            kalSingle.Rmm(yhead+i+Ni,yhead+i+Ni)=pow(ms0->stdevPr,2);
+            kalSingle.Ri(yhead+i+Ni)=ms0->stdevPr;
             kalSingle.Hmn(yhead+i+Ni,xhead+i)=lambdai;
             kalSingle.Hmn(yhead+i+Ni,xhead+i+Ni)=-2;
 
             kalSingle.y(yhead+i+2*Ni)=ms0->doMes;
             kalSingle.hx(yhead+i+2*Ni)=ei.transpose()*(sv->vxyzR-vxyz)+tuf-sv->a1*Light_speed;
-            kalSingle.Rmm(yhead+i+2*Ni,yhead+i+2*Ni)=pow(0.000005+ms0->stdevDo,2);
+            kalSingle.Rmm(yhead+i+2*Ni,yhead+i+2*Ni)=pow(ms0->stdevDo,2);
+            kalSingle.Ri(yhead+i+2*Ni)=ms0->stdevDo;
             kalSingle.Hmn.block(yhead+i+2*Ni,3,1,3)=-ei.transpose();
             kalSingle.Hmn(yhead+i+2*Ni,8)=1;
         }

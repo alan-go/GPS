@@ -90,7 +90,8 @@ if __name__=="__main__":
     #
     # Anaxyz("../log/xyzSIG.txt",4,1)
     # Anaxyz("../log/xyzSIGNew.txt",4,1)
-    Anaxyz("../log/xyzRTK.txt",4,1)
+    # Anaxyz("../log/xyzRTK.txt",4,1)
+    Anaxyz("../log/xyzKalSig.txt",4,1)
     Anaxyz("../log/xyzKAL.txt",4,1)
     # Anaxyz("../log/xyzBX.txt",4,1)
     Anaxyz("../log/xyzRAC.txt",4,1)

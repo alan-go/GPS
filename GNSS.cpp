@@ -136,7 +136,7 @@ int GNSS::ParseRawData(char *message, int len) {
 }
 
 int GNSS::Test(vector<SV *> svs) {
-    printf("coutnt %d\n", ++count);
+    printf("-----coutnt %d\n", ++count);
     if(count<1000) return -1;
     for(SV*sv:svs){
         sv->FPrintInfo(0);
@@ -158,10 +158,7 @@ int GNSS::Test(vector<SV *> svs) {
     solRAC.Show("###RAC###");
     printf("tow,tod insolution= %f,%f\n", rTime.tow,tod-tu_s);
     if(solver.PrepareSVsData(svs))return -1;
-//    kalmanSolver.PrepareSVsData(svs);
-    printf("mamamaha\n");
-    printf("mamamaha\n");
-    printf("mamamaha\n");
+    kalmanSolver.PrepareSVsData(svs);
 
     if(0==solver.PositionSingle(svs)){
         solver.solSingle.Show("###Single###");
@@ -180,12 +177,12 @@ int GNSS::Test(vector<SV *> svs) {
     return 0;
 
 
-    if(0==solver.PositionSingleNew(svs)){
-        solver.solSingle.Show("###SingleNew###");
-        (solver.solSingle-solRAC).Show("###SIGNew-RAC###",1);
-//        solver.solSingle.printXYZ2log(logSingleNew);
-        solSingleNew.push_front(solver.solSingle);
-    }
+//    if(0==solver.PositionSingleNew(svs)){
+//        solver.solSingle.Show("###SingleNew###");
+//        (solver.solSingle-solRAC).Show("###SIGNew-RAC###",1);
+////        solver.solSingle.printXYZ2log(logSingleNew);
+//        solSingleNew.push_front(solver.solSingle);
+//    }
 
 //    PosSolver solverRtk(svsManager, &rtkManager, this);
     if(0== solver.PositionRtk(svs)){

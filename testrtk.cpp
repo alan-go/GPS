@@ -90,7 +90,7 @@ int main(){
         WriteSols(gnss->solKalmans,"xyzKAL");
         WriteSols(gnss->solRTKs,"xyzRTK");
         WriteSols(gnss->solSingles,"xyzSIG");
-        WriteSols(gnss->solSingleNew,"xyzSIGNew");
+        WriteSols(gnss->solSigKals,"xyzKalSig");
 
     } else printf("open data failed \n");
 //    gnss->svsManager.GetSv(SYS_GPS,20)
