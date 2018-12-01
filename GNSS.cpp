@@ -35,6 +35,8 @@ int GNSS::Init(int ephem, bool qianXun, bool bds, bool gps) {
 
     kalmanSolver.InitKalman(this);
     solver.Init(this);
+    kalDoppSolv.Init(this);
+
 
 }
 
@@ -158,23 +160,23 @@ int GNSS::Test(vector<SV *> svs) {
     solRAC.Show("###RAC###");
     printf("tow,tod insolution= %f,%f\n", rTime.tow,tod-tu_s);
     if(solver.PrepareSVsData(svs))return -1;
-    kalmanSolver.PrepareSVsData(svs);
 
     if(0==solver.PositionSingle(svs)){
         solver.solSingle.Show("###Single###");
         (solver.solSingle-solRAC).Show("###SIG-RAC###",1);
         AddPosRecord(solver.solSingle);
+        solSingle = solver.solSingle;
         solSingles.push_front(solver.solSingle);
 //        solver.solSingle.printXYZ2log(logSingle);
     } else{ printf("PositionSingle failed %d\n",count );}
 
-    if(1){
-        solver.PosKalSng(svs);
-        solver.solKalSigle.Show("###PosKalSng###");
-        (solver.solKalSigle-solRAC).Show("###KalSIG-RAC###",1);
-        solSigKals.push_front(solver.solSingle);
-    }
-    return 0;
+//    if(1){
+//        solver.PosKalSng(svs);
+//        solver.solKalSigle.Show("###PosKalSng###");
+//        (solver.solKalSigle-solRAC).Show("###KalSIG-RAC###",1);
+//        solSigKals.push_front(solver.solSingle);
+//    }
+//    return 0;
 
 
 //    if(0==solver.PositionSingleNew(svs)){
@@ -192,11 +194,19 @@ int GNSS::Test(vector<SV *> svs) {
     }
 
 //    return 0;
+    kalmanSolver.PrepareSVsData(svs);
     if(0== kalmanSolver.PositionKalman(svs)){
         kalmanSolver.solSingle.Show("###Kalman###");
         (solver.solSingle-solRAC).Show("###KAL-RAC###",1);
         solKalmans.push_front(kalmanSolver.solSingle);
     }
+
+//    kalDoppSolv.PrepareSVsData(svs);
+//    if(0== kalDoppSolv.PositionKalman2(svs)){
+//        kalDoppSolv.solKalDopp.Show("###KalDopp###");
+//        (kalDoppSolv.solKalDopp-solRAC).Show("###KalDopp-RAC###",1);
+//        solKalDops.push_front(kalDoppSolv.solKalDopp);
+//    }
 
 }
 int GNSS::Peform(vector<SV *> svs) {

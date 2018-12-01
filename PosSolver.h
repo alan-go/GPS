@@ -18,7 +18,7 @@ public:
     GnssTime timeSol,timeSolLast;//这个时间直接从接收机读出来的时间，有钟差
     double dts{0};
     Vector3d xyz, vxyz, lla;
-    Solution soltion0,solSingle,solKalSigle;
+    Solution soltion0,solSingle,solKalSigle,solKalDopp;
     vector<SV*> svsForCalcu[Nsys];
 
 //    double tu[Nsys]={0};
@@ -51,9 +51,11 @@ public:
     int SolvePositionBeiDouGPS(vector<SV*>svsForCalcu);
     int SolvePositionCalman();
     int PositionKalman(vector<SV*> _svsIn);
+    int PositionKalman2(vector<SV*> _svsIn);
     int AnaData(vector<SV*> _svsIn);
 
     int ResetKalSingle(int N,int M,vector<SV*> &svsIn,int L=0);
+    int ResetKalRtk(int N,int M, Kalman & kal,int L=0);
     int PosKalSng(vector<SV *> _svsIn);
 
 };

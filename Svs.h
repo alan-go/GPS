@@ -61,12 +61,12 @@ public:
         static int n=0;
         cout<<"Pnn:  "<<endl<<Pnn<<endl;
         cout<<"Hmn:  "<<endl<<Hmn<<endl;
-//        cout<<"Rmm:  "<<endl<<Rmm<<endl;
+        cout<<"Rmm:  "<<endl<<Rmm<<endl;
         MatrixXd Ht=Hmn.transpose();
         MatrixXd Kk=Pnn*Ht*(Hmn*Pnn*Ht+Rmm).inverse();
 
-//        cout<<"Kk00:  "<<endl<<Hmn*Pnn*Ht+Rmm<<endl;
-//        cout<<"Kk:  "<<endl<<Kk<<endl;
+        cout<<"Kk00:  "<<endl<<Hmn*Pnn*Ht+Rmm<<endl;
+        cout<<"Kk:  "<<endl<<Kk<<endl;
 
 
         cout<<"   x:  "<<x.transpose()<<endl;
@@ -76,7 +76,7 @@ public:
 
         cout<<"xadd:  "<<xadd.transpose()<<endl;
         cout<<"   x:  "<<x.transpose()<<endl;
-        cout<<"  Ri:  "<<Ri.transpose()<<endl;
+//        cout<<"  Ri:  "<<Ri.transpose()<<endl;
         cout<<"   y:  "<<y.transpose()<<endl;
         cout<<"  hx:  "<<(hx).transpose()<<endl;
         cout<<"y-hx:  "<<(y-hx).transpose()<<endl;

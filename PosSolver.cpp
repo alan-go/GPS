@@ -35,19 +35,16 @@ PosSolver::~PosSolver(){
 }
 
 int PosSolver::PrepareSVsData(vector<SV*> &svsIn) {
-//    svsBox = gnss->svsManager;
     cout<<"---Prepare Data\n"<<endl;
     svsBox=SvAll();
-//    xyz=gnss->xyzRAC;
-    XYZ2LLA(xyz,lla);
-    cout<<"xyz"<<endl<<xyz<<endl;
     SelectSvsFromVisible(svsIn);
     if(svsBox.svUsedAll.empty()){
         cout<<"---Warning: Empty sv lists\n"<<endl;
         return -1;
     }
-    timeSolLast=timeSol;
+    timeSolLast = timeSol;
     timeSol = gnss->rTime;
+    memcpy(tu,gnss->solSingle.tu,Nsys* sizeof(double));
     UpdateSvsPosition(svsBox.svUsedAll, timeSol, gnss->ephemType);
     nSat = svsBox.UpdateSVs("elev");
     nSys = svsBox.sysUsed.size();
@@ -177,6 +174,7 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
 //        }
         //remain svs:
 
+        sv->DetectCycleSlip();
 
         svsBox.AddToUsed(sv);
        sprintf(sv->tip,"++ok");
@@ -218,7 +216,6 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
         XYZ2LLA(sv->xyz,sv->lla);
         XYZ2LLA(sv->xyzR,sv->llaR);
         sv->CorrectIT(xyz,lla,timeForECEF);
-        sv->DetectCycleSlip();
     }
     return 0;
 }
@@ -318,84 +315,85 @@ int PosSolver::PositionRtk(vector<SV *> _svsIn) {
 
 int PosSolver::PositionKalman(vector<SV *> _svsIn) {
     int sigInd = 1;
-//    svsBox = gnss->svsManager;
-//    PrepareSVsData(_svsIn);
     double lastTime = gnss->solKalmans[0].time.tow;
-    double dt = timeSol.tow-lastTime;
+    double dt = timeSol.tow - lastTime;
     ProcessRtkData();
 
-    printf("Kalman Info========= count=%d,nSat=%d,nSys=%d\n", gnss->count,nSat,nSys);
+    printf("Kalman Info========= count=%d,nSat=%d,nSys=%d,dt=%f\n", gnss->count, nSat, nSys, dt);
 
-    if(nSat-nSys<4){
-        printf("Not enough svs nSat,nSys=%d,%d\n",nSat,nSys);
+    if (nSat - nSys < 4) {
+        printf("Not enough svs nSat,nSys=%d,%d\n", nSat, nSys);
         return -1;
     }
 
-    int ny = 2*(nSat-nSys),nx = nSat+6,yhead=0,xhead=6;
+    int ny = 2 * (nSat - nSys), nx = nSat + 6, yhead = 0, xhead = 6;
     Vector3d base = gnss->rtkManager.ECEF_XYZ;
-    VectorXd x(nx),y(ny),hx(ny);
-    MatrixXd P(nx,nx),Ppred(nx,nx),Q(nx,nx);
-    MatrixXd Hx(ny,nx),R(ny,ny),G(nSat-nSys,nx);
+    VectorXd x(nx), y(ny), hx(ny);
+    MatrixXd P(nx, nx), Ppred(nx, nx), Q(nx, nx);
+    MatrixXd Hx(ny, nx), R(ny, ny), G(nSat - nSys, nx);
 
-    x.fill(0);y.fill(0);hx.fill(0);P.fill(0);Q.fill(0);Hx.fill(0);R.fill(0),G.fill(0);
-    x.head(6)<<xyz,vxyz;
-    P.block<6,6>(0,0)<<P66;
-    Q = MatrixXd::Identity(nx,nx);
-    Q.block(0,0,3,3)*=pow(10*dt,2);
-    Q.block(6,6,nSat,nSat)*=0.5;
+    x.fill(0);    y.fill(0);    hx.fill(0);
+    P.fill(0);    Q.fill(0);    Hx.fill(0);
+    R.fill(0), G.fill(0);
+    x.head(6) << xyz, vxyz;
+    P.block<6, 6>(0, 0) << P66;
+    Q = MatrixXd::Identity(nx, nx);
+    Q.block(0, 0, 3, 3) *= pow(10 * dt, 2);
+    Q.block(6, 6, nSat, nSat) *= 0.5;
 //    Q.block<3,3>(0,0) = 1e5*Matrix3d::Identity();
 //    准备数据
-    for(SvSys* sys:svsBox.sysUsed){
-        double lambdai = GetFreq(sys->type,sigInd,1);
+    for (SvSys *sys:svsBox.sysUsed) {
+        double lambdai = GetFreq(sys->type, sigInd, 1);
         int Ni = sys->table.size();
-        VectorXd rr(Ni),rb(Ni),Bi(Ni);
+        VectorXd rr(Ni), rb(Ni), Bi(Ni);
 //        Bi = sys->DiffZero(Diff_Cyc_0,sigInd);
-        for(int i=0;i<Ni;i++){
-            Measure* ms0 = sys->table[i]->measureDat[0];
-            Measure* ms1 = sys->table[i]->measureDat[1];
-            double dt01 = ms0->time.tow-ms1->time.tow;
-            ms0->cycle+=ms0->cycleSlip;
-            if(ms0->trackTime<1){
-                ms0->cycleP += pow(500*dt01,2);
-                if(abs(ms0->cycleRes)>0.15)ms0->cycleP+=1000;
+        for (int i = 0; i < Ni; i++) {
+            Measure *ms0 = sys->table[i]->measureDat[0];
+            Measure *ms1 = sys->table[i]->measureDat[1];
+            double dt01 = ms0->time.tow - ms1->time.tow;
+            ms0->cycle += ms0->cycleSlip;
+            if (ms0->trackTime < 1) {
+//                ms0->cycle=0;
+                ms0->cycleP += pow(50000 * dt01 * dt01, 2);
+                if (abs(ms0->cycleRes) > 0.15)ms0->cycleP += 1000;
             }
             Bi(i) = ms0->cycle;
         }
 
-
-        sys->GetE(base,rb);
+        sys->GetE(base, rb);
 
         MatrixXd Di = sys->GetD();
         MatrixXd DiT = Di.transpose();
-        MatrixXd Ei = sys->GetE(xyz,rr);
-        G.block(yhead/2,xhead,Ni-1,Ni)<<Di;
+        MatrixXd Ei = sys->GetE(xyz, rr);
+        G.block(yhead / 2, xhead, Ni - 1, Ni) << Di;
 
-        x.segment(xhead,Ni)<<Bi;
+        x.segment(xhead, Ni) << Bi;
 
-        y.segment(yhead,Ni-1)<<sys->DiffDouble(Diff_Cp_rb,1);
-        y.segment(yhead+Ni-1,Ni-1)<<sys->DiffDouble(Diff_Pr_rb,1);
+        y.segment(yhead, Ni - 1) << sys->DiffDouble(Diff_Cp_rb, 1);
+        y.segment(yhead + Ni - 1, Ni - 1) << sys->DiffDouble(Diff_Pr_rb, 1);
 
-        VectorXd r_rb = Diff_Vec(rr-rb,Ni);
-        VectorXd B_rb = Diff_Vec(Bi,Ni);
-        hx.segment(yhead,Ni-1)<<r_rb+lambdai*B_rb;
-        hx.segment(yhead+Ni-1,Ni-1)<<r_rb;
+        VectorXd r_rb = Diff_Vec(rr - rb, Ni);
+        VectorXd B_rb = Diff_Vec(Bi, Ni);
+        hx.segment(yhead, Ni - 1) << r_rb + lambdai * B_rb;
+        hx.segment(yhead + Ni - 1, Ni - 1) << r_rb;
 
-        Hx.block(yhead,0,Ni-1,3)<<-Di*Ei;
-        Hx.block(yhead,xhead,Ni-1,Ni)<<lambdai*Di;
-        Hx.block(yhead+Ni-1,0,Ni-1,3)<<-Di*Ei;
+        Hx.block(yhead, 0, Ni - 1, 3) << -Di * Ei;
+        Hx.block(yhead, xhead, Ni - 1, Ni) << lambdai * Di;
+        Hx.block(yhead + Ni - 1, 0, Ni - 1, 3) << -Di * Ei;
 
-        VectorXd Pii = sys->DiffZero(Diff_cyP_0,sigInd);
-        P.block(xhead,xhead,Ni,Ni)=Pii.asDiagonal();
+        VectorXd Pii = sys->DiffZero(Diff_cyP_0, sigInd);
+        P.block(xhead, xhead, Ni, Ni) = Pii.asDiagonal();
 
-        VectorXd Rcpi = sys->DiffZero(Diff_Rcp_0,sigInd);
-        VectorXd Rpri = sys->DiffZero(Diff_Rpr_0,sigInd);
+        VectorXd Rcpi = sys->DiffZero(Diff_Rcp_0, sigInd);
+        VectorXd Rpri = sys->DiffZero(Diff_Rpr_0, sigInd);
 //        cout<<"Di"<<endl<<Di<<endl;
 //        cout<<"Rcpi"<<endl<<Rcpi<<endl;
 //        cout<<"R"<<endl<<R<<endl;
-        R.block(yhead,yhead,Ni-1,Ni-1)<<Di*Rcpi.asDiagonal()*DiT;
-        R.block(yhead+Ni-1,yhead+Ni-1,Ni-1,Ni-1)<<Di*Rpri.asDiagonal()*DiT;
+        R.block(yhead, yhead, Ni - 1, Ni - 1) << Di * Rcpi.asDiagonal() * DiT;
+        R.block(yhead + Ni - 1, yhead + Ni - 1, Ni - 1, Ni - 1) << Di * Rpri.asDiagonal() * DiT;
 
-        yhead+=2*(Ni-1);xhead+=Ni;
+        yhead += 2 * (Ni - 1);
+        xhead += Ni;
         ///////////////////////DEbug/////////////////////////////
 //        for(SV* sv:sys->table){
 //            Measure *ms = sv->measureDat.front();
@@ -409,42 +407,214 @@ int PosSolver::PositionKalman(vector<SV *> _svsIn) {
         ///////////////////////DEbug/////////////////////////////
     }
     //计算Kalman
-    P = P+Q;
+    P = P + Q;
     MatrixXd Ht = Hx.transpose();
-    MatrixXd Kk = P*Ht*((Hx*P*Ht+R).inverse());
-    Ppred = (MatrixXd::Identity(nx,nx)-Kk*Hx)*P;
-    VectorXd xyzPred = x + Kk*(y-hx);
+    MatrixXd Kk = P * Ht * ((Hx * P * Ht + R).inverse());
+    Ppred = (MatrixXd::Identity(nx, nx) - Kk * Hx) * P;
+    VectorXd xyzPred = x + Kk * (y - hx);
 
-    //        cout<<"R"<<endl<<R<<endl;
-    cout<<"H"<<endl<<Hx<<endl;
+    cout<<"R"<<endl<<R<<endl;
+    cout << "H" << endl << Hx << endl;
 
-    cout<<"P"<<endl<<P<<endl;
-    cout<<"HxPHt"<<endl<<P*Ht<<endl;
-    cout<<"K"<<endl<<Kk<<endl;
-    cout<<"Ppred"<<endl<<Ppred<<endl;
-    cout<<"x"<<endl<<x.transpose()<<endl;
-    cout<<(xyzPred-x).transpose()<<endl;
-    cout<<xyzPred.transpose()<<endl;
-    cout<<"B_double"<<endl<<(G*xyzPred).transpose()<<endl;
-    cout<<"y"<<endl<<y.transpose()<<endl<<hx.transpose()<<endl;
+    cout << "P" << endl << P << endl;
+//    cout << "HxPHt" << endl << P * Ht << endl;
+//    cout << "K" << endl << Kk << endl;
+//    cout << "Ppred" << endl << Ppred << endl;
+    cout << "x" << endl << x.transpose() << endl;
+    cout << (xyzPred - x).transpose() << endl;
+    cout << xyzPred.transpose() << endl;
+    cout << "B_double" << endl << (G * xyzPred).transpose() << endl;
+    cout << "y" << endl << y.transpose() << endl << hx.transpose() << endl<< (y-hx).transpose() << endl;
 
     //更新参数
     xyz = xyzPred.head(3);
-    vxyz = xyzPred.segment(3,3);
-    P66 = Ppred.block<6,6>(0,0);
-    xhead=6;
-    for(SvSys* sys:svsBox.sysUsed){
+    vxyz = xyzPred.segment(3, 3);
+    P66 = Ppred.block<6, 6>(0, 0);
+    xhead = 6;
+    for (SvSys *sys:svsBox.sysUsed) {
         int Ni = sys->table.size();
-        VectorXd Bii = xyzPred.segment(xhead,Ni);
-        VectorXd Pii = Ppred.diagonal().segment(xhead,Ni);
-        sys->SetValue(Diff_Cyc_0,sigInd,Bii);
-        sys->SetValue(Diff_cyP_0,sigInd,Pii);
+        VectorXd Bii = xyzPred.segment(xhead, Ni);
+        VectorXd Pii = Ppred.diagonal().segment(xhead, Ni);
+        sys->SetValue(Diff_Cyc_0, sigInd, Bii);
+        sys->SetValue(Diff_cyP_0, sigInd, Pii);
+        xhead += Ni;
+    }
+
+    solSingle = Solution(timeSol, xyz, vxyz, tu);
+    return 0;
+}
+
+int PosSolver::ResetKalRtk(int N, int M, Kalman & kal, int L){
+    static int n=0;
+    cout<<"ResetKalSingle  "<<n++<<endl;
+    kal.Alloc(N, M, L);
+    if (kal.state == 0) {
+        dts=0;
+        solKalDopp=gnss->solver.solSingle;
+//        solKalDopp=Solution(timeSol,gnss->xyzDefault,Vector3d(0,0,0),gnss.so)
+        memcpy(solKalDopp.tu,solSingle.tu,Nsys* sizeof(double));
+
+        P99.block(0,0,3,3)=1e6*Matrix3d::Identity();
+        P99.block(3,3,3,3)=1e3*Matrix3d::Identity();
+        P99(6,6)=P99(7,7)=500;
+        P99(8,8)=1e4;
+
+        kal.AnnAdd99.block(0,3,3,3)=Matrix3d::Identity();
+        kal.AnnAdd99(6,8)=1;
+        kal.AnnAdd99(7,8)=1;
+        kal.state=1;
+    }
+    for(SV* sv:svsBox.svUsedAll)if(sv->kalState==0){
+        sv->Ii=sv->I;
+        sv->IiP=pow((cos(sv->elevationAngle)+0.3)*30,2);
+        Measure* ms = sv->measureDat[0];
+        double lambda=GetFreq(sv->type,1,1);
+//        ms->cycle=(ms->cpMes-ms->prMes+2*sv->I)/lambda;
+        ms->cycleP=10000;
+        sv->kalState=1;
+    }
+
+    kal.Pnn.block(0,0,9,9)=P99;
+    kal.x.head(3)=solKalDopp.xyz;
+    kal.Qnn.block(0,0,3,3)=1.52*Matrix3d::Identity();
+
+    kal.x.segment(3,3)=solKalDopp.vxyz;
+    kal.Qnn.block(3,3,3,3)=1.31*Matrix3d::Identity();
+
+    kal.x(6)=solKalDopp.tu[SYS_BDS];
+    kal.x(7)=solKalDopp.tu[SYS_GPS];
+    kal.x(8)=tuf;
+    kal.Qnn.block(6,6,3,3)=1.21*Matrix3d::Identity();
+
+}
+
+int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
+    int sigInd = 1;
+    double dts = timeSol.tow-timeSolLast.tow;
+    ProcessRtkData();
+
+    printf("Kalman Info========= count=%d,nSat=%d,nSys=%d\n", gnss->count,nSat,nSys);
+
+    if(nSat-nSys<4){
+        printf("Not enough svs nSat,nSys=%d,%d\n",nSat,nSys);
+        return -1;
+    }
+
+    int ny = 3*nSat-2*nSys,nx = nSat+9,yhead,xhead;
+    ResetKalRtk(nx,ny,kalRtk);
+    Vector3d base = gnss->rtkManager.ECEF_XYZ;
+//    读数据，x,
+    yhead=0,xhead=9;
+    for(SvSys* sys:svsBox.sysUsed){
+        double lambdai = GetFreq(sys->type,sigInd,1);
+        int Ni = sys->table.size();
+        for(int i=0;i<Ni;i++){
+            SV *sv = sys->table[i];
+            Measure *ms0 = sv->measureDat[0];
+            Measure *ms1 = sv->measureDat[1];
+            double dt01 = ms0->time.tow - ms1->time.tow;
+            ms0->cycle += ms0->cycleSlip;
+            if (ms0->trackTime < 1) {
+                ms0->cycleP += pow(5000 * dt01 * dt01, 2);
+                if (abs(ms0->cycleRes) > 0.15)ms0->cycleP += 1000;
+            }
+
+            kalRtk.x(xhead + i) = ms0->cycle;
+            kalRtk.Pnn(xhead + i, xhead + i) = ms0->cycleP;
+//            kalRtk.Qnn(xhead + i, xhead + i) = ms0->cycleSlipQ;
+            kalRtk.Qnn(xhead + i, xhead + i) = 0.5;
+        }
+        xhead+=Ni;
+    }
+//    预测x,
+//        cout<<"Pnnbefore:  "<<endl<<kalRtk.Pnn<<endl;
+//        cout<<"Qnnbefore:  "<<endl<<kalRtk.Qnn<<endl;
+//   kalRtk.Predict(dts);
+    kalRtk.Pnn+=kalRtk.Qnn;
+
+    yhead=0,xhead=9;
+//    读数据，y,
+    for(SvSys* sys:svsBox.sysUsed) {
+        double lambdai = GetFreq(sys->type, sigInd, 1);
+        int Ni = sys->table.size();
+        VectorXd rr(Ni), rb(Ni), Bi(Ni);
+        Bi=kalRtk.x.segment(9,nSat);
+
+        sys->GetE(base,rb);
+
+        MatrixXd Di = sys->GetD();
+        MatrixXd DiT = Di.transpose();
+        Vector3d xyzTemp=kalRtk.x.head(3);
+        MatrixXd Ei = sys->GetE(xyzTemp,rr);
+
+        VectorXd r_rb = Diff_Vec(rr-rb,Ni);
+        VectorXd B_rb = Diff_Vec(Bi,Ni);
+
+        kalRtk.y.segment(yhead,Ni-1)<<sys->DiffDouble(Diff_Cp_rb,1);
+        kalRtk.hx.segment(yhead,Ni-1)<<r_rb+lambdai*B_rb;
+        kalRtk.Hmn.block(yhead,0,Ni-1,3)<<-Di*Ei;
+        kalRtk.Hmn.block(yhead,xhead,Ni-1,Ni)<<lambdai*Di;
+        VectorXd Rcpi = sys->DiffZero(Diff_Rcp_0,sigInd);
+//        kalRtk.Ri.segment(yhead,Ni-1)=Rcpi;
+        kalRtk.Rmm.block(yhead,yhead,Ni-1,Ni-1)<<Di*Rcpi.asDiagonal()*DiT;
+        yhead+=Ni-1;
+
+        kalRtk.y.segment(yhead,Ni-1)<<sys->DiffDouble(Diff_Pr_rb,1);
+        kalRtk.hx.segment(yhead,Ni-1)<<r_rb;
+        kalRtk.Hmn.block(yhead,0,Ni-1,3)<<-Di*Ei;
+        VectorXd Rpri = sys->DiffZero(Diff_Rpr_0,sigInd);
+//        kalRtk.Ri.segment(yhead,Ni-1)=Rpri;
+        kalRtk.Rmm.block(yhead,yhead,Ni-1,Ni-1)<<Di*Rpri.asDiagonal()*DiT;
+        yhead+=Ni-1;
+
+
+        for (int i = 0; i < Ni; ++i) {
+            SV *sv = sys->table[i];
+            Vector3d ei = sv->xyzR - kalRtk.x.head(3);
+            double ri = ei.norm();
+            ei /= ri;
+            Measure *ms0 = sv->measureDat[0];
+//            kalRtk.y(yhead+i)=ms0->doMes;
+//            kalRtk.hx(yhead+i)=ei.transpose()*(sv->vxyzR-vxyz)+tuf-sv->a1*Light_speed;
+            kalRtk.Rmm(yhead+i,yhead+i)=pow(ms0->stdevDo,2);
+            kalRtk.Ri(yhead+i)=ms0->stdevDo;
+            kalRtk.Hmn.block(yhead+i,3,1,3)=-ei.transpose();
+//            kalRtk.Hmn(yhead+i,8)=1;
+        }
+        yhead+=Ni;xhead+=Ni;
+
+        ///////////////////////DEbug/////////////////////////////
+
+        ///////////////////////DEbug/////////////////////////////
+    }
+    //校正
+    kalRtk.Rectify();
+    //更新参数
+    xyz=kalRtk.x.head(3);
+    vxyz=kalRtk.x.segment(3,3);
+    tu[SYS_BDS]=kalRtk.x(6);
+    tu[SYS_GPS]=kalRtk.x(7);
+    tuf=kalRtk.x(8);
+    P99=kalRtk.Pnn.block(0,0,9,9);
+
+    xhead=9;
+    for(SvSys* sys:svsBox.sysUsed) {
+        int Ni = sys->table.size();
+        for (int i = 0; i < Ni; i++) {
+            SV *sv = sys->table[i];
+            Measure *ms0 = sv->measureDat[0];
+            ms0->cycle=kalRtk.x(xhead + i);
+            ms0->cycleP=kalRtk.Pnn(xhead + i,xhead + i);
+        }
         xhead+=Ni;
     }
 
-    solSingle = Solution(timeSol,xyz,vxyz,tu);
+    solKalDopp=Solution(timeSol,xyz,vxyz,tu);
+    cout<<"KalRtkDopp"<<kalRtk.x.transpose()<<endl;
     return 0;
 }
+
+
 int PosSolver::InitKalman(GNSS *_gnss) {
     gnss = _gnss;
     rtk = &(gnss->rtkManager);
