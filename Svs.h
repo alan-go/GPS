@@ -49,6 +49,7 @@ public:
     int Predict(double t){
         cout<<"x:  "<<endl<<x.transpose()<<endl;
         Ann.block(0,0,9,9)+=t*AnnAdd99;
+//        cout<<"AnnAdd:  "<<endl<<Ann*x-x<<endl;
         x=Ann*x;
         Pnn=Ann*Pnn*Ann.transpose()+Qnn;
 
@@ -60,13 +61,13 @@ public:
     int Rectify(){
         static int n=0;
         cout<<"Pnn:  "<<endl<<Pnn<<endl;
-        cout<<"Hmn:  "<<endl<<Hmn<<endl;
-        cout<<"Rmm:  "<<endl<<Rmm<<endl;
+//        cout<<"Hmn:  "<<endl<<Hmn<<endl;
+//        cout<<"Rmm:  "<<endl<<Rmm<<endl;
         MatrixXd Ht=Hmn.transpose();
         MatrixXd Kk=Pnn*Ht*(Hmn*Pnn*Ht+Rmm).inverse();
 
-        cout<<"Kk00:  "<<endl<<Hmn*Pnn*Ht+Rmm<<endl;
-        cout<<"Kk:  "<<endl<<Kk<<endl;
+//        cout<<"Kk00:  "<<endl<<Hmn*Pnn*Ht+Rmm<<endl;
+//        cout<<"Kk:  "<<endl<<Kk<<endl;
 
 
         cout<<"   x:  "<<x.transpose()<<endl;

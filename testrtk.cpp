@@ -88,6 +88,7 @@ int main(){
         WriteSols(gnss->GetSerial(0)->solRaw,"xyzBX");
         WriteSols(gnss->GetSerial(1)->solRaw,"xyzRAC");
         WriteSols(gnss->solKalmans,"xyzKAL");
+        WriteSols(gnss->solKalDops,"xyzKAL2");
         WriteSols(gnss->solRTKs,"xyzRTK");
         WriteSols(gnss->solSingles,"xyzSIG");
         WriteSols(gnss->solSigKals,"xyzKalSig");

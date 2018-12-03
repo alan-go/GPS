@@ -87,6 +87,7 @@ static double dmm2deg(double dmm)
 }
 
 extern void EarthRotate(Eigen::Vector3d in, Eigen::Vector3d &out, double dt);
+extern void ShowV3(Eigen::Vector3d v3,char *tip);
 
 
 
@@ -100,7 +101,7 @@ public:
     double prCor{0},stdPrCor{0};
     double prMes,cpMes,doMes;
     double cycleSlip{0},cycleRes{1},cycleSlipQ{1};
-    double cycle{0.0},cycleP{1e9};
+    double cycle{0.0},cycleP{1e7};
     double stdevPr{1.5},stdevCp{1e-4},stdevDo;
     int trackCount{0},trackTime{0};
     double lockTime,cno;

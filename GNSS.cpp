@@ -194,19 +194,19 @@ int GNSS::Test(vector<SV *> svs) {
     }
 
 //    return 0;
-    kalmanSolver.PrepareSVsData(svs);
-    if(0== kalmanSolver.PositionKalman(svs)){
-        kalmanSolver.solSingle.Show("###Kalman###");
-        (solver.solSingle-solRAC).Show("###KAL-RAC###",1);
-        solKalmans.push_front(kalmanSolver.solSingle);
-    }
-
-//    kalDoppSolv.PrepareSVsData(svs);
-//    if(0== kalDoppSolv.PositionKalman2(svs)){
-//        kalDoppSolv.solKalDopp.Show("###KalDopp###");
-//        (kalDoppSolv.solKalDopp-solRAC).Show("###KalDopp-RAC###",1);
-//        solKalDops.push_front(kalDoppSolv.solKalDopp);
+//    kalmanSolver.PrepareSVsData(svs);
+//    if(0== kalmanSolver.PositionKalman(svs)){
+//        kalmanSolver.solSingle.Show("###Kalman###");
+//        (solver.solSingle-solRAC).Show("###KAL-RAC###",1);
+//        solKalmans.push_front(kalmanSolver.solSingle);
 //    }
+
+    kalDoppSolv.PrepareSVsData(svs);
+    if(0== kalDoppSolv.PositionKalman2(svs)){
+        kalDoppSolv.solKalDopp.Show("###KalDopp###");
+        (kalDoppSolv.solKalDopp-solRAC).Show("###KalDopp-RAC###",1);
+        solKalDops.push_front(kalDoppSolv.solKalDopp);
+    }
 
 }
 int GNSS::Peform(vector<SV *> svs) {

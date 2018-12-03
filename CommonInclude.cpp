@@ -106,6 +106,9 @@ void EarthRotate(Eigen::Vector3d in, Eigen::Vector3d &out, double dt){
     earthRotate<<cos(omega),sin(omega),0,-sin(omega),cos(omega),0,0,0,1;
     out = earthRotate*in;
 }
+void ShowV3(Eigen::Vector3d v3,char *tip){
+    printf("^^ %s,,,%.10f,%.10f,%.10f\n", tip,v3(0),v3(1),v3(2));
+}
 
 double GetFreq(SysType type, int sigInd, bool lambda){
     int i = sigInd+1;

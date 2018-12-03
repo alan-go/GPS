@@ -880,5 +880,6 @@ double SV::DetectCycleSlip() {
     ms0->cycleSlip = round(dDoCp/lambda);
     ms0->cycleRes = dDoCp/lambda-ms0->cycleSlip;
     //调参？
-    ms0->cycleSlipQ = pow(10*dt01*dt01/lambda,2);
+//    ms0->cycleSlipQ = pow(10*dt01*dt01/lambda,2);
+    ms0->cycleSlipQ = pow(50/lambda*ms0->stdevDo*dt01*dt01,2);
 }

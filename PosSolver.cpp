@@ -320,6 +320,8 @@ int PosSolver::PositionKalman(vector<SV *> _svsIn) {
     ProcessRtkData();
 
     printf("Kalman Info========= count=%d,nSat=%d,nSys=%d,dt=%f\n", gnss->count, nSat, nSys, dt);
+    ShowV3(xyz,"XYZ before Kal1");
+
 
     if (nSat - nSys < 4) {
         printf("Not enough svs nSat,nSys=%d,%d\n", nSat, nSys);
@@ -352,10 +354,15 @@ int PosSolver::PositionKalman(vector<SV *> _svsIn) {
             Measure *ms1 = sys->table[i]->measureDat[1];
             double dt01 = ms0->time.tow - ms1->time.tow;
             ms0->cycle += ms0->cycleSlip;
+            ms0->cycleP+=ms0->cycleSlipQ;
             if (ms0->trackTime < 1) {
 //                ms0->cycle=0;
-                ms0->cycleP += pow(50000 * dt01 * dt01, 2);
-                if (abs(ms0->cycleRes) > 0.15)ms0->cycleP += 1000;
+//                ms0->cycleP = pow(500*dt01*dt01, 2);
+                ms0->cycleP += pow(10*dt01*dt01, 2);
+                if (abs(ms0->cycleRes) > 0.10){
+                    printf("cycleQ= %f\n", ms0->cycleRes);
+                    ms0->cycleP += pow(1000*ms0->stdevDo*ms0->cycleRes,2);
+                }
             }
             Bi(i) = ms0->cycle;
         }
@@ -450,8 +457,8 @@ int PosSolver::ResetKalRtk(int N, int M, Kalman & kal, int L){
     kal.Alloc(N, M, L);
     if (kal.state == 0) {
         dts=0;
-        solKalDopp=gnss->solver.solSingle;
-//        solKalDopp=Solution(timeSol,gnss->xyzDefault,Vector3d(0,0,0),gnss.so)
+//        solKalDopp=gnss->solver.solSingle;
+        solKalDopp=Solution(timeSol,gnss->xyzDefault,Vector3d(0,0,0),tu);
         memcpy(solKalDopp.tu,solSingle.tu,Nsys* sizeof(double));
 
         P99.block(0,0,3,3)=1e6*Matrix3d::Identity();
@@ -475,16 +482,16 @@ int PosSolver::ResetKalRtk(int N, int M, Kalman & kal, int L){
     }
 
     kal.Pnn.block(0,0,9,9)=P99;
-    kal.x.head(3)=solKalDopp.xyz;
-    kal.Qnn.block(0,0,3,3)=1.52*Matrix3d::Identity();
+    kal.x.head(3)=xyz=solKalDopp.xyz;
+    kal.Qnn.block(0,0,3,3)=1.12*Matrix3d::Identity();
 
-    kal.x.segment(3,3)=solKalDopp.vxyz;
-    kal.Qnn.block(3,3,3,3)=1.31*Matrix3d::Identity();
+    kal.x.segment(3,3)=vxyz=solKalDopp.vxyz;
+    kal.Qnn.block(3,3,3,3)=0.31*Matrix3d::Identity();
 
     kal.x(6)=solKalDopp.tu[SYS_BDS];
     kal.x(7)=solKalDopp.tu[SYS_GPS];
     kal.x(8)=tuf;
-    kal.Qnn.block(6,6,3,3)=1.21*Matrix3d::Identity();
+    kal.Qnn.block(6,6,3,3)=0.21*Matrix3d::Identity();
 
 }
 
@@ -492,6 +499,7 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
     int sigInd = 1;
     double dts = timeSol.tow-timeSolLast.tow;
     ProcessRtkData();
+
 
     printf("Kalman Info========= count=%d,nSat=%d,nSys=%d\n", gnss->count,nSat,nSys);
 
@@ -502,6 +510,8 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
 
     int ny = 3*nSat-2*nSys,nx = nSat+9,yhead,xhead;
     ResetKalRtk(nx,ny,kalRtk);
+//    ShowV3(xyz,"XYZ before Kal2");
+
     Vector3d base = gnss->rtkManager.ECEF_XYZ;
 //    读数据，x,
     yhead=0,xhead=9;
@@ -514,23 +524,27 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
             Measure *ms1 = sv->measureDat[1];
             double dt01 = ms0->time.tow - ms1->time.tow;
             ms0->cycle += ms0->cycleSlip;
+            ms0->cycleP+=ms0->cycleSlipQ;
             if (ms0->trackTime < 1) {
-                ms0->cycleP += pow(5000 * dt01 * dt01, 2);
-                if (abs(ms0->cycleRes) > 0.15)ms0->cycleP += 1000;
+                ms0->cycleP += pow(10 * dt01 * dt01, 2);
+                if (abs(ms0->cycleRes) > 0.1){
+                    ms0->cycleP += pow(1000*ms0->stdevDo*ms0->cycleRes,2);
+                }
             }
 
             kalRtk.x(xhead + i) = ms0->cycle;
             kalRtk.Pnn(xhead + i, xhead + i) = ms0->cycleP;
 //            kalRtk.Qnn(xhead + i, xhead + i) = ms0->cycleSlipQ;
-            kalRtk.Qnn(xhead + i, xhead + i) = 0.5;
         }
         xhead+=Ni;
     }
 //    预测x,
 //        cout<<"Pnnbefore:  "<<endl<<kalRtk.Pnn<<endl;
 //        cout<<"Qnnbefore:  "<<endl<<kalRtk.Qnn<<endl;
-//   kalRtk.Predict(dts);
-    kalRtk.Pnn+=kalRtk.Qnn;
+   kalRtk.Predict(dts);
+//    kalRtk.Pnn+=kalRtk.Qnn;
+    xyz = kalRtk.x.head(3);
+//    ShowV3(xyz,"Predict kal1");
 
     yhead=0,xhead=9;
 //    读数据，y,
@@ -538,14 +552,13 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
         double lambdai = GetFreq(sys->type, sigInd, 1);
         int Ni = sys->table.size();
         VectorXd rr(Ni), rb(Ni), Bi(Ni);
-        Bi=kalRtk.x.segment(9,nSat);
+        Bi=kalRtk.x.segment(xhead,Ni);
 
         sys->GetE(base,rb);
 
         MatrixXd Di = sys->GetD();
         MatrixXd DiT = Di.transpose();
-        Vector3d xyzTemp=kalRtk.x.head(3);
-        MatrixXd Ei = sys->GetE(xyzTemp,rr);
+        MatrixXd Ei = sys->GetE(xyz,rr);
 
         VectorXd r_rb = Diff_Vec(rr-rb,Ni);
         VectorXd B_rb = Diff_Vec(Bi,Ni);
@@ -555,7 +568,6 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
         kalRtk.Hmn.block(yhead,0,Ni-1,3)<<-Di*Ei;
         kalRtk.Hmn.block(yhead,xhead,Ni-1,Ni)<<lambdai*Di;
         VectorXd Rcpi = sys->DiffZero(Diff_Rcp_0,sigInd);
-//        kalRtk.Ri.segment(yhead,Ni-1)=Rcpi;
         kalRtk.Rmm.block(yhead,yhead,Ni-1,Ni-1)<<Di*Rcpi.asDiagonal()*DiT;
         yhead+=Ni-1;
 
@@ -563,7 +575,6 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
         kalRtk.hx.segment(yhead,Ni-1)<<r_rb;
         kalRtk.Hmn.block(yhead,0,Ni-1,3)<<-Di*Ei;
         VectorXd Rpri = sys->DiffZero(Diff_Rpr_0,sigInd);
-//        kalRtk.Ri.segment(yhead,Ni-1)=Rpri;
         kalRtk.Rmm.block(yhead,yhead,Ni-1,Ni-1)<<Di*Rpri.asDiagonal()*DiT;
         yhead+=Ni-1;
 
@@ -574,12 +585,12 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
             double ri = ei.norm();
             ei /= ri;
             Measure *ms0 = sv->measureDat[0];
-//            kalRtk.y(yhead+i)=ms0->doMes;
-//            kalRtk.hx(yhead+i)=ei.transpose()*(sv->vxyzR-vxyz)+tuf-sv->a1*Light_speed;
+            kalRtk.y(yhead+i)=ms0->doMes;
+            kalRtk.hx(yhead+i)=ei.transpose()*(sv->vxyzR-vxyz)+tuf-sv->a1*Light_speed;
             kalRtk.Rmm(yhead+i,yhead+i)=pow(ms0->stdevDo,2);
             kalRtk.Ri(yhead+i)=ms0->stdevDo;
             kalRtk.Hmn.block(yhead+i,3,1,3)=-ei.transpose();
-//            kalRtk.Hmn(yhead+i,8)=1;
+            kalRtk.Hmn(yhead+i,8)=1;
         }
         yhead+=Ni;xhead+=Ni;
 
@@ -618,8 +629,9 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
 int PosSolver::InitKalman(GNSS *_gnss) {
     gnss = _gnss;
     rtk = &(gnss->rtkManager);
+//    xyz = gnss->solSingle.xyz;
     xyz = gnss->xyzDefault;
-    P66 = 1e9*MatrixXd::Identity(6,6);
+    P66 = 1e6*MatrixXd::Identity(6,6);
 }
 int PosSolver::Init(GNSS *_gnss) {
     gnss = _gnss;
