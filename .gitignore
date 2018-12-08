@@ -7,6 +7,8 @@
 build*/
 cmake-build-debug/
 .idea/
+log/
+data/
 
 
 CMakeLists.txt

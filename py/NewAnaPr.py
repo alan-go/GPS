@@ -88,7 +88,7 @@ def Anaxyz(file,colNum,begin):
 if __name__=="__main__":
     # AnaSv("../log/SV/3_30.txt",5,1)
     #
-    # Anaxyz("../log/xyzSIG.txt",4,1)
+    Anaxyz("../log/xyzSIG.txt",4,1)
     # Anaxyz("../log/xyzSIGNew.txt",4,1)
     # Anaxyz("../log/xyzRTK.txt",4,1)
     # Anaxyz("../log/xyzKalSig.txt",4,1)

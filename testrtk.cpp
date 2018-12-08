@@ -19,6 +19,8 @@ void WriteSols(SolutionDeque sols,string saveName){
 
 
 int main(){
+    /* Check for existence */
+    if(0==access("/home/alan/Desktop/0.txt",0))printf("a.txt exits\n");
 
     printf("\nin testing\n");
     GNSS *gnss = new GNSS();
