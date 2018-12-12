@@ -10,6 +10,7 @@ GnssTime::GnssTime():time(-1),sec(-1) {}
 GnssTime::GnssTime(const double *ep) {
     epoch2time(ep);
 }
+
 GnssTime::GnssTime(double tod):tod(tod+18.0){
 }
 GnssTime::GnssTime(int week, double tow):week(week),tow(tow) {
@@ -36,6 +37,19 @@ GnssTime::GnssTime(char *head, int len, bool utc2gps):GnssTime() {
     if(utc2gps)utc2gpst();
 }
 
+void GnssTime::epoch2time(const struct tm*ep) {
+    const int doy[]={1,32,60,91,121,152,182,213,244,274,305,335};
+    int days,sec0,year=ep->tm_year+1900,mon=ep->tm_mon+1,day=ep->tm_mday;
+
+    if (year<1970||2099<year||mon<1||12<mon) return;
+
+    /* leap year if year%4==0 in 1901-2099 */
+    days=(year-1970)*365+(year-1969)/4+doy[mon-1]+day-2+(year%4==0&&mon>=3?1:0);
+    sec0=ep->tm_sec;
+    time=(time_t)days*86400+ep->tm_hour*3600+ep->tm_min*60+sec0;
+    sec=0;
+}
+
 void GnssTime::epoch2time(const double *ep) {
     const int doy[]={1,32,60,91,121,152,182,213,244,274,305,335};
     int days,sec0,year=(int)ep[0],mon=(int)ep[1],day=(int)ep[2];
@@ -49,7 +63,13 @@ void GnssTime::epoch2time(const double *ep) {
     sec=ep[5]-sec0;
 }
 
-
+void GnssTime::time2tow(){
+    GnssTime time0(gpst0);
+    double secDiff = *this-time0;
+    week = floor(secDiff/604800);
+    tow = secDiff-week*604800;
+    if (tow<-1E9||1E9<tow) tow=0.0;
+}
 
 void GnssTime::utc2gpst() {
     for (int i=0;leaps[i][0]>0;i++) {
@@ -58,6 +78,7 @@ void GnssTime::utc2gpst() {
             return;
         }
     }
+    time2tow();
 }
 void GnssTime::gpst2utc() {
     for (int i=0;leaps[i][0]>0;i++) {
@@ -75,6 +96,7 @@ double GnssTime::operator-(const GnssTime &right) {
 double GnssTime::operator+=(const double secAdd) {
     double tt;
     sec+=secAdd; tt=floor(sec); time+=(int)tt; sec-=tt;
+    time2tow();
     return double(time)+sec;
 }
 bool GnssTime::operator<(const GnssTime right) {

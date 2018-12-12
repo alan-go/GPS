@@ -4,7 +4,86 @@
 
 #include "EphemSp3.h"
 
+bool checkSp3ClkErp(string name0){
+    bool result{true};
+    if(0!=access((name0+".sp3").c_str(),0))result= false;
+    if(0!=access((name0+".clk").c_str(),0))result= false;
+    if(0!=access((name0+".erp").c_str(),0))result= false;
+    return result;
+}
+
 EphemSp3::EphemSp3() {}
+
+void* EphemSp3::GetSp3Thread(void* _gnss){
+    //whu一般整点后约半小时更新
+    GNSS* gnss = (GNSS*)_gnss;
+    string savePath = "../Sp3/";
+    auto DownloadFtp = [](int week,string timeInd,string savePath)->bool{
+        auto SysCmd = [](string saveName,string downPath){
+            system(("curl -o "+saveName+downPath).c_str());
+            if(0!=access(saveName.c_str(),0) ) return;
+            system(("uncompress "+saveName).c_str());
+        };
+        string whuPath = " ftp://igs.gnsswhu.cn/pub/whu/MGEX/";
+        char sweek[8];
+
+        sprintf(sweek,"%d/",week);
+        whuPath+=sweek;
+        string nsp3 = timeInd+".sp3.Z";
+        string nclk = timeInd+".clk.Z";
+        string nerp = timeInd+".erp.Z";
+
+        if(0!=access((savePath+timeInd+".sp3").c_str(),0))
+            SysCmd(savePath+nsp3,whuPath+nsp3);
+        if(0!=access((savePath+timeInd+".clk").c_str(),0))
+            SysCmd(savePath+nclk,whuPath+nclk);
+        if(0!=access((savePath+timeInd+".erp").c_str(),0))
+            SysCmd(savePath+nerp,whuPath+nerp);
+
+        if(0==access((savePath+"*.Z").c_str(),0))system(("rm "+savePath+"*.Z").c_str());
+        return checkSp3ClkErp(savePath+timeInd);
+    };
+    mkdir(savePath.c_str(),S_IRWXU);
+    struct tm *utcTime;
+    time_t timeNow;
+    while (!gnss->stop){
+        timeNow = time(NULL);
+        utcTime=gmtime(&timeNow);
+        GnssTime time;
+        time.epoch2time(utcTime);
+        time.utc2gpst();
+        int wday = floor(time.tow/86400);
+        int hour = floor((time.tow-wday*86400)/3600);
+        char timeInd[16];
+        sprintf(timeInd,"hour%d%d_%02d",time.week,wday,hour);
+
+        if(checkSp3ClkErp(savePath+timeInd)){
+            printf("sp3 hour%d already have,sleep%d\n",hour, 60-utcTime->tm_sec);
+            sleep(60-utcTime->tm_sec);
+            continue;
+        } else {
+            if (DownloadFtp(time.week, string(timeInd), savePath)) {
+                //Read in
+                continue;
+            } else {
+                printf("sp3 hour%d not updated,trying hour%d,sleep%d\n",hour,hour-1, 60-utcTime->tm_sec);
+                sprintf(timeInd, "hour%d%d_%02d", time.week, wday, hour - 1);
+                if (checkSp3ClkErp(savePath + timeInd)) {
+                    sleep(60 - utcTime->tm_sec);
+                    continue;
+                } else {
+                    if (DownloadFtp(time.week, string(timeInd), savePath)) {
+                        //read in data
+                        continue;
+                    } else{
+                        printf("Warning!! Can not Download Sp3 from Internet,Tring againg...\n");
+                        sleep(60);
+                    }
+                }
+            }
+        }
+    }
+}
 
 int EphemSp3::ReadSp3File(string fileName, SvAll &svs) {
     FILE *fp;
@@ -57,29 +136,52 @@ int EphemSp3::ReadSp3File(string fileName, SvAll &svs) {
             int prn=(int)str2num(buff+2,2);
             sv = svs.GetSv(tempSys,prn-1);
             if(sv == nullptr)continue;
-            if (sv->ephemSp3 == nullptr){
-                sv->ephemSp3 = new EphemSp3;
-                sv->ephemSp3->timeHead = sv->ephemSp3->timeEnd = sp3Time;
-                sv->ephemSp3->timeEnd+=timeAll;
-                sv->ephemSp3->dt = epht;
-            }
+//            if (sv->ephemSp3 == nullptr){
+//                sv->ephemSp3 = new EphemSp3;
+//                sv->ephemSp3->timeHead = sv->ephemSp3->timeEnd = sp3Time;
+//                sv->ephemSp3->timeEnd+=timeAll;
+//                sv->ephemSp3->dt = epht;
+//            }
             Vector3d data(str2num(buff+4,14),str2num(buff+18,14),str2num(buff+32,14));
-            double datat = str2num(buff+46,14);
-            if(abs(datat-999999.999999)<1)datat=0;
             Sp3Cell cell;
             cell.time = ephTime;
             if ('P'==dataType) {
                 cell.pxyz = data*1000;
-                cell.ts = datat*1e-6;
             }
             if ('V'==dataType) {
                 cell.vxyz = data*1000;
-                cell.tsDrift = datat*1e-10;
             }
-            sv->ephemSp3->records.push_back(cell);
+            sv->ephemSp3->xyzList.push_back(cell);
         }
     }
 }
+
+int EphemSp3::ReadClkFile(string fileName, SvAll &svs) {
+    FILE *fp;
+    char buff[128];
+    if (!(fp = fopen(fileName.data(), "r"))) {
+        printf("sp3 file open failed. %s\n", fileName.data());
+    }
+    while (fgets(buff, sizeof(buff), fp)) {
+        if (!strncmp(buff, "EOF", 3)) break;
+        if(strncmp(buff,"AS",2)) continue;
+        SysType sys = code2sys(buff[3]);
+        int prn=(int)str2num(buff+4,2);
+        SV* sv = svs.GetSv(sys,prn-1);
+        if(sv == nullptr)continue;
+        //todo:Confirm: utc2gps??
+        GnssTime time = GnssTime(buff+8,28,0);
+        double ts = str2num(buff+40,20);
+        sv->ephemSp3->tsList.push_back(TsCell(time,ts));
+    }
+}
+
+int EphemSp3::ReadSp3s(string name, SvAll &svs) {
+    string nameSp3 = name+".sp3",nameClk = name+".clk";
+    if(0==access(nameSp3.c_str(),0))ReadSp3File(nameSp3,svs);
+    if(0==access(nameClk.c_str(),0))ReadClkFile(nameClk,svs);
+}
+
 
 SysType EphemSp3::code2sys(char code) {
     if (code=='G'||code==' ') return SYS_GPS;
@@ -106,7 +208,7 @@ int EphemSp3::Sp32ECEF(vector<Sp3Cell> &list, GnssTime interpTime, Sp3Cell &resu
     result.pxyz = cell0.pxyz;
     result.vxyz = (cell1.pxyz-cell0.pxyz)/dt;
 
-    /* relativistic effect correction */
+    //todo:* relativistic effect correction */
     if (cell0.ts!=0.0) {
         result.ts=cell0.ts-2.0*result.pxyz.dot(result.vxyz)/Light_speed/Light_speed;
         result.tsDrift = (cell0.ts-cell1.ts)/dt;

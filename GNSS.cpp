@@ -48,6 +48,9 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
 int GNSS::StartGNSS() {
     sprintf(timeName,"%02d%02d_%02d_%02d",utcTime->tm_mon+1,utcTime->tm_mday,utcTime->tm_hour,utcTime->tm_min);
 
+    pthread_create(&threadSp3_, nullptr,EphemSp3::GetSp3Thread, this);
+    sleep(22222222);
+
     if(useQianXun){
         if(!rtkManager.NtripLogin(rtk_protocol_)) {
             printf("cannot login ntrip server\n");
@@ -69,6 +72,7 @@ int GNSS::StartGNSS() {
 }
 
 int GNSS::StopGNSS() {
+    stop = true;
     try {
         if (rtkManager.sock_ > 0) {
             close(rtkManager.sock_);
@@ -100,7 +104,7 @@ int GNSS::ParseRawData(char *message, int len) {
     int tracStat = *(uint8_t *)(raw+12);
     fprintf(logTu,"%f,%d\n",rcvtow,tracStat);
     rTime = GnssTime(week,rcvtow);
-    printf("prepare rawdata ,len = %d numMesa=%d\n",len,numMeas);
+    printf("prepare rawdata ,len = %d numMesa=%d,,week%d,tow%.4f\n",len,numMeas,week,rcvtow);
     if(0==numMeas)return -1;
 
     for(u_int8_t n = 0;n<numMeas;n++){

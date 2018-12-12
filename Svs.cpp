@@ -5,6 +5,7 @@
 SV::SV(int id):svId(id),SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsDelta(0),ephemSp3(nullptr),trackCount(0){
     memset(bstEphemOK,0,10 * sizeof(int8_t));
     kal = Kalman(30,29,0);
+    ephemSp3 = new EphemSp3;
 }
 SV::SV(){}
 SV::~SV(){}

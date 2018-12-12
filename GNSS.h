@@ -11,7 +11,7 @@
 
 class GNSS{
 public:
-
+    bool stop{false};
     Eigen::Vector3d xyzDefault, llaDefault;
     Eigen::Vector3d xyz00,xyzUBX,xyzRAC;
     deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> records;
@@ -71,13 +71,15 @@ public:
     int Test(vector<SV*> svs);
 
 private:
-    pthread_t thread1_, thread2_, threadPos;
+    pthread_t thread1_, thread2_, threadPos, threadSp3_;
 private:
     static void *ThreadAdapterSerial(void *__sData);
 
     static void *ThreadAdapterQianXun(void *__rtk);
 
     static void *PositionThread(void *__pos);
+
+    static void *ThreadAdapterSp3(void *__gnss);
 
 };
 #endif
