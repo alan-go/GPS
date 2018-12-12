@@ -109,6 +109,7 @@ public:
     int trackCount;
 //    bool temp = 1;
     int8_t bstEphemOK[10];
+    bool ephemOkBrd{0},ephemOkSp3{0};
     bool isBeiDouGEO;
     bool open, measureGood, elevGood;
     SysType type;
@@ -129,7 +130,9 @@ public:
 
     Vector3d xyz,lla,xyzR,llaR;//R:地球自传
     Vector3d vxyz,vxyzR;
-    double tsv,tsDelta,tsReal;
+//    double tsv,tsDelta,tsReal;
+    double tsdt,tsDrift;
+    GnssTime ts0,ts;
 
     double elevationAngle,azimuthAngle;
     //for RTK:
@@ -145,12 +148,14 @@ public:
     SV();
     SV(int id);
     ~SV();
-    bool IsEphemOK(int ephemType, GnssTime time);
+    bool IsEphembstOK(int ephemType, GnssTime time);
+    bool CheckEphemStates(GnssTime time);
     bool MeasureGood();
     bool ElevGood();
     bool IsMaskOn();
-    bool CalcuECEF(double ts0);
-    bool CalcuTime(double tow);
+    bool RotateECEF(double tt);
+    bool CalcuECEF(GnssTime time);
+    bool CalcuTs(GnssTime time);
     bool AddMmeasure(Measure *mesr);
 
     int CalcuelEvationAzimuth(Vector3d pos, Vector3d poslla);

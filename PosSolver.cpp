@@ -69,7 +69,7 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
     int i =0,count =0;
 
     auto CalcuPc = [](SV* sv,int sigId)->double{
-        return sv->measureDat.front()->prMes + Light_speed * sv->tsDelta - sv->I - sv->T;
+        return sv->measureDat.front()->prMes + Light_speed * sv->tsdt - sv->I - sv->T;
     };
     auto CalcuI = [](SV* sv,int sigId)->double{ return  sv->I; };
     auto CalcuT = [](SV* sv,int sigId)->double{ return  sv->T; };
@@ -159,7 +159,7 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
             continue;
         }
         //2,judge ephemeric
-        if(!sv->IsEphemOK(gnss->ephemType,timeSol))continue;
+        if(!sv->IsEphembstOK(gnss->ephemType, timeSol))continue;
         //3,measure
 //        sv->SmoothKalman0();
 //        if(sv->kal.state<30)continue;
@@ -182,40 +182,35 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
     for(SV* sv:all) sv->PrintInfo(0);
 }
 
-int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rt, int ephType) {
+int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rTime, int ephType) {
     printf("\nN0= %d\n", svs.size());
-    printf("rcvtow %.3f\n", rt.tow);
-    double ep[6];
-    rt.time2epoch(ep);
+    printf("rcvtow %.3f\n", rTime.tow);
+//    double ep[6];
+//    rTime.time2epoch(ep);
     for(SV* sv:svs){
-        Measure *measure = sv->measureDat.front();
-        double timeForECEF = rt.tow;
-        if(SYS_BDS == sv->type)timeForECEF-=14;
-        timeForECEF-=tu[sv->type]/Light_speed;
-
-        Sp3Cell cell;
-        GnssTime ts0 = rt;
+        Measure *ms = sv->measureDat.front();
+        double tow,tot;
+        GnssTime ts0 = rTime;
+        ts0 += - ms->prMes/Light_speed;
+        //sp3文件使用的是GPS时(虽然使用年月日表示的)
+        //todo 相对论修正
         switch (ephType){
             case 1:
-                ts0+=(-measure->prMes/Light_speed-sv->tsDelta);
-                if(EphemSp3::Sp32ECEF(sv->ephemSp3->records, ts0, cell))break;
-                printf("ts2 =  %.3f\n", cell.ts*1e9);
-                sv->xyz = cell.pxyz;
+                if(sv->ephemSp3->CalcuTs(ts0))return -1;
+                if(sv->ephemSp3->CalcuECEF(sv->ts))return -1;
                 break;
             case 0:
-                sv->CalcuTime(timeForECEF);
-                sv->CalcuECEF(sv->tsReal);
+                if(SYS_BDS == sv->type)ts0+=-14;
+                sv->CalcuTs(ts0);
+                sv->CalcuECEF(sv->ts);
+                //todo tsDelta 换成米单位
                 break;
             default:
-                continue;
+                break;
         }
-
-        double tt = ((sv->xyz-xyz).norm()+sv->I+sv->T)/Light_speed;
-        EarthRotate(sv->xyz,sv->xyzR,tt);
-        EarthRotate(sv->vxyz,sv->vxyzR,tt);
-        XYZ2LLA(sv->xyz,sv->lla);
-        XYZ2LLA(sv->xyzR,sv->llaR);
-        sv->CorrectIT(xyz,lla,timeForECEF);
+        tot = (ms->prMes-tu[sv->type])/Light_speed+sv->tsdt;
+        sv->RotateECEF(tot);
+        sv->CorrectIT(xyz,lla,tow);
     }
     return 0;
 }
@@ -666,7 +661,7 @@ int PosSolver::PositionSingleNew(vector<SV *> _svsIn) {
     int i =0,count =0;
 
     auto CalcuPc = [](SV* sv,int sigId)->double{
-        return sv->measureDat.front()->prCor + Light_speed * sv->tsDelta - sv->I - sv->T;
+        return sv->measureDat.front()->prCor + Light_speed * sv->tsdt- sv->I - sv->T;
     };
 //    auto CalcuWi = [](SV* sv,int sigId)->double{ return  1/pow(sv->measureDat[0]->stdPrCor,2); };
     auto CalcuWi = [](SV* sv,int sigId)->double{ return  1; };
@@ -809,7 +804,7 @@ int PosSolver::PosKalSng(vector<SV *> _svsIn) {
             Measure *ms1 = sv->measureDat[1];
             double dt01 = ms0->time.tow - ms1->time.tow;
             kalSingle.y(yhead+i)=ms0->cpMes;
-            kalSingle.hx(yhead+i)=ri+kalSingle.x(tui)-sv->tsDelta*Light_speed-sv->Ii+sv->T+lambdai*ms0->cycle;
+            kalSingle.hx(yhead+i)=ri+kalSingle.x(tui)-sv->tsdt*Light_speed-sv->Ii+sv->T+lambdai*ms0->cycle;
             kalSingle.Rmm(yhead+i,yhead+i)=pow(ms0->stdevCp,2);
             kalSingle.Ri(yhead+i)=ms0->stdevCp;
             kalSingle.Hmn.block(yhead+i,0,1,3)=-ei.transpose();

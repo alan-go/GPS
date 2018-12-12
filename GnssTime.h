@@ -56,6 +56,8 @@ public:
     void time2tow();
     void gpst2utc();
     double operator-(const GnssTime &right);
+    GnssTime operator+(double dt);
+    GnssTime operator-(double dt);
     double operator+=(const double right);
     bool operator<(const GnssTime right);
     bool operator>(const GnssTime right);

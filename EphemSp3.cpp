@@ -13,7 +13,9 @@ bool checkSp3ClkErp(string name0){
 }
 
 EphemSp3::EphemSp3() {}
+EphemSp3::EphemSp3(SV* sv_):sv(sv_) {}
 
+//Download sp3 files from ftp://igs.gnsswhu.cn/pub/whu/MGEX/
 void* EphemSp3::GetSp3Thread(void* _gnss){
     //whu一般整点后约半小时更新
     GNSS* gnss = (GNSS*)_gnss;
@@ -177,6 +179,14 @@ int EphemSp3::ReadClkFile(string fileName, SvAll &svs) {
 }
 
 int EphemSp3::ReadSp3s(string name, SvAll &svs) {
+    //clear old data
+    for(SV* sv:svs.svUsedAll){
+        vector<TsCell> Ts0s;
+        vector<Sp3Cell> xyz0s;
+        Ts0s.swap(sv->ephemSp3->tsList);
+        xyz0s.swap(sv->ephemSp3->xyzList);
+    }
+    //Read new data
     string nameSp3 = name+".sp3",nameClk = name+".clk";
     if(0==access(nameSp3.c_str(),0))ReadSp3File(nameSp3,svs);
     if(0==access(nameClk.c_str(),0))ReadClkFile(nameClk,svs);
@@ -193,67 +203,68 @@ SysType EphemSp3::code2sys(char code) {
     return SYS_NULL;
 }
 
-int EphemSp3::Sp32ECEF(vector<Sp3Cell> &list, GnssTime interpTime, Sp3Cell &result) {
+int EphemSp3::CalcuECEF(GnssTime interpTime) {
+    Vector3d xyz0,xyz1;
+    if(!Available(interpTime))return -1;
 //    printf("interpTime= %d\n", interpTime.time);
     double dt = 1e-3;
-    Sp3Cell cell0,cell1;
-    GnssTime time0 = interpTime,time1 = interpTime;
-    time1+=dt;
-//    interpECEF(list,time0,result);
-//    return 0;
+    GnssTime time0 = interpTime,time1 = interpTime+dt;
 
-    if(interpECEF(list,time0,cell0)||interpECEF(list,time1,cell1))return -1;
+    if(interpECEF(time0,xyz0)||interpECEF(time1,xyz1))return -1;
 
     //todo:satellite antenna offset correction
-    result.pxyz = cell0.pxyz;
-    result.vxyz = (cell1.pxyz-cell0.pxyz)/dt;
+
+    sv->xyz = xyz0;
+    sv->vxyz = (xyz1-xyz0)/dt;
 
     //todo:* relativistic effect correction */
-    if (cell0.ts!=0.0) {
-        result.ts=cell0.ts-2.0*result.pxyz.dot(result.vxyz)/Light_speed/Light_speed;
-        result.tsDrift = (cell0.ts-cell1.ts)/dt;
-    }
+    double dtRela = 2.0*sv->vxyz.dot(sv->vxyz)/Light_speed/Light_speed;
+    sv->tsdt+=dtRela;
+    //todo:     sv->tsDrift;
     return 0;
 }
 
-int EphemSp3::interpECEF(vector<Sp3Cell> &list, GnssTime interpTime, Sp3Cell &result) {
-    result.time = interpTime;
-    double time[10],x[10],y[10],z[10],ts[10];
-    int head,N = list.size(),index;
-    Vector3d posRotate;
-//    for (head = 0; head < N; ++head) {
-//        if(interpTime<list[head].time)break;
-//    }
-//    head-=5;
-    /* binary search ->find head*/
-    int i=0,k=0,j;
-    for (i=0,j=N-1;i<j;) {
-        k=(i+j)/2;
-        if (list[k].time<interpTime) i=k+1; else j=k;
-    }
-    index=i<=0?0:i-1;
-    head = index-5;
-    if(head<0||head+10>=N)return -1;
+int EphemSp3::interpECEF(GnssTime interpTime,Vector3d &xyz) {
+    double time[10],x[10],y[10],z[10];
+//    int Nsp3 = xyzList.size();
 
     //calcu position
-    double tt = 0;
-    for (int i = 0; i < 10; ++i) {
-        time[i] = list[head+i].time-interpTime;
-        ts[i] = list[head+i].ts;
-        EarthRotate(list[head+i].pxyz,posRotate,-time[i]);
-        x[i] = posRotate(0);
-        y[i] = posRotate(1);
-        z[i] = posRotate(2);
+    int kt = FindTimeDate(xyzList,interpTime);
+    GnssTime timeRef = xyzList[kt].time;
+    for(int i=kt-4,j=0;i<kt+6;i++,j++){
+        time[j]=xyzList[i].time-timeRef;
+        x[j] = xyzList[i].pxyz(0);
+        y[j] = xyzList[i].pxyz(1);
+        z[j] = xyzList[i].pxyz(2);
+
     }
-    result.pxyz = Vector3d(lagrange(time,x,tt,10),lagrange(time,y,tt,10),lagrange(time,z,tt,10));
-    //calcu ts
-    double t0 =interpTime - list[index].time, t1 = interpTime - list[index+1].time;
-    double ts0 = list[index].ts, ts1 = list[index+1].ts;
-    if(ts0*ts1==0){
-        result.ts = 0;
-    } else{
-        result.ts = (t0*ts1-t1*ts0)/(t0-t1);
+    double tt = interpTime-timeRef;
+    xyz = Vector3d(lagrange(time,x,tt,10),lagrange(time,y,tt,10),lagrange(time,z,tt,10));
+
+    return 0;
+}
+
+int EphemSp3::CalcuTs(GnssTime ts0) {
+    double time[10],ts[10];
+    if(!Available(ts0))return -1;
+
+    int kt = FindTimeDate(tsList,ts0);
+    GnssTime timeRef = tsList[kt].time;
+    for(int i=kt-4,j=0;i<kt+6;i++,j++){
+        time[j]=tsList[i].time-timeRef;
+        ts[j] = tsList[i].ts;
+    }
+
+    sv->ts0=sv->ts= ts0;
+    for(int i=0;i<3;i++){
+        sv->tsdt = lagrange(time,ts,sv->ts-timeRef,10);
+        sv->ts = ts0 - sv->tsdt;
     }
     return 0;
 }
 
+bool EphemSp3::Available(GnssTime time) {
+    int Nts = tsList.size();
+    if(tsList.size()<12 || time<tsList[5].time || tsList[Nts-6].time<time)return false;
+    return true;
+}

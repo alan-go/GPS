@@ -2,10 +2,10 @@
 #include "NtripRTK.h"
 #include "EphemSp3.h"
 
-SV::SV(int id):svId(id),SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsDelta(0),ephemSp3(nullptr),trackCount(0){
+SV::SV(int id):svId(id),SatH1(1),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsdt(0),ephemSp3(nullptr),trackCount(0){
     memset(bstEphemOK,0,10 * sizeof(int8_t));
     kal = Kalman(30,29,0);
-    ephemSp3 = new EphemSp3;
+    ephemSp3 = new EphemSp3(this);
 }
 SV::SV(){}
 SV::~SV(){}
@@ -49,7 +49,7 @@ int SvAll::AddToUsed(SV *sv) {
 SvAll::~SvAll(){}
 
 
-bool SV::IsEphemOK(int ephemType, GnssTime time) {
+bool SV::IsEphembstOK(int ephemType, GnssTime time) {
     int bstEphem;
     double timeperiod;
     switch (ephemType){
@@ -87,13 +87,17 @@ bool SV::IsEphemOK(int ephemType, GnssTime time) {
     return true;
 }
 
-bool SV::CalcuTime(double tow) {
-    tsv = tow - measureDat.front()->prMes/Light_speed;
-    tsReal = tsv;
+bool SV::CheckEphemStates(GnssTime time) {
+    ephemOkSp3 = ephemSp3->Available(time);
+}
+
+bool SV::CalcuTs(GnssTime time) {
+    ts = ts0 = time;
     //此时的钟差是没有考虑相对论效应和 TGD的
     for(int i = 0;i<5;i++){
-        tsDelta = a0+a1*(tsReal-toc)+a2*(tsReal-toc)*(tsReal-toc);
-        tsReal =tsv-tsDelta;
+        double dt = ts.tow-toc;
+        tsdt= a0+a1*dt+a2*dt*dt;
+        ts =ts0-tsdt;
     }
     return true;
 }
@@ -124,7 +128,7 @@ void SV::PrintInfo(int printType) {
             printf("+++svLLA === %lf, %lf, %lf\n",lla(0)*180/GPS_PI,lla(1)*180/GPS_PI,lla(2));
             printf("+++TGD === %.3f\n",TGD1*1e9);
 
-            cout<<"tsDelta === "<<tsDelta*Light_speed<<" ,a0"<<a0<<endl;
+            cout<<"tsDelta === "<<tsdt*Light_speed<<" ,a0"<<a0<<endl;
             break;
         case 2:
             printf("\n%d,%d\n",type,svId);
@@ -165,11 +169,11 @@ void SV::FPrintInfo(int printType){
             break;
     }
 }
-bool SV::CalcuECEF(double ts0) {
+bool SV::CalcuECEF(GnssTime time) {
     double A = orbit.sqrtA*orbit.sqrtA;
     double sqt1_e2 = sqrt(1-orbit.e*orbit.e);
     double n0 = sqrt(M_miu/(A*A*A));
-    double tk = ts0 - orbit.toe;
+    double tk = time.tow - orbit.toe;
     while(tk > 302400)tk-=604800;
     while(tk < -302400)tk+=604800;
     double n = n0 + orbit.dtn;
@@ -256,9 +260,9 @@ bool SV::CalcuECEF(double ts0) {
 //TGD and relativity fix.
     double dtRelativity = 2.0*sqrt(M_miu)/(Light_speed*Light_speed)*Earth_ee*orbit.sqrtA*sin(Ek);
 //    printf("dtRelativity=%.10f\n",dtRelativity);
-    tsDelta -= dtRelativity;
-    tsDelta -= TGD1;
-    tsReal= ts0-tsDelta;
+    tsdt-= dtRelativity;
+    tsdt-= TGD1;
+    ts= time-tsdt;
 }
 
 void SvAll::UpdateEphemeris(char *subFrame) {
@@ -661,6 +665,12 @@ bool SV::IsMaskOn() {
         case SYS_BDS:
             break;
     }
+}
+bool SV::RotateECEF(double tt) {
+    EarthRotate(xyz,xyzR,tt);
+    EarthRotate(vxyz,vxyzR,tt);
+    XYZ2LLA(xyz,lla);
+    XYZ2LLA(xyzR,llaR);
 }
 
 double SV::InterpMeasere(int len, int power, int begin) {

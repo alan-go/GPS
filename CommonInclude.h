@@ -59,7 +59,20 @@ enum SysType{
     SYS_NULL = -1
 };
 
-
+template <typename T>
+extern int FindTimeDate(T list,GnssTime &time){
+    printf("tempFindData \n");
+    /* binary search ->find head*/
+    int N = list.size();
+    int i=0,k=0,j;
+    for (i=0,j=N-1;i<j;) {
+        k=(i+j)/2;
+        if (list[k].time<time) i=k+1; else j=k;
+    }
+    if(i<1||i>N)
+        return -1;
+    return i;
+}
 
 
 extern double str2num(char *head, int len);

@@ -26,20 +26,23 @@ struct TsCell{
 
 class EphemSp3 {
 public:
+    SV* sv{nullptr};
     vector<Sp3Cell> xyzList;
     vector<TsCell> tsList;
     GnssTime timeHead, timeEnd;
     double dt = 15;
 public:
     EphemSp3();
+    EphemSp3(SV* sv);
     static int ReadSp3File(string fileName, SvAll &svs);
     static int ReadClkFile(string fileName, SvAll &svs);
     static int ReadSp3s(string name, SvAll &svs);
     static void* GetSp3Thread(void* _gnss);
     static SysType code2sys(char code);
-    static int Sp32ECEF(vector<Sp3Cell> &list, GnssTime interpTime, Sp3Cell &result);
-    static int interpECEF(vector<Sp3Cell> &list, GnssTime interpTime, Sp3Cell &result);
-
+    int CalcuECEF(GnssTime interpTime);
+    int CalcuTs(GnssTime ts0);
+    int interpECEF(GnssTime interpTime,Vector3d &xyz);
+    bool Available(GnssTime time);
 };
 
 

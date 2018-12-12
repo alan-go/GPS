@@ -93,6 +93,16 @@ double GnssTime::operator-(const GnssTime &right) {
     return difftime(time,right.time)+sec-right.sec;
 }
 
+GnssTime GnssTime::operator+(double dt) {
+    GnssTime result = *this;
+    result+=dt;
+    return result;
+}
+GnssTime GnssTime::operator-(double dt) {
+    GnssTime result = *this;
+    result+=-dt;
+    return result;
+}
 double GnssTime::operator+=(const double secAdd) {
     double tt;
     sec+=secAdd; tt=floor(sec); time+=(int)tt; sec-=tt;
