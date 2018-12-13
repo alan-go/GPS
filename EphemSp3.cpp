@@ -138,12 +138,7 @@ int EphemSp3::ReadSp3File(string fileName, SvAll &svs) {
             int prn=(int)str2num(buff+2,2);
             sv = svs.GetSv(tempSys,prn-1);
             if(sv == nullptr)continue;
-//            if (sv->ephemSp3 == nullptr){
-//                sv->ephemSp3 = new EphemSp3;
-//                sv->ephemSp3->timeHead = sv->ephemSp3->timeEnd = sp3Time;
-//                sv->ephemSp3->timeEnd+=timeAll;
-//                sv->ephemSp3->dt = epht;
-//            }
+
             Vector3d data(str2num(buff+4,14),str2num(buff+18,14),str2num(buff+32,14));
             Sp3Cell cell;
             cell.time = ephTime;

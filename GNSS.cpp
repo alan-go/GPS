@@ -1,5 +1,6 @@
 #include "GNSS.h"
 #include "EphemSp3.h"
+#include "EphemBst.h"
 
 GNSS::GNSS() :useGPS(1),useBeiDou(1),useQianXun(1),ephemType(0),logOpen(0){
     rtkManager.gnss = this;
@@ -26,12 +27,12 @@ int GNSS::Init(int ephem, bool qianXun, bool bds, bool gps) {
     svsManager.SetOpen(bds,gps);
     ephemType = ephem;
     useQianXun = qianXun;
-    if(1==ephemType){
-        if(0==EphemSp3::ReadSp3File("/home/alan/Desktop/hour20175_19.sp3",svsManager))return 0;
-    } else{
-        printf("ReadSp3File Failed. \n");
-//        return -1;
-    }
+//    if(1==ephemType){
+//        if(0==EphemSp3::ReadSp3File("/home/alan/Desktop/hour20175_19.sp3",svsManager))return 0;
+//    } else{
+//        printf("ReadSp3File Failed. \n");
+////        return -1;
+//    }
 
     kalmanSolver.InitKalman(this);
     solver.Init(this);

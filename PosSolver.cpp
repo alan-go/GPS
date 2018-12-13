@@ -1,6 +1,7 @@
 #include "PosSolver.h"
 #include "GNSS.h"
 #include "EphemSp3.h"
+#include "EphemBst.h"
 #include "Svs.h"
 
 auto Diff_Vec = [](VectorXd x,int n)->VectorXd { return x(0)*VectorXd::Ones(n-1)-x.tail(n-1);};
@@ -159,20 +160,13 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
             continue;
         }
         //2,judge ephemeric
-        if(!sv->IsEphembstOK(gnss->ephemType, timeSol))continue;
+        if(!sv->CheckEphemStates(timeSol,gnss->ephemType))continue;
         //3,measure
 //        sv->SmoothKalman0();
 //        if(sv->kal.state<30)continue;
         if(!sv->MeasureGood())continue;
         //4,elevtion angle
 //        if(!sv->ElevGood())continue;
-        //AODC?
-
-//        if(sv->AODC>24){
-//            printf("\n\n\nAAAAAODC = %d\n\n\n",sv->AODC);
-//            useForCalcu = 0;
-//        }
-        //remain svs:
 
         sv->DetectCycleSlip();
 
@@ -188,6 +182,7 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rTime, int ephType)
 //    double ep[6];
 //    rTime.time2epoch(ep);
     for(SV* sv:svs){
+        sv->PrintInfo(1);
         Measure *ms = sv->measureDat.front();
         double tow,tot;
         GnssTime ts0 = rTime;
@@ -201,13 +196,17 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rTime, int ephType)
                 break;
             case 0:
                 if(SYS_BDS == sv->type)ts0+=-14;
-                sv->CalcuTs(ts0);
-                sv->CalcuECEF(sv->ts);
+                if(sv->ephemBst->CalcuTs(ts0))return -1;
+                if(sv->ephemBst->CalcuECEF(sv->ts))return -1;
+
+//                sv->CalcuTs(ts0);
+//                sv->CalcuECEF(sv->ts);
                 //todo tsDelta 换成米单位
                 break;
             default:
                 break;
         }
+        sv->PrintInfo(1);
         tot = (ms->prMes-tu[sv->type])/Light_speed+sv->tsdt;
         sv->RotateECEF(tot);
         sv->CorrectIT(xyz,lla,tow);
@@ -581,7 +580,7 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
             ei /= ri;
             Measure *ms0 = sv->measureDat[0];
             kalRtk.y(yhead+i)=ms0->doMes;
-            kalRtk.hx(yhead+i)=ei.transpose()*(sv->vxyzR-vxyz)+tuf-sv->a1*Light_speed;
+            kalRtk.hx(yhead+i)=ei.transpose()*(sv->vxyzR-vxyz)+tuf-sv->ephemBst->clk.a1*Light_speed;
             kalRtk.Rmm(yhead+i,yhead+i)=pow(ms0->stdevDo,2);
             kalRtk.Ri(yhead+i)=ms0->stdevDo;
             kalRtk.Hmn.block(yhead+i,3,1,3)=-ei.transpose();
@@ -820,7 +819,7 @@ int PosSolver::PosKalSng(vector<SV *> _svsIn) {
             kalSingle.Hmn(yhead+i+Ni,xhead+i+Ni)=-2;
 
             kalSingle.y(yhead+i+2*Ni)=ms0->doMes;
-            kalSingle.hx(yhead+i+2*Ni)=ei.transpose()*(sv->vxyzR-vxyz)+tuf-sv->a1*Light_speed;
+            kalSingle.hx(yhead+i+2*Ni)=ei.transpose()*(sv->vxyzR-vxyz)+tuf-sv->ephemBst->clk.a1*Light_speed;
             kalSingle.Rmm(yhead+i+2*Ni,yhead+i+2*Ni)=pow(ms0->stdevDo,2);
             kalSingle.Ri(yhead+i+2*Ni)=ms0->stdevDo;
             kalSingle.Hmn.block(yhead+i+2*Ni,3,1,3)=-ei.transpose();

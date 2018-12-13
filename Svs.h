@@ -10,12 +10,13 @@ using namespace Eigen;
 class GNSS;
 class MSM4data;
 class EphemSp3;
+class EphemBst;
 class SvAll;
-   struct ionosphere{
-        double a0,a1,a2,a3;
-        double b0,b1,b2,b3;
-        ionosphere():a0(0),a1(0),a2(0),a3(0),b0(0),b1(0),b2(0),b3(0){}
-    };
+struct Ionosphere{
+    double a0,a1,a2,a3;
+    double b0,b1,b2,b3;
+    Ionosphere():a0(0),a1(0),a2(0),a3(0),b0(0),b1(0),b2(0),b3(0){}
+};
 class Kalman{
 public:
     int state{0};//0:uninitialized
@@ -85,44 +86,16 @@ public:
 };
 class SV{
 public:
-    struct Orbit{
-        uint32_t AODE;//SYS_BDS
-        uint32_t IODE;//SYS_GPS
-        uint32_t toe;
-        double sqrtA, e,i0,Omega0,M0;
-        double Cus,Cuc,Cis,Cic,Crs,Crc,dtn,omega;
-        double OmegaDot;
-        double IDOT;
-
-        uint32_t CucHigh,CucLow;
-        uint32_t CicHigh,CicLow;
-        uint32_t eHigh,eLow;
-        uint32_t toeHigh,toeLow;
-        uint32_t i0High,i0Low;
-        uint32_t OmegaDotHigh,OmegaDotLow;
-        uint32_t omegaHigh,omegaLow;
-        Orbit():toe(0),sqrtA(0),e(0),i0(0),Omega0(0),M0(0), Cus(0),Cuc(0),Cis(0),Cic(0),Crs(0),Crc(0),dtn(0),omega(0),
-                IDOT(0),OmegaDot(0){}
-    };
 
     EphemSp3 *ephemSp3;
+    EphemBst *ephemBst;
     int trackCount;
-//    bool temp = 1;
-    int8_t bstEphemOK[10];
-    bool ephemOkBrd{0},ephemOkSp3{0};
+    bool ephemOkBst{0},ephemOkSp3{0};
     bool isBeiDouGEO;
-    bool open, measureGood, elevGood;
+    bool open{1},healthy{1}, measureGood{0}, elevGood{0};
     SysType type;
     int svId;///1,2,3...
-    uint32_t SatH1,URAI;
-    uint32_t SOW,WN;
-    uint32_t AODC;//SYS_BDS
-    uint32_t IODC;//SYS_GPS
-    double toc,a0,a1,a2,a3;
-    uint32_t a1High,a1Low;
-    double TGD1,TGD2;
-    Orbit orbit;
-    ionosphere *ion;
+
     double I,T;
     Kalman kal;
     int kalState{0};
@@ -130,7 +103,6 @@ public:
 
     Vector3d xyz,lla,xyzR,llaR;//R:地球自传
     Vector3d vxyz,vxyzR;
-//    double tsv,tsDelta,tsReal;
     double tsdt,tsDrift;
     GnssTime ts0,ts;
 
@@ -148,14 +120,11 @@ public:
     SV();
     SV(int id);
     ~SV();
-    bool IsEphembstOK(int ephemType, GnssTime time);
-    bool CheckEphemStates(GnssTime time);
+    bool CheckEphemStates(GnssTime time,int ephemType);
     bool MeasureGood();
     bool ElevGood();
     bool IsMaskOn();
     bool RotateECEF(double tt);
-    bool CalcuECEF(GnssTime time);
-    bool CalcuTs(GnssTime time);
     bool AddMmeasure(Measure *mesr);
 
     int CalcuelEvationAzimuth(Vector3d pos, Vector3d poslla);
@@ -164,20 +133,12 @@ public:
     int CorrectIT(Vector3d xyz,Vector3d lla,double time);
     void PrintInfo(int printType);
     void FPrintInfo(int printType);
-    virtual int DecodeSubFrame(uint32_t* dwrds) = 0;
     double InterpRtkData(double time, int sigInd);
     double InterpMeasere(int len,int power,int begin=0);
     double SmoothPr(int len,int begin=0);
     double SmoothKalman(int len,int begin=0);
     double SmoothKalman0();
     double DetectCycleSlip();
-
-    //head 指32bit()中的头bit（范围：1-32）
-    inline uint32_t Read1Word(uint32_t word, int length, int head, bool isInt = false);
-    inline uint32_t Read2Word(uint32_t word0,int length0, int head0,
-            uint32_t word1, int length1, int head1, bool isInt = false);
-    inline uint32_t Read3Word(uint32_t word0,int length0, int head0,
-            uint32_t word1, int length1, int head1, uint32_t word2, int length2, int head2, bool isInt = false);
 
 //private:
     double InterpLine(double xi,vector<double>&x,vector<double>&y);
@@ -325,9 +286,7 @@ public:
 class SvAll{
 public:
     GNSS* gnss;
-    ionosphere ionKlob;
-//    SvSys* collect[Nsys];
-//    vector<int> sysIds;
+        Ionosphere ionKlob;
 
     vector<SvSys*> sysAll,sysUsed;
     vector<SV*> svUsedAll;
