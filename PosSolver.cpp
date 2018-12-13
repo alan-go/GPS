@@ -38,15 +38,15 @@ PosSolver::~PosSolver(){
 int PosSolver::PrepareSVsData(vector<SV*> &svsIn) {
     cout<<"---Prepare Data\n"<<endl;
     svsBox=SvAll();
+    timeSolLast = timeSol;
+    timeSol = gnss->rTime;
     SelectSvsFromVisible(svsIn);
-    if(svsBox.svUsedAll.empty()){
+    if(svsBox.svUsed.empty()){
         cout<<"---Warning: Empty sv lists\n"<<endl;
         return -1;
     }
-    timeSolLast = timeSol;
-    timeSol = gnss->rTime;
     memcpy(tu,gnss->solSingle.tu,Nsys* sizeof(double));
-    UpdateSvsPosition(svsBox.svUsedAll, timeSol, gnss->ephemType);
+    UpdateSvsPosition(svsBox.svUsed, timeSol, gnss->ephemType);
     nSat = svsBox.UpdateSVs("elev");
     nSys = svsBox.sysUsed.size();
     return 0;
@@ -465,7 +465,7 @@ int PosSolver::ResetKalRtk(int N, int M, Kalman & kal, int L){
         kal.AnnAdd99(7,8)=1;
         kal.state=1;
     }
-    for(SV* sv:svsBox.svUsedAll)if(sv->kalState==0){
+    for(SV* sv:svsBox.svUsed)if(sv->kalState==0){
         sv->Ii=sv->I;
         sv->IiP=pow((cos(sv->elevationAngle)+0.3)*30,2);
         Measure* ms = sv->measureDat[0];

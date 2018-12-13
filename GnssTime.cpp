@@ -13,6 +13,11 @@ GnssTime::GnssTime(const double *ep) {
 
 GnssTime::GnssTime(double tod):tod(tod+18.0){
 }
+
+void GnssTime::Show(int mode) {
+    printf("week %d, tow%f, secTime%d,secflote%f\n", week,tow,time,sec);
+}
+
 GnssTime::GnssTime(int week, double tow):week(week),tow(tow) {
     epoch2time(gpst0);
     if (tow<-1E9||1E9<tow) tow=0.0;
@@ -20,7 +25,7 @@ GnssTime::GnssTime(int week, double tow):week(week),tow(tow) {
     sec=tow-(int)tow;
 }
 
-GnssTime::GnssTime(char *head, int len, bool utc2gps):GnssTime() {
+GnssTime::GnssTime(char *head, int len, bool utc2gps) {
     double ep[6];
     char str[256],*p=str;
 
@@ -35,6 +40,7 @@ GnssTime::GnssTime(char *head, int len, bool utc2gps):GnssTime() {
     if (ep[0]<100.0) ep[0]+=ep[0]<80.0?2000.0:1900.0;
     epoch2time(ep);
     if(utc2gps)utc2gpst();
+    time2tow();
 }
 
 void GnssTime::epoch2time(const struct tm*ep) {
@@ -50,6 +56,7 @@ void GnssTime::epoch2time(const struct tm*ep) {
     sec=0;
 }
 
+//这个没有把周算出来,得手动
 void GnssTime::epoch2time(const double *ep) {
     const int doy[]={1,32,60,91,121,152,182,213,244,274,305,335};
     int days,sec0,year=(int)ep[0],mon=(int)ep[1],day=(int)ep[2];

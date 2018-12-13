@@ -119,10 +119,12 @@ int EphemSp3::ReadSp3File(string fileName, SvAll &svs) {
             }
         }
     }
+
+    for(int i=23;i<33;i++)fgets(buff, sizeof(buff),fp);
     //Read Body
     GnssTime ephTime;
-    SV *sv;
     while (fgets(buff,sizeof(buff),fp)) {
+//        printf(" %s\n",buff );
 
         if (!strncmp(buff,"EOF",3)) break;
 
@@ -136,8 +138,8 @@ int EphemSp3::ReadSp3File(string fileName, SvAll &svs) {
             char dataType = buff[0];
             SysType tempSys =code2sys(buff[1]);
             int prn=(int)str2num(buff+2,2);
-            sv = svs.GetSv(tempSys,prn-1);
-            if(sv == nullptr)continue;
+            SV* sv = svs.GetSv(tempSys,prn);
+            if(sv == nullptr) continue;
 
             Vector3d data(str2num(buff+4,14),str2num(buff+18,14),str2num(buff+32,14));
             Sp3Cell cell;
@@ -148,6 +150,7 @@ int EphemSp3::ReadSp3File(string fileName, SvAll &svs) {
             if ('V'==dataType) {
                 cell.vxyz = data*1000;
             }
+            sv->PrintInfo(0);
             sv->ephemSp3->xyzList.push_back(cell);
         }
     }
@@ -164,7 +167,7 @@ int EphemSp3::ReadClkFile(string fileName, SvAll &svs) {
         if(strncmp(buff,"AS",2)) continue;
         SysType sys = code2sys(buff[3]);
         int prn=(int)str2num(buff+4,2);
-        SV* sv = svs.GetSv(sys,prn-1);
+        SV* sv = svs.GetSv(sys,prn);
         if(sv == nullptr)continue;
         //todo:Confirm: utc2gps??
         GnssTime time = GnssTime(buff+8,28,0);
@@ -175,7 +178,7 @@ int EphemSp3::ReadClkFile(string fileName, SvAll &svs) {
 
 int EphemSp3::ReadSp3s(string name, SvAll &svs) {
     //clear old data
-    for(SV* sv:svs.svUsedAll){
+    for(SV* sv:svs.svAll){
         vector<TsCell> Ts0s;
         vector<Sp3Cell> xyz0s;
         Ts0s.swap(sv->ephemSp3->tsList);
@@ -183,8 +186,8 @@ int EphemSp3::ReadSp3s(string name, SvAll &svs) {
     }
     //Read new data
     string nameSp3 = name+".sp3",nameClk = name+".clk";
-    if(0==access(nameSp3.c_str(),0))ReadSp3File(nameSp3,svs);
     if(0==access(nameClk.c_str(),0))ReadClkFile(nameClk,svs);
+    if(0==access(nameSp3.c_str(),0))ReadSp3File(nameSp3,svs);
 }
 
 

@@ -36,6 +36,10 @@ set(SOURCE_FILES
         )
 add_executable(GPS  main.cpp ${SOURCE_FILES} )
 add_executable(testrtk testrtk.cpp ${SOURCE_FILES} )
+add_executable(LogData LogData.cpp ${SOURCE_FILES} )
+add_executable(Temp Temp.cpp ${SOURCE_FILES} )
 
 target_link_libraries( GPS  ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(testrtk ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(LogData ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(Temp ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})

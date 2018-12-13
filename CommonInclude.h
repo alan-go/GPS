@@ -61,7 +61,6 @@ enum SysType{
 
 template <typename T>
 extern int FindTimeDate(T list,GnssTime &time){
-    printf("tempFindData \n");
     /* binary search ->find head*/
     int N = list.size();
     int i=0,k=0,j;

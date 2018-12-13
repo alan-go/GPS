@@ -38,9 +38,9 @@ static double leaps[MAXLEAPS+1][7]={ /* leap seconds (y,m,d,h,m,s,utc-gpst) */
 
 class GnssTime {
 public:
-    time_t time;
-    double sec,tow,tod;
-    int week;
+    time_t time{-1};
+    double sec{0},tow{0},tod{0};
+    int week{0};
 //    static double leaps[MAXLEAPS+1][7]; /* leap seconds (y,m,d,h,m,s,utc-gpst) */
 
 public:
@@ -55,6 +55,7 @@ public:
     void utc2gpst();
     void time2tow();
     void gpst2utc();
+    void Show(int mode=0);
     double operator-(const GnssTime &right);
     GnssTime operator+(double dt);
     GnssTime operator-(double dt);

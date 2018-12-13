@@ -4,6 +4,7 @@
 
 #include "GNSS.h"
 #include <stdio.h>
+#include "EphemSp3.h"
 using namespace std;
 using namespace Eigen;
 
@@ -37,8 +38,9 @@ int main(){
     //ephem,qianxun,bds,gps
 //    gnss->Init(0,0,0,1);
 //    gnss->Init(0,0,1,0);
-    gnss->Init(0,0,1,1);
+    gnss->Init(1,0,1,1);
 
+    EphemSp3::ReadSp3s("/home/alan/projects/GPS/Sp3/hour20272_08",gnss->svsManager);
 
     FILE *fp;
     char name[128],dat[512],temp[256],tempc;

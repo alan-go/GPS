@@ -289,7 +289,7 @@ public:
         Ionosphere ionKlob;
 
     vector<SvSys*> sysAll,sysUsed;
-    vector<SV*> svUsedAll;
+    vector<SV*> svAll, svUsed;
 
 public:
     SvAll();
@@ -308,10 +308,13 @@ public:
                count++;
            }
        }
-        svUsedAll.swap(result);
+        svUsed.swap(result);
         return count;
     }
+    //id begin from 1
     SV* GetSv(SysType type, int id){
+        if(SYS_NULL==type)
+            return nullptr;
         SvSys *sys =GetSys(type);
         if(id>sys->table.size()){
             printf("sv not found!\n");

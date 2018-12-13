@@ -3,7 +3,7 @@
 #include "EphemSp3.h"
 #include "EphemBst.h"
 
-SV::SV(int id):svId(id),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsdt(0),ephemSp3(nullptr),trackCount(0){
+SV::SV(int id):svId(id),I(0),T(0),isBeiDouGEO(false),elevationAngle(0),tsdt(0),trackCount(0){
     kal = Kalman(30,29,0);
     ephemSp3 = new EphemSp3(this);
     ephemBst = new EphemBst(this);
@@ -30,6 +30,7 @@ void SvAll::InitAlloc() {
         sBds->table.push_back(sv);
         sv->isBeiDouGEO = i<5?true:false;
         sv->ephemBst->ion = &ionKlob;
+        svAll.push_back(sv);
     }
     sysAll.push_back(sBds);
 
@@ -37,13 +38,14 @@ void SvAll::InitAlloc() {
         SV* sv = new GpsSV(i+1);
         sGps->table.push_back(sv);
         sv->ephemBst->ion = &ionKlob;
+        svAll.push_back(sv);
     }
     sysAll.push_back(sGps);
 }
 
 //todo get usedSys
 int SvAll::AddToUsed(SV *sv) {
-    svUsedAll.push_back(sv);
+    svUsed.push_back(sv);
     GetUsedSys(sv->type)->table.push_back(sv);
 }
 
@@ -216,13 +218,14 @@ bool SV::ElevGood() {
 bool SV::MeasureGood() {
     Measure *temp = measureDat.front();
     measureGood = temp->prMes<45e6&&temp->prMes>15e6;
+
     if(!measureGood){
         sprintf(tip,"prError:%.1f",temp->prMes);
     }
-//    if (trackCount<5) {
-//        sprintf(tip,"trackCount %d<5", trackCount);
-//        return 0;
-//    }
+    if (trackCount<5) {
+        sprintf(tip,"trackCount %d<5", trackCount);
+        return 0;
+    }
 
     return measureGood;
 }
