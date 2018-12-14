@@ -50,12 +50,12 @@ constexpr static double D2R = GPS_PI/180.0, R2D = 180.0/GPS_PI;
 enum SysType{
     SYS_GPS = 0,
     SYS_BDS = 3,
-//        SYS_SBAS = 1,
-//        SYS_GALILEO = 2,
-//        SYS_IMES = 4,
-//        SYS_QZSS = 5,
-//        SYS_GLONASS = 6,
-            SYS_ANY = 7,
+    SYS_SBAS = 1,
+    SYS_GALILEO = 2,
+    SYS_IMES = 4,
+    SYS_QZSS = 5,
+    SYS_GLONASS = 6,
+    SYS_ANY = 7,
     SYS_NULL = -1
 };
 
@@ -121,7 +121,7 @@ public:
     int trkStat{0};
     Measure(){};
     Measure(GnssTime _time,double _pr,double _cp,double _doplr = 0)
-        : time(_time),prMes(_pr),cpMes(_cp),doMes(_doplr){};
+            : time(_time),prMes(_pr),cpMes(_cp),doMes(_doplr){};
     void Show(char* tip){ printf("%s: %.3f,%.3f,%.1f\n", prMes,cpMes,cycle);}
 };
 class Solution{

@@ -316,7 +316,7 @@ public:
         if(SYS_NULL==type)
             return nullptr;
         SvSys *sys =GetSys(type);
-        if(id>sys->table.size()){
+        if(nullptr==sys || id>sys->table.size()){
             printf("sv not found!\n");
             return nullptr;
         }

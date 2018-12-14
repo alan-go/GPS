@@ -147,8 +147,8 @@ void SvAll::UpdateEphemeris(char *subFrame) {
         for(int i=0;i<10;i++) {
             dwrds[i] = *(uint32_t*)(tmp+4*i);
         }
-//        GetSv(SysType(gnssId),svId)->DecodeSubFrame(dwrds);
-        GetSv(SysType(gnssId),svId)->ephemBst->DecodeSubFrame(dwrds);
+        SV* sv = GetSv(SysType(gnssId),svId);
+        if(nullptr!=sv)sv->ephemBst->DecodeSubFrame(dwrds);
     }
 }
 

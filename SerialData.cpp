@@ -160,8 +160,8 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
 //            if(('\n'==tmp[i]||'\r'==tmp[i])&&1==flag){
             printf("Got a NMEA,l = %d.:%s",lengthNMEA,bufferNMEA);
             if(!memcmp(bufferNMEA+3,"GGA",3)&&lengthNMEA<128)ParaseGGA(bufferNMEA);
-//            if (showData)
-            if (1)
+            if (showData)
+//            if (1)
                 for(int k = 0;k<lengthNMEA;k++){
                     printf("%c",bufferNMEA[k]);
                 }
