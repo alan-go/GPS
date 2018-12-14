@@ -23,8 +23,8 @@ int main(){
 
     printf("\nin testing\n");
     GNSS *gnss = new GNSS();
-    gnss->AddSerial(0,1,"/dev/ttyUSB0",115200,true,true);
-    gnss->AddSerial(1,0,"/dev/ttyUSB1",115200,true,true);
+    gnss->AddSerial(0,1,"/dev/ttyUSB0",115200,true);
+    gnss->AddSerial(1,0,"/dev/ttyUSB1",115200,true);
     gnss->log = fopen("../log/log.txt","w");
     gnss->logDebug = fopen("../log/logDebug.txt","w");
     gnss->logTu = fopen("../log/logtu.txt","w");

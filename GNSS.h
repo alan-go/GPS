@@ -56,8 +56,11 @@ public:
 
     int AddPosRecord(Solution record);
 
-    int AddSerial(int id,int type,string name, unsigned int baudRate,bool logOpen,bool paraseData)
-        {serialDataManager.push_back(new SerialData(id, type,name,baudRate,logOpen,paraseData,this));};
+    int AddSerial(int id,int type,string name, unsigned int baudRate,bool logOpen)
+    {serialDataManager.push_back(new SerialData(id, type,name,baudRate,logOpen,this));};
+
+    int AddSerial(int id,int type,string fileName,bool logOpen)
+    {serialDataManager.push_back(new SerialData(id, type,fileName,logOpen,this));};
 
     SerialData* GetSerial(int id){
         for(SerialData* seri:serialDataManager)

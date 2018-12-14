@@ -18,8 +18,11 @@ class SerialData {
 public:
     //mode:0:only care result; 1:raw data process; 2:
     int id,mode{0};
+    //deviceType: 0:unknown,1:serialPort,2:file
+    int deviceType{0};
     std::string serialPort_;
     boost::asio::serial_port *sp_;
+    FILE* fpDev;
     unsigned int baudRate;
     bool stopCapture{0};
     bool showData{0},logOpen{1},sendGGA{0},ntripIn{0};
@@ -30,12 +33,28 @@ public:
 
 public:
     SerialData();
-    SerialData(int id,int type,std::string portNane, unsigned int baudRate,bool logOpen,bool pData,GNSS* gnss)
-                :id(id), mode(type),serialPort_(portNane),baudRate(baudRate),logOpen(logOpen),gnss(gnss){};
+    SerialData(int id,int type,std::string portNane, unsigned int baudRate,bool logOpen,GNSS* gnss)
+            :id(id), mode(type),serialPort_(portNane),baudRate(baudRate),logOpen(logOpen),gnss(gnss){
+        deviceType = 1;
+        try{
+            boost::asio::io_service ios;
+            sp_ = new boost::asio::serial_port(ios, serialPort_);
+            sp_->set_option ( boost::asio::serial_port::baud_rate ( baudRate ) );
+            printf ( "successfully opened port %s\n", serialPort_.c_str() );
+        }catch ( ... ) {
+            printf ( "failed to open serial port\n" );
+            return;
+        }
+    };
+    SerialData(int id,int type,std::string fileNane,bool logOpen,GNSS* gnss)
+            :id(id), mode(type),logOpen(logOpen),gnss(gnss){
+        deviceType = 2;
+        fpDev = fopen(fileNane.data(),"rb");
+    };
     ~SerialData();
     void StartCapture(const std::string serialPort, unsigned int baudRate, char *saveName);
 
-    int WtiteSerial();
+    int WtiteSerial(char* buffer);
 
     int StopDevice();
 

@@ -106,11 +106,6 @@ void SerialData::StartCapture(const std::string serialPort, unsigned int baudRat
     std::ofstream outF;
     if(logOpen)outF.open(saveName,std::ofstream::binary);
     try {
-        boost::asio::io_service ios;
-        sp_ = new boost::asio::serial_port(ios, serialPort);
-        sp_->set_option ( boost::asio::serial_port::baud_rate ( baudRate ) );
-        printf ( "successfully opened port %s\n", serialPort.c_str() );
-
         while ( !stopCapture ) {
             char tmp[256];
             auto transferred = sp_->read_some ( boost::asio::buffer ( tmp ) );
@@ -124,7 +119,6 @@ void SerialData::StartCapture(const std::string serialPort, unsigned int baudRat
             if(logOpen)outF.write(tmp,transferred);
             ScanSerialData(tmp,transferred);
         }
-        sp_->close();
         outF.close();
     } catch ( ... ) {
         printf ( "failed to open serial port\n" );
@@ -234,6 +228,15 @@ int SerialData::StopDevice() {
 
 }
 
-int SerialData::WtiteSerial() {
+int SerialData::WtiteSerial(char* buffer) {
+    try {
+        if (sp_!= nullptr) {
+            boost::asio::write(*sp_, boost::asio::buffer(buffer, strlen(buffer)));
+        }
+
+    }catch (...){
+        printf("Write to serialPort failed \n");
+    }
+
     return 0;
 }

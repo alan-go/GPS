@@ -75,7 +75,7 @@ void NtripRTK::RecvThread() {
             NtripLogin(gnss->rtk_protocol_);
         }else{
             for(SerialData* sd:gnss->serialDataManager){
-                if(sd->ntripIn)sd->WtiteSerial();
+                if(sd->ntripIn)sd->WtiteSerial(bufferRecv);
             }
             ParaseRTK(bufferRecv,recvLength);
             if(logOpen)fwrite(bufferRecv, recvLength, 1, fp);
