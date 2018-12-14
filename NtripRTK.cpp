@@ -73,8 +73,10 @@ void NtripRTK::RecvThread() {
             printf("socket recv error! try to login again");
             gnss->StopGNSS();
             NtripLogin(gnss->rtk_protocol_);
-        }
-        if(recvLength >= 0) {
+        }else{
+            for(SerialData* sd:gnss->serialDataManager){
+                if(sd->ntripIn)sd->WtiteSerial();
+            }
             ParaseRTK(bufferRecv,recvLength);
             if(logOpen)fwrite(bufferRecv, recvLength, 1, fp);
         }

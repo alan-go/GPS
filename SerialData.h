@@ -16,12 +16,13 @@
 class GNSS;
 class SerialData {
 public:
-    int type,id;
+    //mode:0:only care result; 1:raw data process; 2:
+    int id,mode{0};
     std::string serialPort_;
     boost::asio::serial_port *sp_;
     unsigned int baudRate;
     bool stopCapture{0};
-    bool showData{0},logOpen{1},paraseDara{0},sendGGA{0};
+    bool showData{0},logOpen{1},sendGGA{0},ntripIn{0};
     char saveName[128];
     pthread_t thread;
     std::deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> solRaw;
@@ -29,16 +30,19 @@ public:
 
 public:
     SerialData();
-    SerialData(int type,int id,std::string portNane, unsigned int baudRate,bool logOpen,bool pData,GNSS* gnss)
-                : type(type),id(id),serialPort_(portNane),baudRate(baudRate),logOpen(logOpen),paraseDara(pData),gnss(gnss){};
+    SerialData(int id,int type,std::string portNane, unsigned int baudRate,bool logOpen,bool pData,GNSS* gnss)
+                :id(id), mode(type),serialPort_(portNane),baudRate(baudRate),logOpen(logOpen),gnss(gnss){};
     ~SerialData();
     void StartCapture(const std::string serialPort, unsigned int baudRate, char *saveName);
+
+    int WtiteSerial();
 
     int StopDevice();
 
     void ScanSerialData(char *tmp,int transferred);
 
     void parse_UBX(char * buffer);
+    void parse_UBX_0106(char * buffer);
 
     int  ParaseGGA( char* gga);
 

@@ -6,17 +6,16 @@
 #include "GNSS.h"
 
 int SerialData::ParaseGGA( char* gga){
-    printf("GGA: %s\n", gga);
+//    printf("GGA: %s\n", gga);
     if(sendGGA){
         gnss->rtkManager.SentGGA(gga,strlen(gga));
     }
-    vector<string> val;
     auto split = []( char* str,char c,vector<string> &result){
         char temp[16],*p = str;
-        int k=0;
-        while ((*p++)){
+        int k=0,n=0;
+        while ((*p++)&&14!=n){
             if(*p==c){
-                k=0;
+                k=0;n++;
                 result.push_back(temp);
                 memset(temp,0,16);
             } else{
@@ -24,7 +23,9 @@ int SerialData::ParaseGGA( char* gga){
             }
         }
     };
+    vector<string> val;
     split(gga,',',val);
+
     GnssTime time;
     double tod=0.0,lat=0.0,lon=0.0,hdop=0.0,alt=0.0,msl=0.0,ep[6],tt;
     char ns='N',ew='E',ua=' ',um=' ';
@@ -68,7 +69,6 @@ int SerialData::ParaseGGA( char* gga){
 //    pos(2)=alt+msl;
     pos(2)=alt;
     //<6> GPS状态， 0初始化， 1单点定位， 2码差分， 3无效PPS， 4固定解， 5浮点解， 6正在估算 7，人工输入固定值， 8模拟模式， 9WAAS差分
-//    LLA2XYZ(pos,gnss->xyz00);
     Solution sol(GnssTime(secoday),pos);
     solRaw.push_front(sol);
     printf("tod,tod %f,%f\n",tod,GnssTime(secoday).tod);
@@ -122,7 +122,7 @@ void SerialData::StartCapture(const std::string serialPort, unsigned int baudRat
 //            printf ( "transferred = %d , flag = %d\n",transferred, flag  );
             printf("get %d byte from USB%d  ::: %s\n",transferred, id,tmp);
             if(logOpen)outF.write(tmp,transferred);
-            if(paraseDara)ScanSerialData(tmp,transferred);
+            ScanSerialData(tmp,transferred);
         }
         sp_->close();
         outF.close();
@@ -158,9 +158,10 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
         }
         if(('\n'==tmp[i])&&1==flag){
 //            if(('\n'==tmp[i]||'\r'==tmp[i])&&1==flag){
-//            printf("Got a NMEA,l = %d.:",lengthNMEA);
-            if(!memcmp(bufferNMEA+3,"GGA",3))ParaseGGA(bufferNMEA);
-            if (showData)
+            printf("Got a NMEA,l = %d.:%s",lengthNMEA,bufferNMEA);
+            if(!memcmp(bufferNMEA+3,"GGA",3)&&lengthNMEA<128)ParaseGGA(bufferNMEA);
+//            if (showData)
+            if (1)
                 for(int k = 0;k<lengthNMEA;k++){
                     printf("%c",bufferNMEA[k]);
                 }
@@ -182,12 +183,11 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
 
 void SerialData::parse_UBX(char *buffer) {
     if(0x02==(u_char)buffer[2]){
-
+        if(1!=mode) return;
         if(0x15==(u_char)buffer[3]){
 //            printf("\n--0--ParseRawData,len = %d\n",lengthUBX);
             gnss->ParseRawData(buffer, lengthUBX);
 //            printf("\n--1--ParseRawData,%d\n",gnss->useBeiDou);
-
         }
         if(0x13==(u_char)buffer[3]){
 //            printf("\n----0----ParseBstSubFrame,%d\n",gnss->useBeiDou);
@@ -195,8 +195,28 @@ void SerialData::parse_UBX(char *buffer) {
 //            printf("\n----1----ParseBstSubFrame,%d\n",gnss->useBeiDou);
         }
     }
+
+    if(0x01==(u_char)buffer[2]){
+        if(0x06==(u_char)buffer[3]){
+            if(lengthUBX>64)
+                return;
+           parse_UBX_0106(buffer);
+        }
+    }
 }
 
+void SerialData::parse_UBX_0106(char *buffer) {
+    char* data = buffer+6;
+    double tu[Nsys]={0};
+    uint32_t itow = *(uint32_t*)data;
+    int32_t ftow = *(int32_t*)(data+4);
+    int16_t week = *(int16_t *)(data+8);
+    GnssTime time(int(week),double(itow*1e-3+ftow*1e-9));
+    Vector3d xyz(*(int32_t*)(data+12),*(int32_t*)(data+16),*(int32_t*)(data+20));
+    Vector3d vxyz(*(int32_t*)(data+28),*(int32_t*)(data+32),*(int32_t*)(data+36));
+    Solution sol(time,xyz,vxyz,tu);
+    solRaw.push_front(sol);
+}
 
 int SerialData::StopDevice() {
     stopCapture = true;
@@ -212,4 +232,8 @@ int SerialData::StopDevice() {
         sp_ = nullptr;
     }catch (...){}
 
+}
+
+int SerialData::WtiteSerial() {
+    return 0;
 }
