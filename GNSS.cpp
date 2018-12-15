@@ -48,10 +48,6 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
 
 int GNSS::StartGNSS() {
     sprintf(timeName,"%02d%02d_%02d_%02d",utcTime->tm_mon+1,utcTime->tm_mday,utcTime->tm_hour,utcTime->tm_min);
-
-    pthread_create(&threadSp3_, nullptr,EphemSp3::GetSp3Thread, this);
-    sleep(2);
-
     if(useQianXun){
         if(!rtkManager.NtripLogin(rtk_protocol_)) {
             printf("cannot login ntrip server\n");
@@ -63,7 +59,7 @@ int GNSS::StartGNSS() {
         sleep(2);
     }
 
-    sleep(2);
+    pthread_create(&threadSp3_, nullptr,EphemSp3::GetSp3Thread, this);
 
     //todo : for temmp
     for(SerialData* seri:serialDataManager){

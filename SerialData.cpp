@@ -30,7 +30,6 @@ int SerialData::ParaseGGA( char* gga){
     Vector3d pos;
     int i,solq=0,nrcv=0;
 
-
     for (i=1;i<val.size();i++) {
         switch (i-1) {
             case  0: tod =atof(val[i].c_str()); break; /* time in utc (hhmmss) */
@@ -99,9 +98,7 @@ flag(0),count(0),lengthNMEA(0),lengthUBX(0),baudRate(115200),stopCapture(false),
     sp_ = nullptr;
 }
 
-SerialData::~SerialData() {
-
-}
+SerialData::~SerialData() {}
 
 void SerialData::StartCapture(const std::string serialPort, unsigned int baudRate, char *saveName) {
     sprintf(saveName,"../data/device%d_%s.data",id,gnss->timeName);
@@ -196,7 +193,6 @@ void SerialData::parse_UBX(char *buffer) {
 //            printf("\n----1----ParseBstSubFrame,%d\n",gnss->useBeiDou);
         }
     }
-
     if(0x01==(u_char)buffer[2]){
         if(0x06==(u_char)buffer[3]){
             if(lengthUBX>64)
@@ -232,7 +228,6 @@ int SerialData::StopDevice() {
         }
         sp_ = nullptr;
     }catch (...){}
-
 }
 
 int SerialData::WtiteSerial(char* buffer, int len) {
@@ -241,10 +236,8 @@ int SerialData::WtiteSerial(char* buffer, int len) {
             int wnum = boost::asio::write(*sp_, boost::asio::buffer(buffer, len));
             printf("Write to serialPort Ok,num = %d\n",wnum);
         }
-
     }catch (...){
         printf("Write to serialPort failed \n");
     }
-
     return 0;
 }

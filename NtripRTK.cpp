@@ -38,8 +38,9 @@ bool NtripRTK::NtripLogin(const std::string &rtk_protocol) {
                             "User-Agent: NTRIP GNSSInternetRadio/1.4.10\r\n"
                             "Accept: */*\r\n"
                             "Connection: close\r\n"
-//                            "Authorization: Basic cXhhb3lhMDAxOmEwMjk3Yzg=\r\n\r\n"; //base64 code: username:password
-                            "Authorization: Basic cXhhb3lhMDAxOmEwMjk3Yzg=\r\n\r\n"; //findMM
+//                          qxaoya001:a0297c8      qxaoya003:44ce33d
+//                            "Authorization: Basic cXhhb3lhMDAxOmEwMjk3Yzg=\r\n\r\n"; //findMM(001)base64 code: username:password
+                            "Authorization: Basic cXhhb3lhMDAzOjQ0Y2UzM2Q=\r\n\r\n"; //findMM(003)base64 code: username:password
     char buffer[512];
     sprintf(buffer, loginstring, rtk_protocol.c_str());
 
@@ -74,6 +75,7 @@ void NtripRTK::RecvThread() {
             gnss->StopGNSS();
             NtripLogin(gnss->rtk_protocol_);
         }else{
+            if(recvLength==0)continue;
             printf("recv rtk len= %d\n", recvLength);
             for(SerialData* sd:gnss->serialDataManager){
                 if(sd->ntripIn)sd->WtiteSerial(bufferRecv,recvLength);
