@@ -74,8 +74,9 @@ void NtripRTK::RecvThread() {
             gnss->StopGNSS();
             NtripLogin(gnss->rtk_protocol_);
         }else{
+            printf("recv rtk len= %d\n", recvLength);
             for(SerialData* sd:gnss->serialDataManager){
-                if(sd->ntripIn)sd->WtiteSerial(bufferRecv);
+                if(sd->ntripIn)sd->WtiteSerial(bufferRecv,recvLength);
             }
             ParaseRTK(bufferRecv,recvLength);
             if(logOpen)fwrite(bufferRecv, recvLength, 1, fp);
@@ -104,14 +105,14 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SysType type) {
     uint8_t multiMsg = NetToHost32(bufferRTK+6,6,1);//DF393
     uint32_t IODS = NetToHost32(bufferRTK+6,7,3);//DF409
     uint8_t clockCorrect = NetToHost32(bufferRTK+8,1,2);//DF411
-    printf("DF411 clock correct= %d\n", clockCorrect);
+//    printf("DF411 clock correct= %d\n", clockCorrect);
     uint8_t clockExtern = NetToHost32(bufferRTK+8,3,2);//DF412
-    printf("DF412 clock correct= %d\n", clockExtern);
+//    printf("DF412 clock correct= %d\n", clockExtern);
     uint8_t smoothType = NetToHost32(bufferRTK+8,5,1);//DF417
     uint32_t smoothRange = NetToHost32(bufferRTK+8,6,3);//DF418
 
-    printf("rtktime = %f, df003=%d,df393=%d,df409=%d,df411=%d,412=%d,417=%d,df418=%d\n",
-            rtkTime,refID,multiMsg,IODS,clockCorrect,clockExtern,smoothType,smoothRange);
+//    printf("rtktime = %f, df003=%d,df393=%d,df409=%d,df411=%d,412=%d,417=%d,df418=%d\n",
+//            rtkTime,refID,multiMsg,IODS,clockCorrect,clockExtern,smoothType,smoothRange);
 
     vector<MSM4data*> satsData;
 
@@ -140,7 +141,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SysType type) {
             sats.push_back(i+1);
             nSat++;
 //            printf("time = %f,,",rtkTime);
-            printf("Sat:%d, ",i+1);
+//            printf("Sat:%d, ",i+1);
             MSM4data *tempData = new MSM4data;
             tempData->rtktime = rtkTime;
             tempData->refID = refID;
@@ -327,16 +328,16 @@ int NtripRTK::ParaseRTK(char *buffer, int length) {
     char buferRTK[256];
     for(int i = 0;i<length-1;i++){
         if(0xd3==(u_char)buffer[i]&&0==(buffer[i+1]>>2)){
-            printf("get 0xd3,i = %d.\n",i);
+//            printf("get RTK 0xd3,i = %d.\n",i);
             uint32_t messageLength = NetToHost32(buffer+i,14,10);
             uint32_t checkSumGet = NetToHost32(buffer+i+3+messageLength,0,24);
             crc24Q.reset();
             crc24Q.process_bytes(buffer+i,messageLength+3);
             if(checkSumGet==crc24Q.checksum()){
-                printf("CheckSum OK.\n");
+//                printf("CheckSum OK.\n");
                 memcpy(buferRTK,buffer+i+3,messageLength);
                 uint32_t type = NetToHost32(buferRTK,0,12);
-                printf("messageLength = %d, type = %d\n",messageLength,type);
+                printf("get RTKmessage, Length = %d, type = %d\n",messageLength,type);
 //                        mtxData.lock();
                 switch (type){
                     case 1005:

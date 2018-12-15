@@ -110,9 +110,10 @@ void test(GNSS *gnss){
 int main()
 {
     GNSS *gnss = new GNSS();
-    gnss->AddSerial(0,0,"/dev/ttyUSB0",115200,false);
+    gnss->AddSerial(0,0,"/dev/ttyUSB0",115200,1);
     gnss->GetSerial(0)->sendGGA=1;
-    gnss->AddSerial(1,1,"/dev/ttyUSB1",115200,false);
+    gnss->GetSerial(0)->ntripIn=1;
+    gnss->AddSerial(1,0,"/dev/ttyUSB1",115200,1);
     gnss->rtkManager.logOpen=1;
 //    test(gnss);
 //    return 0;
@@ -184,6 +185,6 @@ int main()
     sleep(2);
     cout<<"Quit?"<<endl;
     sleep(3);
-//    getchar();
+    getchar();
     return 0;
 }

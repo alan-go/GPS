@@ -63,7 +63,7 @@ int GNSS::StartGNSS() {
         sleep(2);
     }
 
-    sleep(22222222222222);
+    sleep(2);
 
     //todo : for temmp
     for(SerialData* seri:serialDataManager){

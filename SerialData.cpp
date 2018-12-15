@@ -6,10 +6,8 @@
 #include "GNSS.h"
 
 int SerialData::ParaseGGA( char* gga){
-//    printf("GGA: %s\n", gga);
-    if(sendGGA){
-        gnss->rtkManager.SentGGA(gga,strlen(gga));
-    }
+    printf("\nGGA from Dev%d: %s\n",id, gga);
+
     auto split = []( char* str,char c,vector<string> &result){
         char temp[16],*p = str;
         int k=0,n=0;
@@ -52,6 +50,10 @@ int SerialData::ParaseGGA( char* gga){
     if ((ns!='N'&&ns!='S')||(ew!='E'&&ew!='W')) {
         printf("invalid nmea gpgga format,%c,%c\n",ns,ew);
         return 0;
+    }
+    if(sendGGA){
+        printf("Sent GGA: %s\n", gga);
+        gnss->rtkManager.SentGGA(gga,strlen(gga));
     }
     int week = gnss->utcTime->tm_wday;
     int hour = floor(tod/10000.0);
@@ -104,9 +106,14 @@ SerialData::~SerialData() {
 void SerialData::StartCapture(const std::string serialPort, unsigned int baudRate, char *saveName) {
     sprintf(saveName,"../data/device%d_%s.data",id,gnss->timeName);
     std::ofstream outF;
-    if(logOpen)outF.open(saveName,std::ofstream::binary);
     try {
+        sp_ = new boost::asio::serial_port(ios, serialPort_);
+        sp_->set_option ( boost::asio::serial_port::baud_rate ( baudRate ) );
+        printf ( "successfully opened port %s\n", serialPort_.c_str() );
+        if(logOpen)outF.open(saveName,std::ofstream::binary);
         while ( !stopCapture ) {
+            if(sp_==nullptr)printf("serial port unusual \n");
+//            else printf("serial port good!\n");
             char tmp[256];
             auto transferred = sp_->read_some ( boost::asio::buffer ( tmp ) );
             if ( transferred <= 0 ) {
@@ -115,7 +122,7 @@ void SerialData::StartCapture(const std::string serialPort, unsigned int baudRat
                 continue;
             }
 //            printf ( "transferred = %d , flag = %d\n",transferred, flag  );
-            printf("get %d byte from USB%d  ::: %s\n",transferred, id,tmp);
+//            printf("get %d byte from USB%d  ::: %s\n",transferred, id,tmp);
             if(logOpen)outF.write(tmp,transferred);
             ScanSerialData(tmp,transferred);
         }
@@ -152,7 +159,7 @@ void SerialData::ScanSerialData(char *tmp, int transferred) {
         }
         if(('\n'==tmp[i])&&1==flag){
 //            if(('\n'==tmp[i]||'\r'==tmp[i])&&1==flag){
-            printf("Got a NMEA,l = %d.:%s",lengthNMEA,bufferNMEA);
+//            printf("Got a NMEA,l = %d.:%s",lengthNMEA,bufferNMEA);
             if(!memcmp(bufferNMEA+3,"GGA",3)&&lengthNMEA<128)ParaseGGA(bufferNMEA);
             if (showData)
 //            if (1)
@@ -228,10 +235,11 @@ int SerialData::StopDevice() {
 
 }
 
-int SerialData::WtiteSerial(char* buffer) {
+int SerialData::WtiteSerial(char* buffer, int len) {
     try {
         if (sp_!= nullptr) {
-            boost::asio::write(*sp_, boost::asio::buffer(buffer, strlen(buffer)));
+            int wnum = boost::asio::write(*sp_, boost::asio::buffer(buffer, len));
+            printf("Write to serialPort Ok,num = %d\n",wnum);
         }
 
     }catch (...){
