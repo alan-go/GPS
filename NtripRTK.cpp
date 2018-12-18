@@ -39,8 +39,8 @@ bool NtripRTK::NtripLogin(const std::string &rtk_protocol) {
                             "Accept: */*\r\n"
                             "Connection: close\r\n"
 //                          qxaoya001:a0297c8      qxaoya003:44ce33d
-//                            "Authorization: Basic cXhhb3lhMDAxOmEwMjk3Yzg=\r\n\r\n"; //findMM(001)base64 code: username:password
-                            "Authorization: Basic cXhhb3lhMDAzOjQ0Y2UzM2Q=\r\n\r\n"; //findMM(003)base64 code: username:password
+                            "Authorization: Basic cXhhb3lhMDAxOmEwMjk3Yzg=\r\n\r\n"; //findMM(001)base64 code: username:password
+//                            "Authorization: Basic cXhhb3lhMDAzOjQ0Y2UzM2Q=\r\n\r\n"; //findMM(003)base64 code: username:password
     char buffer[512];
     sprintf(buffer, loginstring, rtk_protocol.c_str());
 
@@ -79,20 +79,23 @@ void NtripRTK::RecvThread() {
             printf("recv rtk len= %d\n", recvLength);
             for(SerialData* sd:gnss->serialDataManager){
                 if(sd->ntripIn)sd->WtiteSerial(bufferRecv,recvLength);
-            }
+
             ParaseRTK(bufferRecv,recvLength);
             if(logOpen)fwrite(bufferRecv, recvLength, 1, fp);
-        }
+        }            }
     }
     fclose(fp);
 }
 
 int NtripRTK::SentGGA(const char *bufferGGA, int length) {
     //todo UpdateGGA;
+    //todo UpdateGGA;
+    //todo UpdateGGA;
+
     int ret = send(sock_, bufferGGA, length, 0);
     if(ret != length) {
         printf("socket send error! try to login again\n");
-        gnss->StopGNSS();
+//        gnss->StopGNSS();
         NtripLogin(gnss->rtk_protocol_);
     }
 }

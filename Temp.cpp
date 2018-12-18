@@ -19,7 +19,7 @@ void WriteSols(SolutionDeque sols,string saveName){
 }
 
 
-int main(){
+int main(int argc,char* argv[]){
 
     printf("\nin testing\n");
     GNSS *gnss = new GNSS();
@@ -37,7 +37,7 @@ int main(){
 
     FILE *fp;
     char name[128],dat[512],temp[256],tempc;
-    string ss = "1213_13_15";
+    string ss(argv[1]);
 
     string ssData0 = "../data/device0_" + ss + ".data";
     string ssData1 = "../data/device1_" + ss + ".data";
@@ -65,7 +65,7 @@ int main(){
             gnss->GetSerial(1)->ScanSerialData(dat,128);
         }
         fclose(fp);
-        WriteSols(gnss->GetSerial(1)->solRaw,"1213xyzRAC");
+        WriteSols(gnss->GetSerial(1)->solRaw,ss+"xyzRAC");
     } else printf("open data failed \n");
     //Reac raw0 measure data(ubx)
     if(fp = fopen(ssData0.data(),"rb")){
@@ -73,11 +73,11 @@ int main(){
             gnss->GetSerial(0)->ScanSerialData(dat,128);
         }
         fclose(fp);
-        WriteSols(gnss->GetSerial(0)->solRaw,"1213xyzBX");
-        WriteSols(gnss->solKalmans,"1213xyzKAL");
-        WriteSols(gnss->solKalDops,"1213xyzKAL2");
-        WriteSols(gnss->solRTKs,"1213xyzRTK");
-        WriteSols(gnss->solSingles,"1213xyzSIG");
+        WriteSols(gnss->GetSerial(0)->solRaw,ss+"xyzUBX");
+//        WriteSols(gnss->solKalmans,ss+"xyzKAL");
+        WriteSols(gnss->solKalDops,ss+"xyzKAL2");
+        WriteSols(gnss->solRTKs,ss+"xyzRTK");
+        WriteSols(gnss->solSingles,ss+"xyzSIG");
 
     } else printf("open data failed \n");
 //    gnss->svsManager.GetSv(SYS_GPS,20)

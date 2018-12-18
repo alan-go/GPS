@@ -86,19 +86,18 @@ def Anaxyz(file,colNum,begin):
 
 
 if __name__=="__main__":
+    ss = "../log/1215_07_56xyz"
     # AnaSv("../log/SV/3_30.txt",5,1)
     #
-    # Anaxyz("../log/xyzSIG.txt",4,1)
-    # Anaxyz("../log/xyzSIGNew.txt",4,1)
-    # Anaxyz("../log/xyzRTK.txt",4,1)
-    # Anaxyz("../log/xyzKalSig.txt",4,1)
-    # Anaxyz("../log/xyzKAL.txt",4,10)
-    Anaxyz("../log/xyzKAL2.txt",4,10)
-    # Anaxyz("../log/1213xyzKAL2.txt",4,10)
-    Anaxyz("../log/1213xyzBX.txt",4,10)
-    # Anaxyz("../log/1213xyzRAC.txt",4,10)
-    Anaxyz("../log/xyzRAC.txt",4,10)
-    # Anaxyz("../log/xyzBX.txt",4,10)
+    Anaxyz(ss+"RAC.txt",4,10)
+    Anaxyz(ss+"UBX.txt",4,10)
+    Anaxyz(ss+"KAL2.txt",4,10)
+    Anaxyz(ss+"NVT.txt",4,10)
+    Anaxyz(ss+"KAL.txt",4,10)
+
+    # Anaxyz(ss+"RTK.txt",4,10)
+
+    # Anaxyz(ss+"SIG.txt",4,10)
     plt.show()
 
 

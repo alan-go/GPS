@@ -17,91 +17,51 @@ void WriteSols(SolutionDeque sols,string saveName){
     }
     fclose(fp);
 }
-
+    auto split = [](char* str,char c,vector<string> &result){
+        char temp[16],*p = str;
+        int k=0,n=0;
+        while ((*p)&&14!=n){
+            if(*p==c){
+                temp[k]=0;
+                k=0;n++;
+                result.push_back(temp);
+                memset(temp,0,16);
+            } else{
+                temp[k++]=*p;
+            }
+            p++;
+        }
+    };
 
 int main(){
-    /* Check for existence */
-    system("ls");
-    if(0==access("/home/alan/Desktop/0.txt",0))printf("a.txt exits\n");
-
-    printf("\nin testing\n");
-    GNSS *gnss = new GNSS();
-    gnss->AddSerial(0,0,"/dev/ttyUSB0",115200,true,true);
-    gnss->AddSerial(1,0,"/dev/ttyUSB1",115200,true,true);
-    gnss->log = fopen("../log/log.txt","w");
-    gnss->logDebug = fopen("../log/logDebug.txt","w");
-    gnss->logTu = fopen("../log/logtu.txt","w");
-    gnss->logSingle = fopen("../log/logSingle.txt","w");
-    gnss->logSingleNew = fopen("../log/logSingleNew.txt","w");
-
-    gnss->useQianXun = false;
-    //ephem,qianxun,bds,gps
-//    gnss->Init(0,0,0,1);
-//    gnss->Init(0,0,1,0);
-    gnss->Init(1,0,1,1);
-
-    EphemSp3::ReadSp3s("/home/alan/projects/GPS/Sp3/hour20272_08",gnss->svsManager);
-
-    FILE *fp;
-    char name[128],dat[512],temp[256],tempc;
-//    string ss = "0921_13_02";
-//    string ss = "1030_08_44";
-//    string ss = "1110_11_28";
-    string ss = "1113_09_09";
-//    string ss = "1110_13_07";
-//        string ss = "0708-2.data";
-//        string ss = "0823";
-//        string ss = "0815-2";//soho novatal
-//        scanf("%s",name);
-
-
-
-    string ssData0 = "../data/device0_" + ss + ".data";
-    string ssData1 = "../data/device1_" + ss + ".data";
-    string ssRTK = "../data/" + ss + ".rtk";
-    printf("open file name:%s\n",ssRTK.data());
-    //ReadRTK data
-    if(fp = fopen(ssRTK.data(),"rb")){
-        int k = 0;
-        while (!feof(fp)){
-            dat[k++] = fgetc(fp);
-            if(0xd3==(u_char)dat[k-2]&&0==(dat[k-1]>>2)){
-                gnss->rtkManager.ParaseRTK(dat,k);
-                k=2;
-                dat[0] = dat[k-2];
-                dat[1] = dat[k-1];
-                memset(dat+2,0,510);
-            }
+    FILE* fp = fopen("../log/1215_07_56xyzNVT.txt","r");
+    FILE* fpw = fopen("../log/1215_07_56xyzNVTnew.txt","wb");
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer),fp)){
+        vector<string> strs;
+        split(buffer,',',strs);
+        double time = atof(strs[0].c_str());
+        printf("tiem= %f,%s\n", time,strs[0].c_str());
+        fprintf(fpw,"%.4f",time/1000-86400*6);
+        for (int i = 1; i < strs.size(); ++i) {
+            fprintf(fpw,",%s",strs[i].c_str());
         }
-        fclose(fp);
-    } else printf("open rtk data failed \n");
+        fprintf(fpw,"\n");
+    }
+    fclose(fp);fclose(fpw);
 
-    //Reac raw1 measure data(ubx)
-    if(fp = fopen(ssData1.data(),"rb")){
-        while (128==fread(dat,1,128,fp)){
-            gnss->GetSerial(1)->ScanSerialData(dat,128);
-        }
-        fclose(fp);
-//        WriteSols(gnss->GetSerial(1)->solRaw,"xyzOf1030_08_44RAC");
-    } else printf("open data failed \n");
-    //Reac raw0 measure data(ubx)
-    if(fp = fopen(ssData0.data(),"rb")){
-        while (128==fread(dat,1,128,fp)){
-            gnss->GetSerial(0)->ScanSerialData(dat,128);
-        }
-        fclose(fp);
-        WriteSols(gnss->GetSerial(0)->solRaw,"xyzBX");
-        WriteSols(gnss->GetSerial(1)->solRaw,"xyzRAC");
-        WriteSols(gnss->solKalmans,"xyzKAL");
-        WriteSols(gnss->solKalDops,"xyzKAL2");
-        WriteSols(gnss->solRTKs,"xyzRTK");
-        WriteSols(gnss->solSingles,"xyzSIG");
-        WriteSols(gnss->solSigKals,"xyzKalSig");
+    double dd = 0.0001;
+    Vector3d xyz_,xyzw,xyzj;
+    Vector3d lla_(40*D2R,116.3*D2R,60);
+    Vector3d llaw((40+dd)*D2R,116.3*D2R,60);
+    Vector3d llaj(40.0*D2R,(116.3+dd)*D2R,60);
 
-    } else printf("open data failed \n");
-//    gnss->svsManager.GetSv(SYS_GPS,20)
-
-//    getchar();
-
+    LLA2XYZ(lla_,xyz_);
+    LLA2XYZ(llaw,xyzw);
+    LLA2XYZ(llaj,xyzj);
+    ShowV3(xyz_,"xyz");
+    ShowV3(xyzw,"xyzw");
+    ShowV3(xyzj,"xyzj");
+    printf("dn,dw %f,%f\n",(xyzw-xyz_).norm(),(xyzj-xyz_).norm() );
     return 0;
 }

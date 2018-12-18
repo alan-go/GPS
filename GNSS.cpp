@@ -7,7 +7,7 @@ GNSS::GNSS() :useGPS(1),useBeiDou(1),useQianXun(1),ephemType(0),logOpen(0){
     rtkManager.serverIP_ = "60.205.8.49";
     rtkManager.port_ = 8002;
     xyzDefault<<-2.17166e+06, 4.38439e+06, 4.07802e+06;
-    llaDefault<<40.0*R2D, 116.345*R2D, 59.07;
+    llaDefault<<40.0*D2R, 116.345*D2R, 59.07;
 
     time_t timeNow = time(NULL);
     utcTime=gmtime(&timeNow);
