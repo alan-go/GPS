@@ -139,6 +139,7 @@ public:
     double SmoothKalman(int len,int begin=0);
     double SmoothKalman0();
     double DetectCycleSlip();
+    bool operator=(SV* sv){return sv->type==type&&sv->svId==svId;}
 
 //private:
     double InterpLine(double xi,vector<double>&x,vector<double>&y);
@@ -209,13 +210,21 @@ public:
                 xhead++;
                 for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->azimuthAngle*R2D;}
                 xhead++;
-                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->cno;}
-                xhead++;
                 for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->stdevPr;}
                 xhead++;
                 for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->stdevCp;}
                 xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->stdevDo;}
+                xhead++;
                 for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->trkStat;}
+                xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->lockTime;}
+                xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->cycleSlip;}
+                xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->cycleRes;}
+                xhead++;
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->cno;}
                 xhead++;
             case 0:
                 for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->type;}
@@ -286,7 +295,7 @@ public:
 class SvAll{
 public:
     GNSS* gnss;
-        Ionosphere ionKlob;
+    Ionosphere ionKlob;
 
     vector<SvSys*> sysAll,sysUsed;
     vector<SV*> svAll, svUsed;
@@ -298,18 +307,19 @@ public:
     ~SvAll();
     void InitAlloc();
     void UpdateEphemeris(char * subFrame);
+
+    //令sys->table和svUsed一致
     int UpdateSVs(string tag="NULL"){
-       int count=0;
-       vector<SV*> result;
-       for(SvSys* sys:sysUsed){
-           if("elev"==tag)sys->sortElev(tag);
-           for(SV* sv:sys->table){
-               result.push_back(sv);
-               count++;
-           }
-       }
-        svUsed.swap(result);
-        return count;
+        sysUsed=vector<SvSys*>();
+        for(SV* sv:svUsed){
+            GetUsedSys(sv->type)->table.push_back(sv);
+        }
+        if("elev"==tag){
+            for(SvSys* sys:sysUsed){
+                sys->sortElev(tag);
+            }
+        }
+        return svUsed.size();
     }
     //id begin from 1
     SV* GetSv(SysType type, int id){
@@ -335,6 +345,7 @@ public:
             printf("svSys Data not found!\n");
         return result;
     }
+    //如果没有找到,就new一个
     SvSys* GetUsedSys(SysType type){
         SvSys* result = nullptr;
         for(SvSys* sys:sysUsed){
@@ -347,6 +358,7 @@ public:
         return result;
     }
     int AddToUsed(SV *sv);
+    int RemoveSvFromUsed(SV* sv);
 private:
 };
 

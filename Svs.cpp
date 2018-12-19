@@ -48,7 +48,16 @@ int SvAll::AddToUsed(SV *sv) {
     svUsed.push_back(sv);
     GetUsedSys(sv->type)->table.push_back(sv);
 }
-
+//
+int SvAll::RemoveSvFromUsed(SV *sv){
+    vector<SV*> temp;
+    for(SV* svi:svUsed){
+        if(svi==sv)continue;
+        temp.push_back(svi);
+    }
+    svUsed.swap(temp);
+    UpdateSVs();
+}
 SvAll::~SvAll(){}
 
 
@@ -83,7 +92,7 @@ void SV::PrintInfo(int printType) {
     //2:bst ephemeris
     switch (printType){
         case 0:
-            printf("sv:%d,%02d  %s", type, svId,tip);
+            printf("sv:%d,%02d  %s\n", type, svId,tip);
             break;
         case 1:
 //            cout<<"+++++++SvPosition:"<<type<<","<<svId<<endl;
@@ -216,16 +225,17 @@ bool SV::ElevGood() {
 }
 
 bool SV::MeasureGood() {
-    Measure *temp = measureDat.front();
-    measureGood = temp->prMes<45e6&&temp->prMes>15e6;
+    Measure *ms0 = measureDat.front();
+    measureGood = ms0->prMes<45e6&&ms0->prMes>15e6;
 
     if(!measureGood){
-        sprintf(tip,"prError:%.1f",temp->prMes);
+        sprintf(tip,"prError:%.1f",ms0->prMes);
     }
     if (trackCount<5) {
         sprintf(tip,"trackCount %d<5", trackCount);
         return 0;
     }
+//    if(ms0->trkStat<3)return 0;
 
     return measureGood;
 }
@@ -234,15 +244,15 @@ double SV::InterpRtkData(double time, int sigInd) {
     int InterpLength = 5;
 
     auto ite = rtkData.begin();
-    double distanse = 100;
+    double dt = 100;
 
     for (; ite < rtkData.end() - 5; ite++) {
-        distanse = time - (*ite)->rtktime;
-        if(distanse>0)break;
+        dt = time - (*ite)->rtktime;
+        if(dt>0)break;
     }
-    if(distanse>2)
+    if(dt>2)
     {
-        sprintf(tip," %drtk,cloest=%.1f",rtkData.size(),distanse);
+        sprintf(tip," %drtk,cloest=%.1f",rtkData.size(),dt);
         return 0;
     }
 //    printf("time: %lf,%lf\n", time,(*ite)->rtktime);

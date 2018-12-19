@@ -32,6 +32,7 @@ public:
     int count{0};
 //    char logFile[64];
     bool logOpen{1};
+    bool clockReset{0};
     std::FILE *log,*logRTK,*logDebug,*logTu;
     std::FILE *logSingle,*logSingleNew,*logKalman;
     struct tm *utcTime;

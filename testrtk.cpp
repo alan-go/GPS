@@ -34,15 +34,15 @@ void WriteSols(SolutionDeque sols,string saveName){
     };
 
 int main(){
-    FILE* fp = fopen("../log/1215_07_56xyzNVT.txt","r");
-    FILE* fpw = fopen("../log/1215_07_56xyzNVTnew.txt","wb");
+    FILE* fp = fopen("/home/alan/Downloads/novatel_inspvax.txt","r");
+    FILE* fpw = fopen("../log/1219_07_41xyzNVT.txt","wb");
     char buffer[256];
     while (fgets(buffer, sizeof(buffer),fp)){
         vector<string> strs;
         split(buffer,',',strs);
         double time = atof(strs[0].c_str());
         printf("tiem= %f,%s\n", time,strs[0].c_str());
-        fprintf(fpw,"%.4f",time/1000-86400*6);
+        fprintf(fpw,"%.4f",time/1000-86400*3);
         for (int i = 1; i < strs.size(); ++i) {
             fprintf(fpw,",%s",strs[i].c_str());
         }
@@ -50,7 +50,7 @@ int main(){
     }
     fclose(fp);fclose(fpw);
 
-    double dd = 0.0001;
+    double dd = 0.000001;
     Vector3d xyz_,xyzw,xyzj;
     Vector3d lla_(40*D2R,116.3*D2R,60);
     Vector3d llaw((40+dd)*D2R,116.3*D2R,60);

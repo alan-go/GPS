@@ -100,8 +100,8 @@ int GNSS::ParseRawData(char *message, int len) {
     double rcvtow = *(double*)raw;
     int week = *(uint16_t*)(raw+8);
     int numMeas = *(u_int8_t*)(raw+11);
-    int tracStat = *(uint8_t *)(raw+12);
-    fprintf(logTu,"%f,%d\n",rcvtow,tracStat);
+    int recStat = *(uint8_t *)(raw+12);
+    fprintf(logTu,"%f,%d\n",rcvtow,recStat);
     rTime = GnssTime(week,rcvtow);
     printf("prepare rawdata ,len = %d numMesa=%d,,week%d,tow%.4f\n",len,numMeas,week,rcvtow);
     if(0==numMeas)return -1;
@@ -142,7 +142,7 @@ int GNSS::ParseRawData(char *message, int len) {
 
 int GNSS::Test(vector<SV *> svs) {
     printf("-----coutnt %d\n", ++count);
-    if(count<1000) return -1;
+    if(count<13000) return -1;
     for(SV*sv:svs){
         sv->FPrintInfo(0);
 
@@ -190,13 +190,12 @@ int GNSS::Test(vector<SV *> svs) {
 //    }
 
 //    PosSolver solverRtk(svsManager, &rtkManager, this);
-    if(0== solver.PositionRtk(svs)){
-        solver.solSingle.Show("###RTK###");
-        (solver.solSingle-solRAC).Show("###RTK-RAC###",1);
-        solRTKs.push_front(solver.solSingle);
-    }
+//    if(0== solver.PositionRtk(svs)){
+//        solver.solSingle.Show("###RTK###");
+//        (solver.solSingle-solRAC).Show("###RTK-RAC###",1);
+//        solRTKs.push_front(solver.solSingle);
+//    }
 
-//    return 0;
 //    kalmanSolver.PrepareSVsData(svs);
 //    if(0== kalmanSolver.PositionKalman(svs)){
 //        kalmanSolver.solSingle.Show("###Kalman###");

@@ -78,26 +78,36 @@ def Anaxyz(file,colNum,begin):
     # plt.scatter(data[0], data[1])
     # plt.scatter(data[0], data[2])
 
-    plt.figure("file")
     plt.plot(data[2], data[1])
-
-
     data.clear()
 
+def Anacol(file,width, colX,colY, begin):
+    ReadData(file, width, begin)
+
+    plt.plot(data[colX], data[colY])
+    data.clear()
 
 if __name__=="__main__":
-    ss = "../log/1215_07_56xyz"
+    # ss = "../log/1215_07_56xyz"
+    ss = "../log/1219_07_41xyz"
+    width = 4;
+    plt.figure(ss)
+
+    # Anaxyz(ss+"RAC.txt",width,10)
+    Anaxyz(ss+"RTK.txt",4,10)
+    # Anaxyz(ss+"SIG.txt",4,10000)
+
+    Anaxyz(ss+"UBX.txt",width,10)
+    Anaxyz(ss+"KAL2.txt",width,10)
+    Anaxyz(ss+"NVT.txt",width,10)
+    # Anaxyz(ss+"KAL.txt",width,10)
     # AnaSv("../log/SV/3_30.txt",5,1)
     #
-    Anaxyz(ss+"RAC.txt",4,10)
-    Anaxyz(ss+"UBX.txt",4,10)
-    Anaxyz(ss+"KAL2.txt",4,10)
-    Anaxyz(ss+"NVT.txt",4,10)
-    Anaxyz(ss+"KAL.txt",4,10)
 
-    # Anaxyz(ss+"RTK.txt",4,10)
-
-    # Anaxyz(ss+"SIG.txt",4,10)
+    # ss = "../log/logtu.txt"
+    # width = 4;
+    # plt.figure(ss)
+    # Anacol(ss,2,0,1,1);
     plt.show()
 
 

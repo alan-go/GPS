@@ -339,6 +339,7 @@ int NtripRTK::ParaseRTK(char *buffer, int length) {
             crc24Q.reset();
             crc24Q.process_bytes(buffer+i,messageLength+3);
             if(checkSumGet==crc24Q.checksum()){
+//                if(1){
 //                printf("CheckSum OK.\n");
                 memcpy(buferRTK,buffer+i+3,messageLength);
                 uint32_t type = NetToHost32(buferRTK,0,12);

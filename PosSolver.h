@@ -46,7 +46,7 @@ public:
     int PrepareSVsData(vector<SV*> &_svsIn);
     int SelectSvsFromVisible(vector<SV*> &all);
     int ProcessRtkData();
-    int UpdateSvsPosition(vector<SV*> &svs, GnssTime rTime, int ephType);
+    int UpdateSvsPosition(GnssTime rTime, int ephType);
     int SolvePosition(vector<SV*>svsForCalcu);
     int SolvePositionBeiDouGPS(vector<SV*>svsForCalcu);
     int SolvePositionCalman();

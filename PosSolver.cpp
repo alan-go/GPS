@@ -46,7 +46,7 @@ int PosSolver::PrepareSVsData(vector<SV*> &svsIn) {
         return -1;
     }
     memcpy(tu,gnss->solSingle.tu,Nsys* sizeof(double));
-    UpdateSvsPosition(svsBox.svUsed, timeSol, gnss->ephemType);
+    UpdateSvsPosition(timeSol, gnss->ephemType);
     nSat = svsBox.UpdateSVs("elev");
     nSys = svsBox.sysUsed.size();
     return 0;
@@ -118,31 +118,31 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
     solSingle = Solution(timeSol,xyz,vxyz,tu);
     ///////////////////////DeBug/////////////////////////
     int yhead=0,xhead=3;
-        MatrixXd G(nSat,3+nSys),Gt(3+nSys,nSat);
-        G.fill(0);
-        for(SvSys* sys:svsBox.sysUsed){
-            int Ni = sys->table.size();
-            if(0==Ni)continue;
-            VectorXd rr(Ni),bi(Ni),pci;
-            MatrixXd Ei = sys->GetE(xyz,rr);
-            pci = sys->DiffZero(CalcuPc,1);
-            bi = pci-rr-tu[sys->type]*(VectorXd::Ones(Ni));
+    MatrixXd G(nSat,3+nSys),Gt(3+nSys,nSat);
+    G.fill(0);
+    for(SvSys* sys:svsBox.sysUsed){
+        int Ni = sys->table.size();
+        if(0==Ni)continue;
+        VectorXd rr(Ni),bi(Ni),pci;
+        MatrixXd Ei = sys->GetE(xyz,rr);
+        pci = sys->DiffZero(CalcuPc,1);
+        bi = pci-rr-tu[sys->type]*(VectorXd::Ones(Ni));
 
-            VectorXd rrRAC(Ni),biRAC(Ni),pciRAC;
-            MatrixXd Eir = sys->GetE(gnss->xyzRAC,rrRAC);
-            pciRAC = sys->DiffZero(CalcuPc,1);
-            biRAC = pci-rrRAC-tu[sys->type]*(VectorXd::Ones(Ni));
+        VectorXd rrRAC(Ni),biRAC(Ni),pciRAC;
+        MatrixXd Eir = sys->GetE(gnss->xyzRAC,rrRAC);
+        pciRAC = sys->DiffZero(CalcuPc,1);
+        biRAC = pci-rrRAC-tu[sys->type]*(VectorXd::Ones(Ni));
 
-            sys->MakeDebug(2);
-            sys->AddAnaData(bi);
-            sys->AddAnaData(biRAC);
-            sys->Show();
+        sys->MakeDebug(2);
+        sys->AddAnaData(bi);
+        sys->AddAnaData(biRAC);
+        sys->Show();
 
-            b.segment(yhead,Ni)<<bi;
-            G.block(yhead,0,Ni,3)<<-Ei;
-            G.block(yhead,xhead,Ni,1)<<VectorXd::Ones(Ni);
-            yhead+=Ni;xhead++;
-        }
+        b.segment(yhead,Ni)<<bi;
+        G.block(yhead,0,Ni,3)<<-Ei;
+        G.block(yhead,xhead,Ni,1)<<VectorXd::Ones(Ni);
+        yhead+=Ni;xhead++;
+    }
     ///////////////////////DeBug/////////////////////////
     return 0;
 }
@@ -171,33 +171,55 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
         sv->DetectCycleSlip();
 
         svsBox.AddToUsed(sv);
-       sprintf(sv->tip,"++ok");
+        sprintf(sv->tip,"++ok");
     }
-    for(SV* sv:all) sv->PrintInfo(0);
+//    for(SV* sv:all) sv->PrintInfo(0);
 }
 
-int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rTime, int ephType) {
-    printf("\nN0= %d\n", svs.size());
+int PosSolver::UpdateSvsPosition( GnssTime rTime, int ephType) {
+    printf("\nN0= %d\n", svsBox.svUsed.size());
     printf("rcvtow %.3f\n", rTime.tow);
+    vector<SV*> temp;
 //    double ep[6];
 //    rTime.time2epoch(ep);
-    for(SV* sv:svs){
-        sv->PrintInfo(1);
+    for(SV* sv:svsBox.svUsed){
+        sv->PrintInfo(0);
+//        printf("a0a1a2 %.10f,%.10f,%.10f\n",sv->ephemBst->clk.a0,sv->ephemBst->clk.a1,sv->ephemBst->clk.a2 );
         Measure *ms = sv->measureDat.front();
         double tow,tot;
         GnssTime ts0 = rTime;
         ts0 += - ms->prMes/Light_speed;
         //sp3文件使用的是GPS时(虽然使用年月日表示的)
         //todo 相对论修正
+
+//        //////////Debug////////////
+//        if(sv->ephemSp3->CalcuTs(ts0))continue;
+//        printf("ts1 ok %f\n",sv->tsdt*Light_speed );
+////        if(sv->ephemSp3->CalcuECEF(sv->ts))continue;
+//        if(sv->ephemSp3->CalcuECEF(ts0))continue;
+//        Vector3d svxyz0 = sv->xyz;
+//
+//        if(SYS_BDS == sv->type)ts0+=-14;
+//        if(sv->ephemBst->CalcuTs(ts0))continue;
+//        printf("ts0 ok %f,tgd=%f\n",sv->tsdt*Light_speed,sv->ephemBst->clk.TGD1*Light_speed );
+////        if(sv->ephemBst->CalcuECEF(sv->ts))continue;
+//        if(sv->ephemBst->CalcuECEF(ts0))continue;
+//        Vector3d svxyz1 = sv->xyz;
+//        Vector3d svdtxyz01 = svxyz0-svxyz1;
+//        ShowV3(svxyz0,"xyz0");
+//        ShowV3(svxyz1,"xyz1");
+//        ShowV3(svdtxyz01,"dtephem");
+//
+//        //////////Debug////////////
         switch (ephType){
             case 1:
-                if(sv->ephemSp3->CalcuTs(ts0))return -1;
-                if(sv->ephemSp3->CalcuECEF(sv->ts))return -1;
+                if(sv->ephemSp3->CalcuTs(ts0))continue;
+                if(sv->ephemSp3->CalcuECEF(sv->ts))continue;
                 break;
             case 0:
                 if(SYS_BDS == sv->type)ts0+=-14;
-                if(sv->ephemBst->CalcuTs(ts0))return -1;
-                if(sv->ephemBst->CalcuECEF(sv->ts))return -1;
+                if(sv->ephemBst->CalcuTs(ts0))continue;
+                if(sv->ephemBst->CalcuECEF(sv->ts))continue;
 
 //                sv->CalcuTs(ts0);
 //                sv->CalcuECEF(sv->ts);
@@ -206,11 +228,15 @@ int PosSolver::UpdateSvsPosition(vector<SV *> &svs, GnssTime rTime, int ephType)
             default:
                 break;
         }
-        sv->PrintInfo(1);
         tot = (ms->prMes-tu[sv->type])/Light_speed+sv->tsdt;
         sv->RotateECEF(tot);
         sv->CorrectIT(xyz,lla,tow);
+        temp.push_back(sv);
+        sv->PrintInfo(0);
+
     }
+    svsBox.svUsed.swap(temp);
+    svsBox.UpdateSVs();
     return 0;
 }
 
@@ -237,22 +263,29 @@ int PosSolver::MakeGGA(char *gga, Vector3d lla, GnssTime gpsTime) {
 
 int PosSolver::ProcessRtkData() {
     int sigInd = 1;
-//    SvAll temp=svsBox;
-//    svsBox.sysUsed.clear();
-
-    for(auto ites=svsBox.sysUsed.begin();ites!=svsBox.sysUsed.end();){
-        SvSys* sys = *ites;
-//        for(SvSys* sys:temp.sysUsed){
-        for(auto ite=sys->table.begin();ite!=sys->table.end();){
-            SV* sv = *ite;
-            double time = timeSol.tow - tu[sv->type]/Light_speed;
-            if(sv->type==SYS_BDS)time-=14;
-            double pr = sv->InterpRtkData(time,sigInd);
-//            if(0!=pr)svsBox.AddToUsed(sv);
-            if(0==pr)ite=sys->table.erase(ite); else ite++;
-        }
-        if(sys->table.empty())ites=svsBox.sysUsed.erase(ites); else ites++;
+    vector<SV*> temp;
+    for(SV* sv:svsBox.svUsed){
+        double time = timeSol.tow - tu[sv->type]/Light_speed;
+        if(sv->type==SYS_BDS)time-=14;
+        double pr = sv->InterpRtkData(time,sigInd);
+        if(0!=pr) temp.push_back(sv);
     }
+    svsBox.svUsed.swap(temp);
+
+
+//    for(auto ites=svsBox.sysUsed.begin();ites!=svsBox.sysUsed.end();){
+//        SvSys* sys = *ites;
+////        for(SvSys* sys:temp.sysUsed){
+//        for(auto ite=sys->table.begin();ite!=sys->table.end();){
+//            SV* sv = *ite;
+//            double time = timeSol.tow - tu[sv->type]/Light_speed;
+//            if(sv->type==SYS_BDS)time-=14;
+//            double pr = sv->InterpRtkData(time,sigInd);
+////            if(0!=pr)svsBox.AddToUsed(sv);
+//            if(0==pr)ite=sys->table.erase(ite); else ite++;
+//        }
+//        if(sys->table.empty())ites=svsBox.sysUsed.erase(ites); else ites++;
+//    }
     nSat = svsBox.UpdateSVs();
     nSys = svsBox.sysUsed.size();
 }
@@ -311,6 +344,7 @@ int PosSolver::PositionKalman(vector<SV *> _svsIn) {
     int sigInd = 1;
     double lastTime = gnss->solKalmans[0].time.tow;
     double dt = timeSol.tow - lastTime;
+    printf("Kalman Info========= count=%d,nSat=%d,nSys=%d,dt=%f\n", gnss->count, nSat, nSys, dt);
     ProcessRtkData();
 
     printf("Kalman Info========= count=%d,nSat=%d,nSys=%d,dt=%f\n", gnss->count, nSat, nSys, dt);
@@ -466,26 +500,29 @@ int PosSolver::ResetKalRtk(int N, int M, Kalman & kal, int L){
         kal.state=1;
     }
     for(SV* sv:svsBox.svUsed)if(sv->kalState==0){
-        sv->Ii=sv->I;
-        sv->IiP=pow((cos(sv->elevationAngle)+0.3)*30,2);
-        Measure* ms = sv->measureDat[0];
-        double lambda=GetFreq(sv->type,1,1);
+            sv->Ii=sv->I;
+            sv->IiP=pow((cos(sv->elevationAngle)+0.3)*30,2);
+            Measure* ms = sv->measureDat[0];
+            double lambda=GetFreq(sv->type,1,1);
 //        ms->cycle=(ms->cpMes-ms->prMes+2*sv->I)/lambda;
-        ms->cycleP=10000;
-        sv->kalState=1;
+            ms->cycleP=10000;
+            sv->kalState=1;
     }
+    ///////////////////////DEbug/////////////////////////////
 
+    memcpy(solKalDopp.tu,solSingle.tu,Nsys* sizeof(double));
+    ///////////////////////DEbug/////////////////////////////
     kal.Pnn.block(0,0,9,9)=P99;
     kal.x.head(3)=xyz=solKalDopp.xyz;
-    kal.Qnn.block(0,0,3,3)=1.12*Matrix3d::Identity();
+    kal.Qnn.block(0,0,3,3)=1.52*Matrix3d::Identity();
 
     kal.x.segment(3,3)=vxyz=solKalDopp.vxyz;
-    kal.Qnn.block(3,3,3,3)=0.31*Matrix3d::Identity();
+    kal.Qnn.block(3,3,3,3)=0.51*Matrix3d::Identity();
 
     kal.x(6)=solKalDopp.tu[SYS_BDS];
     kal.x(7)=solKalDopp.tu[SYS_GPS];
     kal.x(8)=tuf;
-    kal.Qnn.block(6,6,3,3)=0.21*Matrix3d::Identity();
+    kal.Qnn.block(6,6,3,3)=0.61*Matrix3d::Identity();
 
 }
 
@@ -494,12 +531,19 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
     double dts = timeSol.tow-timeSolLast.tow;
     ProcessRtkData();
 
+    for(SvSys* sys:svsBox.sysUsed){
+        sys->MakeDebug(1);
+        sys->Show();
+    }
 
     printf("Kalman Info========= count=%d,nSat=%d,nSys=%d\n", gnss->count,nSat,nSys);
 
     if(nSat-nSys<4){
+        ////debug
+//        kalRtk.state=0;
+        ////debug
         printf("Not enough svs nSat,nSys=%d,%d\n",nSat,nSys);
-        return -1;
+//        return -1;
     }
 
     int ny = 3*nSat-2*nSys,nx = nSat+9,yhead,xhead;
@@ -519,12 +563,14 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
             double dt01 = ms0->time.tow - ms1->time.tow;
             ms0->cycle += ms0->cycleSlip;
             ms0->cycleP+=ms0->cycleSlipQ;
-            if (ms0->trackTime < 1) {
-                ms0->cycleP += pow(10 * dt01 * dt01, 2);
+            if (ms0->lockTime < 500) {
+//                ms0->cycleP += pow(3000 * dt01 * dt01, 2);
+                ms0->cycleP = pow(100, 2);
                 if (abs(ms0->cycleRes) > 0.1){
                     ms0->cycleP += pow(1000*ms0->stdevDo*ms0->cycleRes,2);
                 }
             }
+            ms0->cycleP+=pow(0.25,2);
 
             kalRtk.x(xhead + i) = ms0->cycle;
             kalRtk.Pnn(xhead + i, xhead + i) = ms0->cycleP;
@@ -535,7 +581,7 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
 //    预测x,
 //        cout<<"Pnnbefore:  "<<endl<<kalRtk.Pnn<<endl;
 //        cout<<"Qnnbefore:  "<<endl<<kalRtk.Qnn<<endl;
-   kalRtk.Predict(dts);
+    kalRtk.Predict(dts);
 //    kalRtk.Pnn+=kalRtk.Qnn;
     xyz = kalRtk.x.head(3);
 //    ShowV3(xyz,"Predict kal1");
@@ -736,14 +782,14 @@ int PosSolver::ResetKalSingle(int N, int M, vector<SV *> &svsIn, int L) {
         kalSingle.state=1;
     }
     for(SV* sv:svsIn)if(sv->kalState==0){
-        sv->Ii=sv->I;
-        sv->IiP=pow((cos(sv->elevationAngle)+0.3)*30,2);
-        Measure* ms = sv->measureDat[0];
-        double lambda=GetFreq(sv->type,1,1);
-        ms->cycle=(ms->cpMes-ms->prMes+2*sv->I)/lambda;
-        ms->cycleP=5000;
-        sv->kalState=1;
-    }
+            sv->Ii=sv->I;
+            sv->IiP=pow((cos(sv->elevationAngle)+0.3)*30,2);
+            Measure* ms = sv->measureDat[0];
+            double lambda=GetFreq(sv->type,1,1);
+            ms->cycle=(ms->cpMes-ms->prMes+2*sv->I)/lambda;
+            ms->cycleP=5000;
+            sv->kalState=1;
+        }
 
     kalSingle.Pnn.block(0,0,9,9)=P99;
     kalSingle.x.head(3)=solKalSigle.xyz;
@@ -789,7 +835,7 @@ int PosSolver::PosKalSng(vector<SV *> _svsIn) {
 
     kalSingle.Predict(dts);
     yhead=0;xhead=9;
-     for(SvSys* sys:svsBox.sysUsed){
+    for(SvSys* sys:svsBox.sysUsed){
         double lambdai = GetFreq(sys->type,sigInd,1);
         int Ni = sys->table.size();
         for (int i = 0; i < Ni; ++i) {
