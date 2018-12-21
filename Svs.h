@@ -12,6 +12,9 @@ class MSM4data;
 class EphemSp3;
 class EphemBst;
 class SvAll;
+
+
+
 struct Ionosphere{
     double a0,a1,a2,a3;
     double b0,b1,b2,b3;
@@ -87,6 +90,55 @@ public:
 class SV{
 public:
 
+    class DisPredict{
+    public:
+        GnssTime time;
+        Vector2d x,Ht;
+        Matrix2d P22,Q22,A22;
+        double y,hx,R;
+        bool start{0};
+        int Predict(GnssTime t1){
+            if(!start){
+                time=t1;
+                start=1;
+                return 0;
+            }
+            double dt = t1 - time;
+            time = t1;
+            A22<<1,dt,0,1;
+            Q22<<0,0,0,0.1*dt;
+            P22=A22*P22*A22.transpose()+Q22;
+            cout<<"predictX"<<endl<<x<<endl;
+            cout<<"predictP"<<endl<<P22<<endl;
+        }
+        int Rectify(Solution sol){
+            hx=x[0];
+            MatrixXd H12=Ht.transpose();
+//            MatrixXd Kk=P22*Ht*(H12*P22*Ht+R).inverse();
+//            MatrixXd tempm=
+            double temp = (H12*P22*Ht)(0,0)+R;
+            MatrixXd Kk = P22*Ht/temp;
+            cout<<"RectifyKk"<<endl<<Kk<<endl;
+            VectorXd xadd = Kk*(y-hx);
+            cout<<"Rectifyxadd"<<endl<<xadd<<endl;
+            x=x+xadd;
+            P22 = (MatrixXd::Identity(2,2)-Kk*H12)*P22;
+            cout<<"   y:  "<<y<<endl;
+            cout<<"RectifyX"<<endl<<x<<endl;
+            cout<<"RectifyP"<<endl<<P22<<endl;
+
+
+        }
+        DisPredict(){
+            P22<<1e9,0,0,1e9;
+            A22<<1,1,0,1;
+            Ht<<1,0;
+        }
+    };
+
+public:
+    DisPredict pred;
+
     EphemSp3 *ephemSp3;
     EphemBst *ephemBst;
     int trackCount;
@@ -145,6 +197,9 @@ public:
     double InterpLine(double xi,vector<double>&x,vector<double>&y);
 };
 
+
+void sortSvByElev(vector<SV*> svs,string tag="elev");
+
 class BeiDouSV:public SV{
 //public:
 //    //signal number:2,3,4;  8,9,10;  14,15,16;
@@ -187,7 +242,7 @@ public:
     }
     void sortElev(string tag){
         if("elev"==tag)
-        sort(table.begin(),table.end(),[](SV* left,SV* right)->bool{ return left->elevationAngle>right->elevationAngle;});
+            sort(table.begin(),table.end(),[](SV* left,SV* right)->bool{ return left->elevationAngle>right->elevationAngle;});
     }
     void MakeDebug(int s){
         int Ni = table.size();
@@ -201,7 +256,7 @@ public:
                 for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->measureDat.front()->cpMes;}
                 xhead++;
             case 2:
-               for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->I;}
+                for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->I;}
                 xhead++;
                 for(int i=0;i<Ni;i++){dataDebug(i,xhead)=table[i]->T;}
                 xhead++;

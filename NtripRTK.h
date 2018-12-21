@@ -25,6 +25,8 @@ public:
     MSM4Cell():df400(0),df401(0),df420(0),df402(0),df403(0),prMes(0),cpMes(0){}
 };
 
+
+
 class MSM4data{//每个星有一个MSM4data
 public:
     double rtktime;
@@ -34,6 +36,12 @@ public:
     MSM4Cell sigData[32];
     bool isOk;
     MSM4data():rtktime(0),refID(0),df397(0),df398(0),prRough(0),isOk(0){}
+};
+class RefStation{
+public:
+    uint32_t id;
+    Eigen::Vector3d pos;
+    RefStation(int _id,Vector3d _pos):id(_id),pos(_pos){};
 };
 
 class NtripRTK{
@@ -46,6 +54,7 @@ public:
     bool logOpen{1};
     //vector<MSM4data*>里面是不同时刻的数据，0是最近的记录
 //    vector<MSM4data*> rtkDataGps[Ngps],rtkDataBeiDou[Nbds];
+    vector<RefStation*> refs;
     uint32_t refStationId;
     bool isPhysicalStation;
     bool singleReceiver;
@@ -70,6 +79,8 @@ public:
     int ParaseRTK(char *buffer, int length);
     int TestParase(char *bufferRecv,int recvLength);
     MSM4data* GetRtkRecord(int satInd,int timeInd, SysType type);
+    RefStation* AddRefStation(u_int32_t id,Eigen::Vector3d positon);
+    RefStation* GetRefStation(u_int32_t id);
 
 
 private:

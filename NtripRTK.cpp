@@ -164,7 +164,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SysType type) {
         if(temp&(128>>headi)){
             sigs.push_back(id);
             nSig++;
-            printf("  [Sig:%d] ",id+1);
+//            printf("  [Sig:%d] ",id+1);
         }
     }
     //cell
@@ -327,6 +327,22 @@ int NtripRTK::AddRtkRecord(MSM4data *data, SysType sys, int id) {
 
 MSM4data* NtripRTK::GetRtkRecord(int satInd, int timeInd, SysType type) {
     return gnss->svsManager.GetSv(type,satInd)->rtkData[timeInd];
+}
+
+RefStation *NtripRTK::GetRefStation(u_int32_t id) {
+    for(RefStation* ref:refs){
+        if(ref->id==id)return ref;
+    }
+    return nullptr;
+}
+
+RefStation* NtripRTK::AddRefStation(u_int32_t id, Eigen::Vector3d positon) {
+    RefStation* ref = GetRefStation(id);
+    if(ref!=nullptr)
+        return ref;
+    RefStation* refnew = new RefStation(id,positon);
+    refs.push_back(refnew);
+    return refnew;
 }
 
 int NtripRTK::ParaseRTK(char *buffer, int length) {

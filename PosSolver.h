@@ -35,6 +35,7 @@ public:
     PosSolver(SvAll svs, NtripRTK *rtk, GNSS *gnss);
     ~PosSolver();
     int PositionSingle(vector<SV*> _svsIn);
+    int AnaMeasure();
     int PositionSingleNew(vector<SV*> _svsIn);
     int PositionRtk();
     int PositionRtk(vector<SV*> _svsIn);
@@ -46,6 +47,7 @@ public:
     int PrepareSVsData(vector<SV*> &_svsIn);
     int SelectSvsFromVisible(vector<SV*> &all);
     int ProcessRtkData();
+    int ProcessRtkData(GnssTime time,vector<SV*> svs);
     int UpdateSvsPosition(GnssTime rTime, int ephType);
     int SolvePosition(vector<SV*>svsForCalcu);
     int SolvePositionBeiDouGPS(vector<SV*>svsForCalcu);

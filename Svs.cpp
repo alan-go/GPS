@@ -231,10 +231,11 @@ bool SV::MeasureGood() {
     if(!measureGood){
         sprintf(tip,"prError:%.1f",ms0->prMes);
     }
-    if (trackCount<5) {
-        sprintf(tip,"trackCount %d<5", trackCount);
+    if (ms0->lockTime<700) {
+        sprintf(tip,"lockTime%fd<700ms", ms0->lockTime);
         return 0;
     }
+//    if(ms0->trkStat<15)return 0;
 //    if(ms0->trkStat<3)return 0;
 
     return measureGood;
@@ -531,4 +532,9 @@ double SV::DetectCycleSlip() {
     //调参？
 //    ms0->cycleSlipQ = pow(10*dt01*dt01/lambda,2);
     ms0->cycleSlipQ = pow(50/lambda*ms0->stdevDo*dt01*dt01,2);
+}
+
+void sortSvByElev(vector<SV *> svs, string tag) {
+ if("elev"==tag)
+        sort(svs.begin(),svs.end(),[](SV* left,SV* right)->bool{ return left->elevationAngle>right->elevationAngle;});
 }

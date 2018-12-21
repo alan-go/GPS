@@ -10,7 +10,13 @@ GNSS::GNSS() :useGPS(1),useBeiDou(1),useQianXun(1),ephemType(0),logOpen(0){
     llaDefault<<40.0*D2R, 116.345*D2R, 59.07;
 
     time_t timeNow = time(NULL);
-    utcTime=gmtime(&timeNow);
+    utcTimeOfSstart=gmtime(&timeNow);
+
+    GnssTime timeOfStart;
+    timeOfStart.epoch2time(utcTimeOfSstart);
+    timeOfStart.utc2gpst();
+    gpsWeek = timeOfStart.week;
+    dow = floor(timeOfStart.tow/86400);
     memset(svMaskBds,1,Nbds * sizeof(int));
     memset(svMaskGps,1,Ngps * sizeof(int));
 }
@@ -37,6 +43,7 @@ int GNSS::Init(int ephem, bool qianXun, bool bds, bool gps) {
     kalmanSolver.InitKalman(this);
     solver.Init(this);
     kalDoppSolv.Init(this);
+    sF9p.Init(this);
 
 
 }
@@ -47,7 +54,7 @@ int GNSS::StartGNSS(const std::string &serial_port, const unsigned int baudRate)
 }
 
 int GNSS::StartGNSS() {
-    sprintf(timeName,"%02d%02d_%02d_%02d",utcTime->tm_mon+1,utcTime->tm_mday,utcTime->tm_hour,utcTime->tm_min);
+    sprintf(timeName,"%02d%02d_%02d_%02d",utcTimeOfSstart->tm_mon+1,utcTimeOfSstart->tm_mday,utcTimeOfSstart->tm_hour,utcTimeOfSstart->tm_min);
     if(useQianXun){
         if(!rtkManager.NtripLogin(rtk_protocol_)) {
             printf("cannot login ntrip server\n");
@@ -102,13 +109,13 @@ int GNSS::ParseRawData(char *message, int len) {
     int numMeas = *(u_int8_t*)(raw+11);
     int recStat = *(uint8_t *)(raw+12);
     fprintf(logTu,"%f,%d\n",rcvtow,recStat);
-    rTime = GnssTime(week,rcvtow);
+    timeRaw = GnssTime(week,rcvtow);
     printf("prepare rawdata ,len = %d numMesa=%d,,week%d,tow%.4f\n",len,numMeas,week,rcvtow);
     if(0==numMeas)return -1;
 
     for(u_int8_t n = 0;n<numMeas;n++){
         Measure *mes = new Measure();
-        mes->time=rTime;
+        mes->time=timeRaw;
         int n32 = n*32;
         uint8_t gnssId = *(uint8_t *)(raw+36+n32);
         uint8_t svId = *(uint8_t *)(raw+37+n32);
@@ -136,7 +143,17 @@ int GNSS::ParseRawData(char *message, int len) {
         svsVisable.push_back(sv);
     }
 
-    Test(svsVisable);
+//    Test(svsVisable);
+    TestFromF9P(svsVisable);
+    return 0;
+}
+
+int GNSS::TestFromF9P(vector<SV *> svs) {
+    printf("-----coutnt %d\n", ++count);
+    if(count<130) return -1;
+    if(sF9p.PrepareSVsData(svs))return -1;
+//    sF9p.PositionSingle(svs);
+    sF9p.AnaMeasure();
     return 0;
 }
 
@@ -152,7 +169,7 @@ int GNSS::Test(vector<SV *> svs) {
     }
 //    return 0;
 
-    double tod = fmod(rTime.tow,86400.0);
+    double tod = fmod(timeRaw.tow,86400.0);
     double tu_s=solver.solSingle.tu[SYS_GPS]/Light_speed;
 //    fprintf(logTu,"%f,%.10f\n",rTime.tow,tu_s*Light_speed);
     solRAC = FindSol(GetSerial(1)->solRaw,tod-tu_s,0.2,"tod");
@@ -161,7 +178,7 @@ int GNSS::Test(vector<SV *> svs) {
     solUBX.Show("###UBX###");
     (solUBX-solRAC).Show("###UBX-RAC###",1);
     solRAC.Show("###RAC###");
-    printf("tow,tod insolution= %f,%f\n", rTime.tow,tod-tu_s);
+    printf("tow,tod insolution= %f,%f\n", timeRaw.tow,tod-tu_s);
     if(solver.PrepareSVsData(svs))return -1;
 
     if(0==solver.PositionSingle(svs)){

@@ -50,11 +50,12 @@ int SerialData::ParaseGGA( char* gga){
         printf("invalid nmea gpgga format,%c,%c\n",ns,ew);
         return 0;
     }
+    //todo: Update GGA
     if(sendGGA){
         printf("Sent GGA: %s\n", gga);
         gnss->rtkManager.SentGGA(gga,strlen(gga));
     }
-    int week = gnss->utcTime->tm_wday;
+    int week = gnss->utcTimeOfSstart->tm_wday;
     int hour = floor(tod/10000.0);
     tod-=hour*10000.0;
     int min = floor(tod/100.0);
@@ -70,9 +71,14 @@ int SerialData::ParaseGGA( char* gga){
 //    pos(2)=alt+msl;
     pos(2)=alt;
     //<6> GPS状态， 0初始化， 1单点定位， 2码差分， 3无效PPS， 4固定解， 5浮点解， 6正在估算 7，人工输入固定值， 8模拟模式， 9WAAS差分
-    Solution sol(GnssTime(secoday),pos);
+    GnssTime timeOfGGA(gnss->gpsWeek,86400*gnss->dow+secoday);
+    timeOfGGA.utc2gpst();
+    Solution sol(timeOfGGA,pos);
+    sol.quality = solq;
     solRaw.push_front(sol);
-    printf("tod,tod %f,%f\n",tod,GnssTime(secoday).tod);
+    if(solq==4)gnss->solF9pFix=sol;
+    fprintf(gnss->logDebug,"%.2f,%d,%d,%d,%d\n",timeOfGGA.tow,100+10*solq,0,0,0);
+    printf("tow,tod %f,%f\n",secoday,timeOfGGA.tow);
     sol.Show("###GGA###");
 //    time2epoch(sol->time,ep);
 //    septime(tod,ep+3,ep+4,ep+5);

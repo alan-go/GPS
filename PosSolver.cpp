@@ -34,12 +34,60 @@ PosSolver::PosSolver(SvAll svs, NtripRTK *rtk, GNSS *gnss):svsBox(svs),rtk(rtk),
 PosSolver::~PosSolver(){
     for(SvSys* sys:svsBox.sysUsed)delete(sys);
 }
+int PosSolver::AnaMeasure() {
 
+    //选出从上一次定位结果锁定到现在的卫星
+    vector<SV*> svsLocked;
+    GnssTime timeFix = gnss->solF9pFix.time;
+    if(timeFix.time==-1)
+        return -1;
+    double dt = gnss->timeRaw-gnss->solF9pFix.time;
+    for(SV* sv:svsBox.svUsed){
+        bool keep{1};
+        Measure* ms0 = sv->measureDat[0];
+       if(ms0->lockTime<ms0->time-timeFix)continue;
+       for(int i=0;i<sv->measureDat.size();i++){
+           if(sv->measureDat[i]->trkStat<15)keep=0;
+           if(sv->measureDat[i]->time<timeFix)break;
+       }
+       if(keep)svsLocked.push_back(sv);
+    }
+    sortSvByElev(svsLocked);
+    ProcessRtkData();
+
+
+    for (SV* sv:svsBox.svUsed) {
+        sv->FPrintInfo(0);
+        Measure* ms0 = sv->measureDat[0];
+//        sv->pred.Predict(timeSol);
+        ms0->cycle += ms0->cycleSlip;
+        fprintf(sv->fpLog,"%.2f,%.2f,%d,%.2f,%d\n",timeSol.tow,ms0->lockTime,ms0->trkStat,ms0->cycleSlip,sv->type*100+sv->svId);
+    }
+//    return 0;
+
+    Solution solLast = gnss->GetSerial(0)->solRaw[0];
+    printf("tow last,%.4f towsol%.4f\n", solLast.time.tow,timeSol.tow);
+    if(abs(timeSol - solLast.time<0.15)){
+        for (SV* sv:svsBox.svUsed) {
+            Measure* ms0 = sv->measureDat[0];
+            sv->pred.y=ms0->cpMes-(sv->xyzR-solLast.xyz).norm();
+            double lambda = GetFreq(sv->type,1,1);
+//            fprintf(sv->fpLog,"%.2f,%.4f,%.4f,%.4f\n",solLast.time.tow,sv->pred.y,sv->pred.y-ms0->cycle*lambda,solSingle.tu[sv->type]);
+            if(solLast.quality==4){
+                sv->pred.R=pow(0.05,2);
+            } else{
+                sv->pred.R=pow(0.5,2);
+            }
+            sv->pred.Rectify(solLast);
+        }
+    }
+    return 0;
+}
 int PosSolver::PrepareSVsData(vector<SV*> &svsIn) {
     cout<<"---Prepare Data\n"<<endl;
     svsBox=SvAll();
     timeSolLast = timeSol;
-    timeSol = gnss->rTime;
+    timeSol = gnss->timeRaw;
     SelectSvsFromVisible(svsIn);
     if(svsBox.svUsed.empty()){
         cout<<"---Warning: Empty sv lists\n"<<endl;
@@ -272,20 +320,6 @@ int PosSolver::ProcessRtkData() {
     }
     svsBox.svUsed.swap(temp);
 
-
-//    for(auto ites=svsBox.sysUsed.begin();ites!=svsBox.sysUsed.end();){
-//        SvSys* sys = *ites;
-////        for(SvSys* sys:temp.sysUsed){
-//        for(auto ite=sys->table.begin();ite!=sys->table.end();){
-//            SV* sv = *ite;
-//            double time = timeSol.tow - tu[sv->type]/Light_speed;
-//            if(sv->type==SYS_BDS)time-=14;
-//            double pr = sv->InterpRtkData(time,sigInd);
-////            if(0!=pr)svsBox.AddToUsed(sv);
-//            if(0==pr)ite=sys->table.erase(ite); else ite++;
-//        }
-//        if(sys->table.empty())ites=svsBox.sysUsed.erase(ites); else ites++;
-//    }
     nSat = svsBox.UpdateSVs();
     nSys = svsBox.sysUsed.size();
 }
@@ -900,3 +934,5 @@ int PosSolver::PosKalSng(vector<SV *> _svsIn) {
     cout<<"KalSigX  "<<kalSingle.x.transpose()<<endl;
     return 0;
 }
+
+

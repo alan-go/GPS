@@ -16,7 +16,7 @@ public:
     Eigen::Vector3d xyz00,xyzUBX,xyzRAC;
     deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> records;
     deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> solSingleNew,solSingles,solRTKs,solKalmans,solKalDops,solSigKals;
-    Solution solSingle,solRTK,solKalman,solUBX,solRAC;
+    Solution solSingle,solRTK,solKalman,solUBX,solRAC,solF9pFix;
     double cycle[Nsys-1][Nxxs],PB[Nsys-1][Nxxs],sigmaCy[Nsys-1][Nxxs],sigmaPr[Nsys-1][Nxxs];
     Matrix<double,6,6> Pxv;
 //    Matrix<double,Ngps,1> cycleGPS,sigmaGPSCy,sigmaGPSPr;
@@ -35,10 +35,11 @@ public:
     bool clockReset{0};
     std::FILE *log,*logRTK,*logDebug,*logTu;
     std::FILE *logSingle,*logSingleNew,*logKalman;
-    struct tm *utcTime;
+    struct tm *utcTimeOfSstart;
+    int gpsWeek,dow{0};
     char timeName[128];
-    PosSolver kalmanSolver,solver,kalDoppSolv;
-    GnssTime rTime;
+    PosSolver kalmanSolver,solver,kalDoppSolv,sF9p;
+    GnssTime timeRaw;
 
 public:
     GNSS();
@@ -73,6 +74,7 @@ public:
 
     int Peform(vector<SV*> svs);
     int Test(vector<SV*> svs);
+    int TestFromF9P(vector<SV*> svs);
 
 private:
     pthread_t thread1_, thread2_, threadPos, threadSp3_;

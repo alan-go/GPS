@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import os
 
 data=[]
 
@@ -84,30 +85,54 @@ def Anaxyz(file,colNum,begin):
 def Anacol(file,width, colX,colY, begin):
     ReadData(file, width, begin)
 
-    plt.plot(data[colX], data[colY])
+    # plt.plot(data[colX], data[colY])
+    plt.scatter(data[colX], data[colY])
     data.clear()
+
+
 
 if __name__=="__main__":
     # ss = "../log/1215_07_56xyz"
     ss = "../log/1219_07_41xyz"
     width = 4;
-    plt.figure(ss)
 
-    # Anaxyz(ss+"RAC.txt",width,10)
-    Anaxyz(ss+"RTK.txt",4,10)
-    # Anaxyz(ss+"SIG.txt",4,10000)
+    # plt.figure(ss)
+    # # Anaxyz(ss+"RAC.txt",width,10)
+    # Anaxyz(ss+"RTK.txt",4,10)
+    # # Anaxyz(ss+"SIG.txt",4,10000)
+    #
+    # Anaxyz(ss+"UBX.txt",width,10)
+    # Anaxyz(ss+"KAL2.txt",width,10)
+    # Anaxyz(ss+"NVT.txt",width,10)
 
-    Anaxyz(ss+"UBX.txt",width,10)
-    Anaxyz(ss+"KAL2.txt",width,10)
-    Anaxyz(ss+"NVT.txt",width,10)
+
     # Anaxyz(ss+"KAL.txt",width,10)
     # AnaSv("../log/SV/3_30.txt",5,1)
     #
 
-    # ss = "../log/logtu.txt"
-    # width = 4;
-    # plt.figure(ss)
-    # Anacol(ss,2,0,1,1);
+    file_dir="../log/SV/"
+    width = 5;
+    plt.figure(ss)
+
+
+    for root, dirs, files in os.walk(file_dir):
+        print(root) #当前目录路径
+        # print(dirs) #当前路径下所有子目录
+        print(files) #当前路径下所有非目录子文件
+
+        for file in files:
+
+            ss=root+file
+            Anacol(ss,width,0,4,1);
+
+    ss = "/home/alan/projects/GPS/log/logDebug.txt"
+    Anacol(ss,width,0,1,1);
+
+
+    # ss = "../log/SV/0_22.txt"
+    # Anacol(ss,width,0,1,1);
+
+
     plt.show()
 
 

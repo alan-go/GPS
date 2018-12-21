@@ -106,12 +106,12 @@ extern void ShowV3(Eigen::Vector3d v3,char *tip);
 
 
 
-
 class Measure{
 public:
     GnssTime time;
     double prCor{0},stdPrCor{0};
     double prMes,cpMes,doMes;
+    double prRef{0},cpRef{0};
     double cycleSlip{0},cycleRes{1},cycleSlipQ{1};
     double cycle{0.0},cycleP{1e7};
     double stdevPr{1.5},stdevCp{1e-4},stdevDo;
@@ -124,11 +124,19 @@ public:
             : time(_time),prMes(_pr),cpMes(_cp),doMes(_doplr){};
     void Show(char* tip){ printf("%s: %.3f,%.3f,%.1f\n", prMes,cpMes,cycle);}
 };
+
+class MeasureS{
+public:
+   GnssTime time;
+   std::vector<Measure*> measures;
+};
+
 class Solution{
 public:
     GnssTime time;
     Eigen::Vector3d xyz, vxyz, lla;
     double tu[Nsys]={0};
+    int quality{0};
     Solution(){}
     Solution(GnssTime time,Vector3d lla):time(time),lla(lla){LLA2XYZ(lla,xyz);}
     Solution(GnssTime time,Vector3d xyz,Vector3d vxyz,double* _tu):time(time),xyz(xyz),vxyz(vxyz){
