@@ -106,7 +106,7 @@ void NtripRTK::UpdateGGA() {}
 int NtripRTK::ParaseMSM4(char *bufferRTK, SysType type) {
     //first Parase MSM message Header:
     uint32_t refID = NetToHost32(bufferRTK,12,12);//DF003
-    double rtkTime = double(NetToHost32(bufferRTK+3,0,30))*1e-3;//bdsTime = GPSTime -14s
+    timeTemp = double(NetToHost32(bufferRTK+3,0,30))*1e-3;//bdsTime = GPSTime -14s
     uint8_t multiMsg = NetToHost32(bufferRTK+6,6,1);//DF393
     uint32_t IODS = NetToHost32(bufferRTK+6,7,3);//DF409
     uint8_t clockCorrect = NetToHost32(bufferRTK+8,1,2);//DF411
@@ -148,7 +148,7 @@ int NtripRTK::ParaseMSM4(char *bufferRTK, SysType type) {
 //            printf("time = %f,,",rtkTime);
 //            printf("Sat:%d, ",i+1);
             MSM4data *tempData = new MSM4data;
-            tempData->rtktime = rtkTime;
+            tempData->rtktime = timeTemp;
             tempData->refID = refID;
             satsData.push_back(tempData);
             AddRtkRecord(tempData,type,i+1);
@@ -282,7 +282,7 @@ uint32_t NtripRTK::NetToHost32(char *begin, int head, int length,bool isInt) {
 }
 
 int NtripRTK::ParaseRtk32_1005(char *buffer) {
-    refStationId = NetToHost32(buffer,12,12);
+    int refId = NetToHost32(buffer,12,12);
     ITRFyear = NetToHost32(buffer+3,0,6);
     if(1==NetToHost32(buffer+3,6,1))supportGPS = true;
     if(1==NetToHost32(buffer+3,7,1))supportGLONASS = true;
@@ -307,6 +307,8 @@ int NtripRTK::ParaseRtk32_1005(char *buffer) {
     ECEF_XYZ*=1e-4;
     printf("refstation Id %d\n", refStationId);
     cout<<ECEF_XYZ<<endl;
+    AddRefStation(refStationId,ECEF_XYZ);
+    refStationId=refId;
 }
 
 int NtripRTK::TestParase(char *bufferRecv,int recvLength) {
@@ -340,8 +342,8 @@ RefStation* NtripRTK::AddRefStation(u_int32_t id, Eigen::Vector3d positon) {
     RefStation* ref = GetRefStation(id);
     if(ref!=nullptr)
         return ref;
-    RefStation* refnew = new RefStation(id,positon);
-    refs.push_back(refnew);
+    RefStation* refnew = new RefStation(id,timeTemp,positon);
+    refs.push_front(refnew);
     return refnew;
 }
 
@@ -385,3 +387,18 @@ int NtripRTK::ParaseRTK(char *buffer, int length) {
     }
 }
 
+int NtripRTK::CalcuRefMeasu(MeasureBag *mbag) {
+    for(Measure* ms:mbag->measures){
+
+    }
+    return 0;
+}
+
+RefStation *NtripRTK::GetRefStation(GnssTime time) {
+    int n=refs.size();
+    if(0==n)return nullptr;
+    for(RefStation* rf:refs){
+        if(time.tow>rf->tow)return rf;
+    }
+    return nullptr;
+}

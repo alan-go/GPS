@@ -105,10 +105,11 @@ extern void ShowV3(Eigen::Vector3d v3,char *tip);
 
 
 
-
+class SV;
 class Measure{
 public:
     GnssTime time;
+    SV* sv;
     double prCor{0},stdPrCor{0};
     double prMes,cpMes,doMes;
     double prRef{0},cpRef{0};
@@ -119,13 +120,14 @@ public:
     double lockTime,cno;
     double dDoppler{0};
     int trkStat{0};
+    Vector3d svPos;
     Measure(){};
     Measure(GnssTime _time,double _pr,double _cp,double _doplr = 0)
             : time(_time),prMes(_pr),cpMes(_cp),doMes(_doplr){};
     void Show(char* tip){ printf("%s: %.3f,%.3f,%.1f\n", prMes,cpMes,cycle);}
 };
 
-class MeasureS{
+class MeasureBag{
 public:
    GnssTime time;
    std::vector<Measure*> measures;

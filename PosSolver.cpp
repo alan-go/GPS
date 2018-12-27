@@ -35,26 +35,89 @@ PosSolver::~PosSolver(){
     for(SvSys* sys:svsBox.sysUsed)delete(sys);
 }
 int PosSolver::AnaMeasure() {
-
+    ProcessRtkData();
     //选出从上一次定位结果锁定到现在的卫星
     vector<SV*> svsLocked;
     GnssTime timeFix = gnss->solF9pFix.time;
     if(timeFix.time==-1)
         return -1;
     double dt = gnss->timeRaw-gnss->solF9pFix.time;
+
+    Vector3d base ;
+    Vector3d xyzfix= gnss->solF9pFix.xyz;
+    RefStation* refFix = gnss->rtkManager.GetRefStation(timeFix);
+    RefStation* refNow = gnss->rtkManager.GetRefStation(timeSol);
+    if(refFix&&refNow){
+        printf("fix,now %d,%d\n", refFix->id, refNow->id);
+        if(refFix->id!=refNow->id){
+            return -1;
+        } else{
+            base=refNow->pos;
+        }
+    } else{
+        if(refFix== nullptr)printf("fix null ref \n");
+        if(refNow== nullptr)printf("now null ref \n");
+        return -1;
+    }
+
+
     for(SV* sv:svsBox.svUsed){
+        printf("sv: %d,%02d,\n", sv->type,sv->svId);
+
         bool keep{1};
         Measure* ms0 = sv->measureDat[0];
-       if(ms0->lockTime<ms0->time-timeFix)continue;
+//       if(ms0->lockTime<ms0->time-timeFix)continue;
        for(int i=0;i<sv->measureDat.size();i++){
-           if(sv->measureDat[i]->trkStat<15)keep=0;
-           if(sv->measureDat[i]->time<timeFix)break;
+           Measure* msi = sv->measureDat[i];
+           if(msi->trkStat<7){
+               printf("track<7 time=%f,track=%d\n",ms0->time.tow-msi->time.tow,msi->trkStat );
+               keep=0; break;
+           }
+           if(msi->lockTime<700){
+               printf("lock<2000 time=%f,lock=%f\n",msi->time.tow,msi->lockTime );
+               keep=0; break;
+           }
+           double dt = msi->time-timeFix;
+           if(abs(dt)<0.1)sv->msi = msi;
+           if(dt<0)break;
        }
-       if(keep)svsLocked.push_back(sv);
-    }
-    sortSvByElev(svsLocked);
-    ProcessRtkData();
 
+       if(keep && nullptr!=sv->msi)svsLocked.push_back(sv);
+    }
+
+//    MeasureBag* mbag = gnss->GetMeasBag(timeFix);
+    sortSvByElev(svsLocked,"elev");
+    if(svsLocked.size()<2)return -1;
+    SV* sv0 = svsLocked[0];
+
+    for(int i =1;i<svsLocked.size();i++){
+        SV* sv = svsLocked[i];
+        //双差载波测量值
+        sv->cp2diff0 = (sv0->ms0->cpMes-sv0->ms0->cpRef)-(sv->ms0->cpMes-sv->ms0->cpRef);
+        sv->cp2diffi = (sv0->msi->cpMes-sv0->msi->cpRef)-(sv->msi->cpMes-sv->msi->cpRef);
+        //双差距离
+
+        double r1diff =(sv0->msi->svPos-xyzfix).norm()-(sv0->msi->svPos-base).norm();
+        double r1diff2 =(sv->msi->svPos-xyzfix).norm()-(sv->msi->svPos-base).norm();
+        double r2diffi = r1diff-r1diff2;
+
+        double temp = sv->cp2diffi-r2diffi;
+        if(abs(temp)>1000)continue;
+
+        printf("sv: %d,%02d,elev%f,locktime=%f,cp2d-r2d=%f\n",
+                sv->type,sv->svId,sv->elevationAngle,sv->msi->lockTime,sv->cp2diffi-r2diffi);
+        sv->FPrintInfo(0);
+        double lk=0;
+        if(sv->ms0->lockTime>1000)lk=10;
+
+        fprintf(sv->fpLog,"%.2f,%.2f,%f,%d,%.2f,%.2f,%d\n",timeSol.tow,temp,sv->ms0->cycleSlip,sv0->svId,
+                sv->ms0->lockTime/10000,sv->ms0->stdevCp*1000,sv->ms0->trkStat);
+//        fprintf(sv->fpLog,"%.2f,%.2f,%d,%.2f,%.2f,%.2f,%.2f,%d\n",timeSol.tow,sv->ms0->lockTime,sv->type*100+sv->svId);
+    }
+
+    gnss->solF9pFix.Show("solFix");
+
+    return 0;
 
     for (SV* sv:svsBox.svUsed) {
         sv->FPrintInfo(0);
@@ -63,7 +126,7 @@ int PosSolver::AnaMeasure() {
         ms0->cycle += ms0->cycleSlip;
         fprintf(sv->fpLog,"%.2f,%.2f,%d,%.2f,%d\n",timeSol.tow,ms0->lockTime,ms0->trkStat,ms0->cycleSlip,sv->type*100+sv->svId);
     }
-//    return 0;
+    return 0;
 
     Solution solLast = gnss->GetSerial(0)->solRaw[0];
     printf("tow last,%.4f towsol%.4f\n", solLast.time.tow,timeSol.tow);
@@ -196,8 +259,7 @@ int PosSolver::PositionSingle(vector<SV*> _svsIn) {
 }
 
 int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
-    for(SV* sv:all)
-    {
+    for(SV* sv:all){
         Measure *msTemp = sv->measureDat.front();
 //        printf("getsv:%d,%02d:h:%d,pr=%lf,cp=%lf\t\t",sv->type,sv->svId,sv->SatH1,
 //                msTemp->prMes,msTemp->cpMes);
@@ -208,11 +270,16 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
             continue;
         }
         //2,judge ephemeric
-        if(!sv->CheckEphemStates(timeSol,gnss->ephemType))continue;
+        if(!sv->CheckEphemStates(timeSol,gnss->ephemType)){
+            sprintf(sv->tip,"ephem bad");
+            continue;
+        }
         //3,measure
 //        sv->SmoothKalman0();
 //        if(sv->kal.state<30)continue;
-        if(!sv->MeasureGood())continue;
+        if(!sv->MeasureGood()){
+            continue;
+        }
         //4,elevtion angle
 //        if(!sv->ElevGood())continue;
 
@@ -221,17 +288,18 @@ int PosSolver::SelectSvsFromVisible(vector<SV*> &all) {
         svsBox.AddToUsed(sv);
         sprintf(sv->tip,"++ok");
     }
-//    for(SV* sv:all) sv->PrintInfo(0);
+
+    for(SV* sv:all) sv->PrintInfo(0);
 }
 
 int PosSolver::UpdateSvsPosition( GnssTime rTime, int ephType) {
-    printf("\nN0= %d\n", svsBox.svUsed.size());
+    printf("\nN0= %d,,  ", svsBox.svUsed.size());
     printf("rcvtow %.3f\n", rTime.tow);
     vector<SV*> temp;
 //    double ep[6];
 //    rTime.time2epoch(ep);
     for(SV* sv:svsBox.svUsed){
-        sv->PrintInfo(0);
+//        sv->PrintInfo(0);
 //        printf("a0a1a2 %.10f,%.10f,%.10f\n",sv->ephemBst->clk.a0,sv->ephemBst->clk.a1,sv->ephemBst->clk.a2 );
         Measure *ms = sv->measureDat.front();
         double tow,tot;
@@ -278,9 +346,10 @@ int PosSolver::UpdateSvsPosition( GnssTime rTime, int ephType) {
         }
         tot = (ms->prMes-tu[sv->type])/Light_speed+sv->tsdt;
         sv->RotateECEF(tot);
-        sv->CorrectIT(xyz,lla,tow);
+        sv->CorrectIT(gnss->solF9p.xyz,gnss->solF9p.lla,tow);
+        ms->svPos = sv->xyzR;
         temp.push_back(sv);
-        sv->PrintInfo(0);
+//        sv->PrintInfo(0);
 
     }
     svsBox.svUsed.swap(temp);
@@ -523,8 +592,8 @@ int PosSolver::ResetKalRtk(int N, int M, Kalman & kal, int L){
         solKalDopp=Solution(timeSol,gnss->xyzDefault,Vector3d(0,0,0),tu);
         memcpy(solKalDopp.tu,solSingle.tu,Nsys* sizeof(double));
 
-        P99.block(0,0,3,3)=1e6*Matrix3d::Identity();
-        P99.block(3,3,3,3)=1e3*Matrix3d::Identity();
+        P99.block(0,0,3,3)=1e8*Matrix3d::Identity();
+        P99.block(3,3,3,3)=1e4*Matrix3d::Identity();
         P99(6,6)=P99(7,7)=500;
         P99(8,8)=1e4;
 
@@ -539,16 +608,16 @@ int PosSolver::ResetKalRtk(int N, int M, Kalman & kal, int L){
             Measure* ms = sv->measureDat[0];
             double lambda=GetFreq(sv->type,1,1);
 //        ms->cycle=(ms->cpMes-ms->prMes+2*sv->I)/lambda;
-            ms->cycleP=10000;
+            ms->cycleP=1e8;
             sv->kalState=1;
     }
     ///////////////////////DEbug/////////////////////////////
 
-    memcpy(solKalDopp.tu,solSingle.tu,Nsys* sizeof(double));
+//    memcpy(solKalDopp.tu,solSingle.tu,Nsys* sizeof(double));
     ///////////////////////DEbug/////////////////////////////
     kal.Pnn.block(0,0,9,9)=P99;
     kal.x.head(3)=xyz=solKalDopp.xyz;
-    kal.Qnn.block(0,0,3,3)=1.52*Matrix3d::Identity();
+    kal.Qnn.block(0,0,3,3)=0.52*Matrix3d::Identity();
 
     kal.x.segment(3,3)=vxyz=solKalDopp.vxyz;
     kal.Qnn.block(3,3,3,3)=0.51*Matrix3d::Identity();
@@ -577,14 +646,28 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
 //        kalRtk.state=0;
         ////debug
         printf("Not enough svs nSat,nSys=%d,%d\n",nSat,nSys);
-//        return -1;
+        return -1;
     }
+
+    RefStation* rfTemp = gnss->rtkManager.GetRefStation(timeSol);
+    if(rfTemp)printf("temp Ref Id %d\n", rfTemp->id);
+    if(rfTemp!=rfp&&rfTemp){
+//        if(rfp&&rfTemp)fprintf(gnss->logDebug,"%f,%d->%d\n",timeSol.tow,rfp->id,rfTemp->id);
+        for(SV* sv:svsBox.svAll){
+            sv->kalState=0;
+        }
+        rfp=rfTemp;
+        return 1;
+    }
+    if(nullptr==rfTemp)printf("nullllll=rftemp %f\n", timeSol.tow);
+
+    Vector3d base = rfp->pos;
+
 
     int ny = 3*nSat-2*nSys,nx = nSat+9,yhead,xhead;
     ResetKalRtk(nx,ny,kalRtk);
 //    ShowV3(xyz,"XYZ before Kal2");
 
-    Vector3d base = gnss->rtkManager.ECEF_XYZ;
 //    读数据，x,
     yhead=0,xhead=9;
     for(SvSys* sys:svsBox.sysUsed){
@@ -597,14 +680,14 @@ int PosSolver::PositionKalman2(vector<SV *> _svsIn) {
             double dt01 = ms0->time.tow - ms1->time.tow;
             ms0->cycle += ms0->cycleSlip;
             ms0->cycleP+=ms0->cycleSlipQ;
-            if (ms0->lockTime < 500) {
-//                ms0->cycleP += pow(3000 * dt01 * dt01, 2);
+            if (ms0->lockTime < 800) {
+//                ms0->cycleP += pow(300 * dt01 * dt01, 2);
                 ms0->cycleP = pow(100, 2);
                 if (abs(ms0->cycleRes) > 0.1){
                     ms0->cycleP += pow(1000*ms0->stdevDo*ms0->cycleRes,2);
                 }
             }
-            ms0->cycleP+=pow(0.25,2);
+//            ms0->cycleP+=pow(0.25,2);
 
             kalRtk.x(xhead + i) = ms0->cycle;
             kalRtk.Pnn(xhead + i, xhead + i) = ms0->cycleP;

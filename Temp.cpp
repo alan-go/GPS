@@ -38,6 +38,7 @@ int main(int argc,char* argv[]){
     gnss->Init(0,0,1,1);
 
 //    EphemSp3::ReadSp3s("/home/alan/projects/GPS/Sp3/hour20316_07",gnss->svsManager);
+//    EphemSp3::ReadSp3s("/home/alan/projects/GPS/Sp3/hour20323_07",gnss->svsManager);
 //    EphemSp3::ReadSp3s("/home/alan/projects/GPS/Sp3/hour20314_13",gnss->svsManager);
     FILE *fp;
     char name[128],dat[512],temp[256],tempc;
@@ -45,6 +46,10 @@ int main(int argc,char* argv[]){
     ss = "1219_07_41";
     gnss->gpsWeek=2032;
     gnss->dow=3;
+
+//    ss = "1215_07_56";
+//    gnss->gpsWeek=2031;
+//    gnss->dow=6;
 
     string ssData0 = "../data/device0_" + ss + ".data";
     string ssData1 = "../data/device1_" + ss + ".data";
@@ -67,6 +72,11 @@ int main(int argc,char* argv[]){
         }
         fclose(fp);
     } else printf("open rtk data failed \n");
+
+    for(RefStation* rf:gnss->rtkManager.refs){
+        printf("refStation %f,%d\n", rf->tow, rf->id);
+        ShowV3(rf->pos,"pos");
+    }
 
     //Reac raw1 measure data(ubx)
     if(fp = fopen(ssData1.data(),"rb")){

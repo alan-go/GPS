@@ -163,6 +163,8 @@ public:
     //vector<MSM4data*>里面是不同时刻的数据，0 always是最近的记录
     deque<MSM4data*> rtkData;
     deque<Measure*> measureDat;
+    Measure* msi,*ms0;
+    double cp2diffi,cp2diff0;
     double prInterp[32], cpInterp[32];
     bool KalmanFirst{1};
     //电离层估计
@@ -178,6 +180,7 @@ public:
     bool IsMaskOn();
     bool RotateECEF(double tt);
     bool AddMmeasure(Measure *mesr);
+    int CalcuPos(GnssTime time,Measure* ms,int ephType=0);
 
     int CalcuelEvationAzimuth(Vector3d pos, Vector3d poslla);
     int CalcuTroposhphere(double elev,double azim);
@@ -191,6 +194,7 @@ public:
     double SmoothKalman(int len,int begin=0);
     double SmoothKalman0();
     double DetectCycleSlip();
+    MSM4data* GetRtkRecord(GnssTime time);
     bool operator=(SV* sv){return sv->type==type&&sv->svId==svId;}
 
 //private:
@@ -198,7 +202,7 @@ public:
 };
 
 
-void sortSvByElev(vector<SV*> svs,string tag="elev");
+void sortSvByElev(vector<SV*> &svs,string tag="elev");
 
 class BeiDouSV:public SV{
 //public:
@@ -382,7 +386,7 @@ public:
             return nullptr;
         SvSys *sys =GetSys(type);
         if(nullptr==sys || id>sys->table.size()){
-            printf("sv not found!\n");
+//            printf("sv not found!\n");
             return nullptr;
         }
         return sys->table[id-1];
@@ -396,8 +400,7 @@ public:
                 break;
             }
         }
-        if(result== nullptr)
-            printf("svSys Data not found!\n");
+//        if(result== nullptr)printf("svSys Data not found!\n");
         return result;
     }
     //如果没有找到,就new一个

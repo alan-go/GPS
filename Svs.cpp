@@ -74,7 +74,34 @@ bool SV::CheckEphemStates(GnssTime time,int ephemType) {
     }
 }
 
-
+int SV::CalcuPos(GnssTime time,Measure* ms, int ephType) {
+//        double tot;
+//        ts0=time;
+//        ts0 += - ms->prMes/Light_speed;
+//        //sp3文件使用的是GPS时(虽然使用年月日表示的)
+//        //todo 相对论修正
+//        switch (ephType){
+//            case 1:
+//                if(ephemSp3->CalcuTs(ts0))return -1;
+//                if(ephemSp3->CalcuECEF(ts))return -1;
+//                break;
+//            case 0:
+//                if(SYS_BDS == type)ts0+=-14;
+//                if(ephemBst->CalcuTs(ts0))continue;
+//                if(ephemBst->CalcuECEF(ts))continue;
+//
+////                sv->CalcuTs(ts0);
+////                sv->CalcuECEF(sv->ts);
+//                //todo tsDelta 换成米单位
+//                break;
+//            default:
+//                break;
+//        }
+//        tot = (ms->prMes-tu[sv->type])/Light_speed+sv->tsdt;
+//        sv->RotateECEF(tot);
+//
+//    return 0;
+}
 
 bool SV::AddMmeasure(Measure *mesr) {
     if(!measureDat.empty()){
@@ -121,9 +148,9 @@ void SV::PrintInfo(int printType) {
 
 void SV::FPrintInfo(int printType){
     if(NULL==fpLog){
-    char name[32];
-    sprintf(name,"../log/SV/%d_%02d.txt",type,svId);
-    fpLog = fopen(name,"w");
+        char name[32];
+        sprintf(name,"../log/SV/%d_%02d.txt",type,svId);
+        fpLog = fopen(name,"w");
     }
     Measure *ms = measureDat.front();
     Measure *ms1 = measureDat[1];
@@ -241,6 +268,20 @@ bool SV::MeasureGood() {
     return measureGood;
 }
 
+MSM4data *SV::GetRtkRecord(GnssTime time) {
+    auto ite = rtkData.begin();
+    double dt = 100;
+    for (; ite < rtkData.end() - 5; ite++) {
+        dt = time.tow - (*ite)->rtktime;
+        if(dt>0)break;
+    }
+    if(dt>2){
+        sprintf(tip," %drtk,cloest=%.1f",rtkData.size(),dt);
+        return nullptr;
+    }
+    return *ite;
+}
+
 double SV::InterpRtkData(double time, int sigInd) {
     int InterpLength = 5;
 
@@ -251,16 +292,17 @@ double SV::InterpRtkData(double time, int sigInd) {
         dt = time - (*ite)->rtktime;
         if(dt>0)break;
     }
-    if(dt>2)
-    {
+    if(dt>2){
         sprintf(tip," %drtk,cloest=%.1f",rtkData.size(),dt);
         return 0;
     }
 //    printf("time: %lf,%lf\n", time,(*ite)->rtktime);
+    u_int32_t refId = (*ite)->refID;
 
     vector<double> times, prMes, cpMes;
     for(int i=0;i<InterpLength;i++){
         MSM4data* data = *(ite+i);
+        if(data->refID!=refId)break;
         MSM4Cell* cell = &data->sigData[sigInd];
         if(cell->cpMes!=0){
             times.push_back(data->rtktime);
@@ -268,7 +310,6 @@ double SV::InterpRtkData(double time, int sigInd) {
             cpMes.push_back(cell->cpMes);
 //            printf("t=%f,pr=%f,cp = %f\n",data->rtktime,cell->prMes,cell->cpMes);
         }
-
     }
     if(times.size()<InterpLength-2)
     {
@@ -278,6 +319,9 @@ double SV::InterpRtkData(double time, int sigInd) {
     prInterp[sigInd] = InterpLine(time,times,prMes);
     cpInterp[sigInd] = InterpLine(time,times,cpMes);
 //    printf("Interp:t=%f,pr=%f,cp = %f\n",time,prInterp[sigInd],cpInterp[sigInd]);
+    Measure* ms0 = measureDat[0];
+    ms0->prRef = prInterp[sigInd];
+    ms0->cpRef = cpInterp[sigInd];
 
     return prInterp[sigInd];
 }
@@ -534,7 +578,7 @@ double SV::DetectCycleSlip() {
     ms0->cycleSlipQ = pow(50/lambda*ms0->stdevDo*dt01*dt01,2);
 }
 
-void sortSvByElev(vector<SV *> svs, string tag) {
- if("elev"==tag)
+void sortSvByElev(vector<SV *> &svs, string tag) {
+    if("elev"==tag)
         sort(svs.begin(),svs.end(),[](SV* left,SV* right)->bool{ return left->elevationAngle>right->elevationAngle;});
 }

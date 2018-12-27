@@ -40,8 +40,9 @@ public:
 class RefStation{
 public:
     uint32_t id;
+    double tow;
     Eigen::Vector3d pos;
-    RefStation(int _id,Vector3d _pos):id(_id),pos(_pos){};
+    RefStation(int _id,double _tow,Vector3d _pos):id(_id),tow(_tow),pos(_pos){};
 };
 
 class NtripRTK{
@@ -54,7 +55,7 @@ public:
     bool logOpen{1};
     //vector<MSM4data*>里面是不同时刻的数据，0是最近的记录
 //    vector<MSM4data*> rtkDataGps[Ngps],rtkDataBeiDou[Nbds];
-    vector<RefStation*> refs;
+    deque<RefStation*> refs;
     uint32_t refStationId;
     bool isPhysicalStation;
     bool singleReceiver;
@@ -65,6 +66,7 @@ public:
     char ggaDefault[128];
     std::mutex mtxData;
     char saveName[128];
+    double timeTemp;
 
 public:
     NtripRTK();
@@ -81,6 +83,8 @@ public:
     MSM4data* GetRtkRecord(int satInd,int timeInd, SysType type);
     RefStation* AddRefStation(u_int32_t id,Eigen::Vector3d positon);
     RefStation* GetRefStation(u_int32_t id);
+    RefStation* GetRefStation(GnssTime time);
+    int CalcuRefMeasu(MeasureBag* mbag);
 
 
 private:

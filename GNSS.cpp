@@ -113,15 +113,19 @@ int GNSS::ParseRawData(char *message, int len) {
     printf("prepare rawdata ,len = %d numMesa=%d,,week%d,tow%.4f\n",len,numMeas,week,rcvtow);
     if(0==numMeas)return -1;
 
+    MeasureBag* mbag = new MeasureBag;
     for(u_int8_t n = 0;n<numMeas;n++){
         Measure *mes = new Measure();
         mes->time=timeRaw;
         int n32 = n*32;
         uint8_t gnssId = *(uint8_t *)(raw+36+n32);
         uint8_t svId = *(uint8_t *)(raw+37+n32);
+//        uint8_t sigId= *(uint8_t *)(raw+38+n32);
+//        printf(">>>>>>>>>>>>>>>>>>sv: %d,%02d,%d\n",gnssId,svId,sigId);
         SV* sv = svsManager.GetSv(SysType(gnssId),svId);
+        mes->sv = sv;
         if(sv== nullptr){
-            printf("Wrong sv Id! %d,%d\n", gnssId, svId);
+//            printf("Wrong sv Id! %d,%d\n", gnssId, svId);
             continue;
         }
 
@@ -140,9 +144,13 @@ int GNSS::ParseRawData(char *message, int len) {
         mes->trkStat = *(uint8_t *)(raw+46+n32);
 
         sv->AddMmeasure(mes);
+        sv->ms0 = mes;
         svsVisable.push_back(sv);
+        mbag->measures.push_back(mes);
+        mbag->time = timeRaw;
     }
-
+    rtkManager.CalcuRefMeasu(mbag);
+    measS.push_front(mbag);
 //    Test(svsVisable);
     TestFromF9P(svsVisable);
     return 0;
@@ -150,7 +158,7 @@ int GNSS::ParseRawData(char *message, int len) {
 
 int GNSS::TestFromF9P(vector<SV *> svs) {
     printf("-----coutnt %d\n", ++count);
-    if(count<130) return -1;
+    if(count<100) return -1;
     if(sF9p.PrepareSVsData(svs))return -1;
 //    sF9p.PositionSingle(svs);
     sF9p.AnaMeasure();
@@ -159,9 +167,9 @@ int GNSS::TestFromF9P(vector<SV *> svs) {
 
 int GNSS::Test(vector<SV *> svs) {
     printf("-----coutnt %d\n", ++count);
-    if(count<13000) return -1;
+    if(count<500) return -1;
     for(SV*sv:svs){
-        sv->FPrintInfo(0);
+//        sv->FPrintInfo(0);
 
 //        sv->SmoothKalman0();
 //        sv->SmoothKalman(1);
@@ -223,7 +231,6 @@ int GNSS::Test(vector<SV *> svs) {
     kalDoppSolv.PrepareSVsData(svs);
     if(0== kalDoppSolv.PositionKalman2(svs)){
         kalDoppSolv.solKalDopp.Show("###KalDopp###");
-        (kalDoppSolv.solKalDopp-solRAC).Show("###KalDopp-RAC###",1);
         solKalDops.push_front(kalDoppSolv.solKalDopp);
     }
 
@@ -266,3 +273,11 @@ int GNSS::AddPosRecord(Solution record) {
     if(records.size()>10240)records.pop_back();
 }
 
+MeasureBag* GNSS::GetMeasBag(GnssTime time) {
+    for (int i = 0; i < measS.size(); ++i) {
+        double dt = measS[i]->time-time;
+        if(abs(dt)<0.1)return measS[i];
+        if(dt<0)break;
+    }
+    return nullptr;
+}

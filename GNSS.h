@@ -16,7 +16,7 @@ public:
     Eigen::Vector3d xyz00,xyzUBX,xyzRAC;
     deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> records;
     deque<Solution,Eigen::aligned_allocator<Eigen::Vector3d>> solSingleNew,solSingles,solRTKs,solKalmans,solKalDops,solSigKals;
-    Solution solSingle,solRTK,solKalman,solUBX,solRAC,solF9pFix;
+    Solution solSingle,solRTK,solKalman,solUBX,solRAC,solF9pFix,solF9p;
     double cycle[Nsys-1][Nxxs],PB[Nsys-1][Nxxs],sigmaCy[Nsys-1][Nxxs],sigmaPr[Nsys-1][Nxxs];
     Matrix<double,6,6> Pxv;
 //    Matrix<double,Ngps,1> cycleGPS,sigmaGPSCy,sigmaGPSPr;
@@ -40,6 +40,7 @@ public:
     char timeName[128];
     PosSolver kalmanSolver,solver,kalDoppSolv,sF9p;
     GnssTime timeRaw;
+    deque<MeasureBag*> measS;
 
 public:
     GNSS();
@@ -57,6 +58,8 @@ public:
     int ParseRawData(char * message, int len);
 
     int AddPosRecord(Solution record);
+
+    MeasureBag* GetMeasBag(GnssTime time);
 
     int AddSerial(int id,int type,string name, unsigned int baudRate,bool logOpen)
     {serialDataManager.push_back(new SerialData(id, type,name,baudRate,logOpen,this));};

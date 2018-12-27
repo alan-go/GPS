@@ -150,7 +150,7 @@ int EphemSp3::ReadSp3File(string fileName, SvAll &svs) {
             if ('V'==dataType) {
                 cell.vxyz = data*1000;
             }
-            sv->PrintInfo(0);
+//            sv->PrintInfo(0);
             sv->ephemSp3->xyzList.push_back(cell);
         }
     }

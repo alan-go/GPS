@@ -101,36 +101,40 @@ if __name__=="__main__":
     # Anaxyz(ss+"RTK.txt",4,10)
     # # Anaxyz(ss+"SIG.txt",4,10000)
     #
-    # Anaxyz(ss+"UBX.txt",width,10)
-    # Anaxyz(ss+"KAL2.txt",width,10)
-    # Anaxyz(ss+"NVT.txt",width,10)
+    Anaxyz(ss+"UBX.txt",width,10)
+    Anaxyz(ss+"KAL2.txt",width,10)
+    Anaxyz(ss+"NVT.txt",width,10)
 
 
     # Anaxyz(ss+"KAL.txt",width,10)
     # AnaSv("../log/SV/3_30.txt",5,1)
     #
 
+
     file_dir="../log/SV/"
-    width = 5;
+    width = 7;
     plt.figure(ss)
 
-
-    for root, dirs, files in os.walk(file_dir):
-        print(root) #当前目录路径
-        # print(dirs) #当前路径下所有子目录
-        print(files) #当前路径下所有非目录子文件
-
-        for file in files:
-
-            ss=root+file
-            Anacol(ss,width,0,4,1);
-
+    # for root, dirs, files in os.walk(file_dir):
+    #     print(root) #当前目录路径
+    #     # print(dirs) #当前路径下所有子目录
+    #     print(files) #当前路径下所有非目录子文件
+    #
+    #     for file in files:
+    #         ss=root+file
+    #         Anacol(ss,width,0,1,10);
+    #
     ss = "/home/alan/projects/GPS/log/logDebug.txt"
     Anacol(ss,width,0,1,1);
 
-
-    # ss = "../log/SV/0_22.txt"
-    # Anacol(ss,width,0,1,1);
+    #
+    ss = "../log/SV/0_14.txt"
+    Anacol(ss,width,0,1,16);
+    # Anacol(ss,width,0,2,16);
+    Anacol(ss,width,0,3,16);
+    Anacol(ss,width,0,4,16);
+    Anacol(ss,width,0,5,16);
+    Anacol(ss,width,0,6,16);
 
 
     plt.show()

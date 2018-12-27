@@ -28,6 +28,7 @@ public:
     Matrix<double,6,6> P66;
     Matrix<double,9,9> P99;
     Kalman kalSingle,kalRtk;
+    RefStation* rfp;
 public:
     int InitKalman(GNSS *_gnss);
     int Init(GNSS *_gnss);
