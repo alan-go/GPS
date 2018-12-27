@@ -95,13 +95,23 @@ int PosSolver::AnaMeasure() {
         //双差载波测量值
         sv->cp2diff0 = (sv0->ms0->cpMes-sv0->ms0->cpRef)-(sv->ms0->cpMes-sv->ms0->cpRef);
         sv->cp2diffi = (sv0->msi->cpMes-sv0->msi->cpRef)-(sv->msi->cpMes-sv->msi->cpRef);
+        double cp_01_u_i =sv0->msi->cpMes-sv->msi->cpMes;
+        double cp_01_b_i =sv0->msi->cpRef-sv->msi->cpRef;
+        double cp_01_u_0 =sv0->ms0->cpMes-sv->ms0->cpMes;
+        double cp_01_b_0 =sv0->ms0->cpRef-sv->ms0->cpRef;
+
+        //双差ts
+        double ts_01_u_i =(sv0->msi->tsdt-sv->msi->tsdt)*Light_speed;
+
         //双差距离
 
-        double r1diff =(sv0->msi->svPos-xyzfix).norm()-(sv0->msi->svPos-base).norm();
-        double r1diff2 =(sv->msi->svPos-xyzfix).norm()-(sv->msi->svPos-base).norm();
-        double r2diffi = r1diff-r1diff2;
+        double r_01_u_i =(sv0->msi->svPos-xyzfix).norm()-(sv->msi->svPos-xyzfix).norm();
+        double r_01_b_i =(sv0->msi->svPos-base).norm()-(sv->msi->svPos-base).norm();
+        double r2diffi = r_01_u_i-r_01_b_i;
 
-        double temp = sv->cp2diffi-r2diffi;
+//        double temp = sv->cp2diffi-r2diffi;
+        double temp =cp_01_u_i - r_01_u_i + ts_01_u_i;
+//        double temp =cp_01_u_i - r_01_u_i;
         if(abs(temp)>1000)continue;
 
         printf("sv: %d,%02d,elev%f,locktime=%f,cp2d-r2d=%f\n",
@@ -348,6 +358,7 @@ int PosSolver::UpdateSvsPosition( GnssTime rTime, int ephType) {
         sv->RotateECEF(tot);
         sv->CorrectIT(gnss->solF9p.xyz,gnss->solF9p.lla,tow);
         ms->svPos = sv->xyzR;
+        ms->tsdt = sv->tsdt;
         temp.push_back(sv);
 //        sv->PrintInfo(0);
 

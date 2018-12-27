@@ -121,6 +121,7 @@ public:
     double dDoppler{0};
     int trkStat{0};
     Vector3d svPos;
+    double tsdt;
     Measure(){};
     Measure(GnssTime _time,double _pr,double _cp,double _doplr = 0)
             : time(_time),prMes(_pr),cpMes(_cp),doMes(_doplr){};
